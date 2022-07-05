@@ -1,0 +1,4 @@
+build
+build/*
+compressed.fcz
+decompressed.pdb
