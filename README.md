@@ -2,13 +2,13 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-05 10:09:54
+Last Modified: 2022-07-05 10:12:41
 ---
 
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively.
 
-![abstract](img/Abstract.png)
+![abstract](img/Abstract.jpg)
 
 ## Usage
 
