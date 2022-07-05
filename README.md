@@ -2,13 +2,11 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-05 10:12:41
+Last Modified: 2022-07-05 10:13:51
 ---
 
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively.
-
-![abstract](img/Abstract.jpg)
 
 ## Usage
 
@@ -42,3 +40,7 @@ cmake --build ./build --target foldcomp
 ./build/foldcomp decompress fcz_dir/ # default output: fcz_dir_pdb/
 ./build/foldcomp decompress fcz_dir/ decompressed_dir/
 ```
+
+---
+
+![abstract](img/Abstract.jpg)
