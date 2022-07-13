@@ -41,6 +41,21 @@ set(MAIN_SRC ${PROJECT_SOURCE_DIR}/main.cpp)
 set(TARGET_NAME "foldcomp")
 add_executable(${TARGET_NAME} ${MY_SRCS} ${MAIN_SRC})
 
+# OPENMP
+find_package(OpenMP QUIET)
+
+if(OPENMP_FOUND)
+    # For GCC we dont want to do this since it breaks macOS static builds
+    # It will link libgomp.a internally (through -fopenmp I guess)
+    # and also link libgomp.dylib thus breaking static builds
+    if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        target_link_libraries(${TARGET_NAME} ${OpenMP_CXX_LIBRARIES})
+    endif()
+
+    append_target_property(${TARGET_NAME} COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+    append_target_property(${TARGET_NAME} LINK_FLAGS ${OpenMP_CXX_FLAGS})
+endif()
+
 target_include_directories(${TARGET_NAME} PUBLIC
     ${MY_INCLUDES}
 )

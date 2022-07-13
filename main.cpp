@@ -1,6 +1,6 @@
 /**
  * File: main.cpp
- * Project: FoldU_background_search
+ * Project: hbk
  * Created: 2021-12-23 17:44:53
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
@@ -9,7 +9,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-06-27 11:11:14
+ * Last Modified: 2022-07-14 07:58:44
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -31,6 +31,8 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <cstring>
+// OpenMP for parallelization
+#include <omp.h>
 
 int print_usage_with_error(void) {
     std::cout << "Usage: foldcomp compress input.pdb" << std::endl;
@@ -184,20 +186,30 @@ int main(int argc, char const *argv[]) {
         std::string inputFile;
         std::string outputFile;
         std::vector<std::string> files = getFilesInDirectory(input);
-
-        for (std::string file : files) {
-            // Check file extension
-            if (file.substr(file.length() - 4) == ".pdb") {
-                outputFile = output + file.substr(0, file.length() - 4) + ".fcz";
-                // Compress file
-                inputFile = input + file;
-                flag = compress(inputFile, outputFile);
-                if (flag != 0) {
-                    std::cerr << "Error compressing " << file << std::endl;
-                    return 1;
-                }
+        // Testing with 6 threads
+        #pragma omp parallel num_threads(6)
+        {
+            #pragma omp for
+            for (int i = 0; i < files.size(); i++) {
+                std::string file = files[i];
+                std::string inputFile = input + file;
+                std::string outputFile = output + file.substr(0, file.length() - 4) + ".fcz";
+                compress(inputFile, outputFile);
             }
         }
+        // for (std::string file : files) {
+        //     // Check file extension
+        //     if (file.substr(file.length() - 4) == ".pdb") {
+        //         outputFile = output + file.substr(0, file.length() - 4) + ".fcz";
+        //         // Compress file
+        //         inputFile = input + file;
+        //         flag = compress(inputFile, outputFile);
+        //         if (flag != 0) {
+        //             std::cerr << "Error compressing " << file << std::endl;
+        //             return 1;
+        //         }
+        //     }
+        // }
     } else if (mode == DECOMPRESS_MULTIPLE) {
         // decompress multiple files
         // Check argument count and input directory exists or not
@@ -225,19 +237,29 @@ int main(int argc, char const *argv[]) {
         std::cout << "Decompressing files in " << input << std::endl;
         std::cout << "Output directory: " << output << std::endl;
         std::vector<std::string> files = getFilesInDirectory(input);
-        for (std::string file : files) {
-            // Check file extension
-            if (file.substr(file.length() - 4) == ".fcz") {
-                inputFile = input + file;
-                outputFile = output + file.substr(0, file.length() - 4) + ".pdb";
-                // Decompress file
-                flag = decompress(inputFile, outputFile);
-                if (flag != 0) {
-                    std::cerr << "Error decompressing " << file << std::endl;
-                    return 1;
-                }
+        #pragma omp parallel num_threads(6)
+        {
+            #pragma omp for
+            for (int i = 0; i < files.size(); i++) {
+                std::string file = files[i];
+                std::string inputFile = input + file;
+                std::string outputFile = output + file.substr(0, file.length() - 4) + ".pdb";
+                decompress(inputFile, outputFile);
             }
         }
+        // for (std::string file : files) {
+        //     // Check file extension
+        //     if (file.substr(file.length() - 4) == ".fcz") {
+        //         inputFile = input + file;
+        //         outputFile = output + file.substr(0, file.length() - 4) + ".pdb";
+        //         // Decompress file
+        //         flag = decompress(inputFile, outputFile);
+        //         if (flag != 0) {
+        //             std::cerr << "Error decompressing " << file << std::endl;
+        //             return 1;
+        //         }
+        //     }
+        // }
     } else {
         std::cout << "Invalid mode." << std::endl;
         return 1;
