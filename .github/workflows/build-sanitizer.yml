@@ -1,0 +1,29 @@
+name: Build and run sanitizers
+
+on:
+  push:
+    branches: [ "master", "dev" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        type: [ASan, UBSan, MSan, TSan]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.type}} -DHAVE_SANITIZER=1
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.type}} --parallel $(nproc --all)
+
+    - name: ASan
+      working-directory: ${{github.workspace}}/build
+      run: |
+        ./foldcomp compress ../test.pdb
+        ./foldcomp decompress ../test.fcz
+      
