@@ -60,9 +60,7 @@ int compress(std::string input, std::string output) {
     std::vector<BackboneChain> compData;
     CompressedResidue compRes = CompressedResidue();
     // Convert title to char
-    char* title_c = new char[title.length() + 1];
-    strcpy(title_c, title.c_str());
-    compRes.title = title_c;
+    compRes.title = title.c_str();
     compRes.lenTitle = title.length() + 1;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
