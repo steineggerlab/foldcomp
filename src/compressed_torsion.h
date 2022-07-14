@@ -286,7 +286,7 @@ public:
 
     // Metadata
     std::string strTitle;
-    char* title;
+    const char* title;
     int lenTitle;
     std::map<std::string, std::string> strMetadata;
     std::map<std::string, std::vector<float> > floatMetadata;

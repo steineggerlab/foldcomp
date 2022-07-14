@@ -122,7 +122,7 @@ void printVector(std::vector<T> v) {
  * @param func
  * @return double
  */
-auto measureRunningTime = [](int n, auto && func, auto&&... params) {
+auto static measureRunningTime = [](int n, auto && func, auto&&... params) {
     // get time before function invocation
     const auto& start = std::chrono::high_resolution_clock::now();
     // function invocation using perfect forwarding
