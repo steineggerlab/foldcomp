@@ -1,4 +1,4 @@
-name: Build and run ASan
+name: Build and run sanitizers
 
 on:
   push:
@@ -6,20 +6,20 @@ on:
   pull_request:
     branches: [ "master", "dev" ]
 
-env:
-  BUILD_TYPE: ASan
-
 jobs:
   build:
+    strategy:
+      matrix:
+        type: [ASan, UBSan, MSan, TSan]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DHAVE_SANITIZER=1
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.type}} -DHAVE_SANITIZER=1
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} 
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.type}} --parallel $(nproc --all)
 
     - name: ASan
       working-directory: ${{github.workspace}}/build
