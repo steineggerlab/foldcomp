@@ -131,13 +131,12 @@ std::vector<float> getTorsionFromXYZ(
     std::vector< std::vector<float> > coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
-    std::vector<int> atm_inds {0,1,2,3};
-    while (atm_inds[3] < coordinates.size()) {
+    for (int i = 0; i < (coordinates.size() - 3); i += atm_inc) {
         // 00. Get 4 atom coordinates
-        std::vector<float> atm_1 = coordinates[atm_inds[0]];
-        std::vector<float> atm_2 = coordinates[atm_inds[1]];
-        std::vector<float> atm_3 = coordinates[atm_inds[2]];
-        std::vector<float> atm_4 = coordinates[atm_inds[3]];
+        std::vector<float> atm_1 = coordinates[i + 0];
+        std::vector<float> atm_2 = coordinates[i + 1];
+        std::vector<float> atm_3 = coordinates[i + 2];
+        std::vector<float> atm_4 = coordinates[i + 3];
         // 01. Obtain vectors from coordinates
         std::vector<float> d1 {
             (atm_2[0] - atm_1[0]), (atm_2[1] - atm_1[1]), (atm_2[2] - atm_1[2])
@@ -179,11 +178,6 @@ std::vector<float> getTorsionFromXYZ(
             torsion_angle = -1 * torsion_angle;
         }
         torsion_vector.push_back(torsion_angle);
-        // 06. next index;
-        atm_inds[0] += atm_inc;
-        atm_inds[1] += atm_inc;
-        atm_inds[2] += atm_inc;
-        atm_inds[3] += atm_inc;
     }
     return torsion_vector;
 }

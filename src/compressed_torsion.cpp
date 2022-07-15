@@ -444,26 +444,18 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
     // Split backbone into phi, psi, omega
     // Calculate phi, psi, omega
-    for (int i = 0; i < backboneTorsion.size(); i++) {
-        if (i % 3 == 0) {
-            this->psi.push_back(backboneTorsion[i]);
-        } else if (i % 3 == 1) {
-            this->omega.push_back(backboneTorsion[i]);
-        } else {
-            this->phi.push_back(backboneTorsion[i]);
-        }
+    for (int i = 0; i < backboneTorsion.size(); i+=3) {
+        this->psi.push_back(backboneTorsion[i]);
+        this->omega.push_back(backboneTorsion[i+1]);
+        this->phi.push_back(backboneTorsion[i+2]);
     }
 
     std::vector<float> backboneBondAngles = this->nerf.getBondAngles(backbone);
     // Split bond angles into three parts
-    for (int i = 1; i < backboneBondAngles.size(); i++) {
-        if (i % 3 == 0) {
-            this->n_ca_c_angle.push_back(backboneBondAngles[i]);
-        } else if (i % 3 == 1) {
-            this->ca_c_n_angle.push_back(backboneBondAngles[i]);
-        } else {
-            this->c_n_ca_angle.push_back(backboneBondAngles[i]);
-        }
+    for (int i = 1; i < backboneBondAngles.size(); i+=3) {
+        this->n_ca_c_angle.push_back(backboneBondAngles[i]);
+        this->ca_c_n_angle.push_back(backboneBondAngles[i+1]);
+        this->c_n_ca_angle.push_back(backboneBondAngles[i+2]);
     }
 
     // Discretize
