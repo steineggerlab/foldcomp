@@ -61,9 +61,9 @@ std::vector<float> Nerf::place_atom(
     torsion_angle = torsion_angle * 3.14159265 / 180.0;
 
     std::vector<float> curr_atm {
-        (-1 * bond_length * cos(bond_angle)), // x
-        (bond_length * cos(torsion_angle) * sin(bond_angle)), // y
-        (bond_length * sin(torsion_angle) * sin(bond_angle)) // z
+        (-1 * bond_length * cosf(bond_angle)), // x
+        (bond_length * cosf(torsion_angle) * sinf(bond_angle)), // y
+        (bond_length * sinf(torsion_angle) * sinf(bond_angle)) // z
     };
 
     // 02. Calculate cross product
