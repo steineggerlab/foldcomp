@@ -21,20 +21,20 @@ int writeAminoAcidMapToFile(std::map<std::string, AminoAcid>& aa_map, std::strin
     outfile.open(filename);
     std::map<std::string, AminoAcid>::iterator it;
     std::map<std::string, float>::iterator inner_it;
-    outfile << "aa_name,type,variable,value" << std::endl;
+    outfile << "aa_name,type,variable,value\n";
 
     for (it = aa_map.begin(); it != aa_map.end(); it++) {
         // Print bond lengths
         for (inner_it = it->second.bondLengths.begin(); inner_it != it->second.bondLengths.end(); inner_it++) {
-            outfile << it->first << ",BL," << inner_it->first << "," << inner_it->second << std::endl;
+            outfile << it->first << ",BL," << inner_it->first << "," << inner_it->second << "\n";
         }
         // Print bond angles
         for (inner_it = it->second.bondAngles.begin(); inner_it != it->second.bondAngles.end(); inner_it++) {
-            outfile << it->first << ",BA," << inner_it->first << "," << inner_it->second << std::endl;
+            outfile << it->first << ",BA," << inner_it->first << "," << inner_it->second << "\n";
         }
         // Print torsion angles
         for (inner_it = it->second.torsionAngles.begin(); inner_it != it->second.torsionAngles.end(); inner_it++) {
-            outfile << it->first << ",TA," << inner_it->first << "," << inner_it->second << std::endl;
+            outfile << it->first << ",TA," << inner_it->first << "," << inner_it->second << "\n";
         }
     }
     outfile.close();

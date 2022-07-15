@@ -399,14 +399,14 @@ int saveTorsionAngles(
     for (auto aa : AAS) {
         outFile << aa.first << "\t";
     }
-    outFile << std::endl;
+    outFile << "\n";
     // Write the data
     for (auto aa : AAS) {
         outFile << aa.first << "\t";
         for (auto angle : AAS[aa.first].torsionAngles) {
             outFile << angle.second << "\t";
         }
-        outFile << std::endl;
+        outFile << "\n";
     }
     outFile.close();
     // Save the torsion angles to the file

@@ -83,12 +83,12 @@ void Discretizer::print() {
 
 void Discretizer::write_to_file(std::string filename) {
     std::ofstream fout(filename);
-    fout << "#MIN:" << this->min << std::endl;
-    fout << "#MAX:" << this->max << std::endl;
-    fout << "#N_BIN:" << this->n_bin << std::endl;
-    fout << "#DISC_F:" << this->disc_f << std::endl;
-    fout << "#CONT_F:" << this->cont_f << std::endl;
-    fout << "ORIGINAL_VALUES,DISCRETIZED_VALUES" << std::endl;
+    fout << "#MIN:" << this->min << "\n";
+    fout << "#MAX:" << this->max << "\n";
+    fout << "#N_BIN:" << this->n_bin << "\n";
+    fout << "#DISC_F:" << this->disc_f << "\n";
+    fout << "#CONT_F:" << this->cont_f << "\n";
+    fout << "ORIGINAL_VALUES,DISCRETIZED_VALUES\n";
     fout.close();
 }
 

@@ -207,7 +207,7 @@ void writeTorsionAngles(std::string file_path, std::vector<float> torsion) {
     std::ofstream output;
     output.open(file_path, std::ios_base::out);
     for (float angle : torsion) {
-        output << angle << std::endl;
+        output << angle << "\n";
     }
     output.close();
 }
