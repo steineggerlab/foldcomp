@@ -47,11 +47,6 @@ int print_usage_with_error(void) {
 }
 
 int compress(std::string input, std::string output) {
-    // Check file extension
-    if (input.substr(input.length() - 4) != ".pdb") {
-        std::cerr << "Input file must be a .pdb file." << std::endl;
-        return 1;
-    }
     PDBReader pdbReader;
     pdbReader.load(input);
     std::vector<AtomCoordinate> atomCoordinates;
@@ -94,6 +89,11 @@ int decompress(std::string input, std::string output) {
     Nerf nerf;
     // nerf.writeInfoForChecking(atomCoordinates, "AFTER_COMPRESSION.csv");
     return 0;
+}
+
+std::string getFileWithoutExt(std::string& file) {
+    size_t extStart = file.find_last_of('.');
+    return extStart == std::string::npos ? file : file.substr(0, extStart);
 }
 
 int main(int argc, char const *argv[]) {
@@ -148,14 +148,14 @@ int main(int argc, char const *argv[]) {
     if (mode == COMPRESS) {
         // compress
         if (argc==3) {
-            output = input.substr(0, input.length() - 4) + ".fcz";
+            output = getFileWithoutExt(input) + ".fcz";
         }
         std::cout << "Compressing " << input << " to " << output << std::endl;
         flag = compress(input, output);
     } else if (mode == DECOMPRESS) {
         // decompress
         if (argc==3) {
-            output = input.substr(0, input.length() - 4) + ".pdb";
+            output = getFileWithoutExt(input) + ".pdb";
         }
         std::cout << "Decompressing " << input << " to " << output << std::endl;
         flag = decompress(input, output);
@@ -191,7 +191,7 @@ int main(int argc, char const *argv[]) {
             for (int i = 0; i < files.size(); i++) {
                 std::string file = files[i];
                 std::string inputFile = input + file;
-                std::string outputFile = output + file.substr(0, file.length() - 4) + ".fcz";
+                std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
                 compress(inputFile, outputFile);
             }
         }

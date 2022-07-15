@@ -542,8 +542,8 @@ std::vector<BackboneChain> CompressedResidue::compress(
 
     // Need to extract backbone atoms in a separate vector
 
-    for (int i = 0; i < this->nResidue; i++) {
-        BackboneChain res;
+    BackboneChain res;
+    for (int i = 0; i < (this->nResidue - 1); i++) {
         currN = this->backbone[i * 3];
         currResCode = getOneLetterCode(currN.residue);
         res.residue = convertOneLetterCodeToInt(currResCode);
@@ -555,6 +555,12 @@ std::vector<BackboneChain> CompressedResidue::compress(
         res.c_n_ca_angle = this->c_n_ca_angleDiscretized[i];
         output.push_back(res);
     }
+    currN = this->backbone[(this->nResidue - 1) * 3];
+    currResCode = getOneLetterCode(currN.residue);
+    res.residue = convertOneLetterCodeToInt(currResCode);
+    res.psi = 0; res.omega = 0; res.phi = 0;
+    res.n_ca_c_angle = 0; res.ca_c_n_angle = 0; res.c_n_ca_angle = 0;
+    output.push_back(res);
     this->compressedBackBone = output;
 
     this->isCompressed = true;
