@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         compiler: [gcc, clang]
-        type: [ASan, UBSan, MSan, TSan]
+        type: [ASan, UBSan, TSan]
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
