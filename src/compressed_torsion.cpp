@@ -1085,7 +1085,7 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
     std::ofstream outfile;
     outfile.open(filename);
     //
-    outfile << "ResidueInd,Residue,Type,Key,RawVal,DiscVal,DiscMin,DiscContF,ReconVal,Diff" << std::endl;
+    outfile << "ResidueInd,Residue,Type,Key,RawVal,DiscVal,DiscMin,DiscContF,ReconVal,Diff\n";
     int movingIndex = 0;
     std::vector< std::vector<AtomCoordinate> > atomByResidue = splitAtomByResidue(this->rawAtoms);
     std::map<std::string, float> currBondAngle;
@@ -1099,12 +1099,12 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondLength,";
             outfile << bl.first << "," << bl.second << ",NA,NA,NA,";
             outfile << this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << ",";
-            outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << std::endl;
+            outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << "\n";
         }
         for (auto ba : currBondAngle) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondAngle,";
             outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << ",";
-            outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << std::endl;
+            outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << "\n";
         }
         for (int j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             outfile << i << "," << this->residueThreeLetter[i] << ",TorsionAngle,";
@@ -1113,7 +1113,7 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].min << ",";
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].cont_f << ",";
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << ",";
-            outfile << this->sideChainAnglesPerResidue[i][j] - this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << std::endl;
+            outfile << this->sideChainAnglesPerResidue[i][j] - this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << "\n";
             movingIndex++;
         }
     }
