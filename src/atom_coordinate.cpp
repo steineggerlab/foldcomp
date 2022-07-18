@@ -217,7 +217,7 @@ int writeAtomCoordinatesToPDB(
         pdb_file << "          "; // 67-76
         // First one character from atom
         pdb_file << std::setw(2) << atoms[i].atom[0]; // 77-78
-        pdb_file << "  " << std::endl; // 79-80
+        pdb_file << "  \n"; // 79-80
         if (i == (total-1)) {
             // TER
             // 1-6 Record name "TER   "
@@ -228,7 +228,7 @@ int writeAtomCoordinatesToPDB(
             pdb_file << "TER   " << std::setw(5) << total + 1 << "      ";
             pdb_file << std::setw(3) << std::right << atoms[i].residue;
             pdb_file << " " << atoms[i].chain;
-            pdb_file << std::setw(4) << atoms[i].residue_index << std::endl;
+            pdb_file << std::setw(4) << atoms[i].residue_index << "\n";
         }
     }
     pdb_file.close();

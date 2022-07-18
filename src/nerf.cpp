@@ -61,9 +61,9 @@ std::vector<float> Nerf::place_atom(
     torsion_angle = torsion_angle * 3.14159265 / 180.0;
 
     std::vector<float> curr_atm {
-        (-1 * bond_length * cos(bond_angle)), // x
-        (bond_length * cos(torsion_angle) * sin(bond_angle)), // y
-        (bond_length * sin(torsion_angle) * sin(bond_angle)) // z
+        (-1 * bond_length * cosf(bond_angle)), // x
+        (bond_length * cosf(torsion_angle) * sinf(bond_angle)), // y
+        (bond_length * sinf(torsion_angle) * sinf(bond_angle)) // z
     };
 
     // 02. Calculate cross product
@@ -589,7 +589,7 @@ void Nerf::writeInfoForChecking(
 
     outfile.open(output_path, std::ios::out);
     // Insert header
-    outfile << header << std::endl;
+    outfile << header << "\n";
 
     for (int i = 0; i < total; i++) {
         //
@@ -601,7 +601,7 @@ void Nerf::writeInfoForChecking(
             outfile << curr_atm.chain << sep;
             outfile << curr_atm.coordinate[0] << sep << curr_atm.coordinate[1] << sep;
             outfile << curr_atm.coordinate[2] << sep;
-            outfile << NA << sep << NA << sep << NA << std::endl;
+            outfile << NA << sep << NA << sep << NA << "\n";
         } else {
             // WARNING:
             // FIXME: FIX THIS --> curr_atm to next atm
@@ -622,12 +622,12 @@ void Nerf::writeInfoForChecking(
             outfile << curr_atm.coordinate[2] << sep;
             // 02. different chain
             if (prev_atm.chain != curr_atm.chain) {
-                outfile << NA << sep << NA << NA << std::endl;
+                outfile << NA << sep << NA << NA << "\n";
                 continue;
             }
 
             if (i == (total-1)) {
-                outfile << bond_name << sep << NA << sep << bond_length << std::endl;
+                outfile << bond_name << sep << NA << sep << bond_length << "\n";
             } else {
                 next_atm = coord_list[i + 1];
                 // handle error condition 01.
@@ -639,7 +639,7 @@ void Nerf::writeInfoForChecking(
                     next_atm.coordinate
                 );
                 outfile << bond_name << sep << bond_angle << sep;
-                outfile << bond_length << std::endl;
+                outfile << bond_length << "\n";
             }
         }
     }
