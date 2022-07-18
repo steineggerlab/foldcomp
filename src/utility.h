@@ -90,7 +90,7 @@ int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
     outFile.open(fileName, std::ios::out);
 
     for (auto const& x : *m) {
-        outFile << x.first << "," << (*m)[x.first] << std::endl;
+        outFile << x.first << "," << (*m)[x.first] << "\n";
     }
     outFile.close();
     return 0;

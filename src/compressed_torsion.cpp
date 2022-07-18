@@ -444,26 +444,18 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
     // Split backbone into phi, psi, omega
     // Calculate phi, psi, omega
-    for (int i = 0; i < backboneTorsion.size(); i++) {
-        if (i % 3 == 0) {
-            this->psi.push_back(backboneTorsion[i]);
-        } else if (i % 3 == 1) {
-            this->omega.push_back(backboneTorsion[i]);
-        } else {
-            this->phi.push_back(backboneTorsion[i]);
-        }
+    for (int i = 0; i < backboneTorsion.size(); i+=3) {
+        this->psi.push_back(backboneTorsion[i]);
+        this->omega.push_back(backboneTorsion[i+1]);
+        this->phi.push_back(backboneTorsion[i+2]);
     }
 
     std::vector<float> backboneBondAngles = this->nerf.getBondAngles(backbone);
     // Split bond angles into three parts
-    for (int i = 1; i < backboneBondAngles.size(); i++) {
-        if (i % 3 == 0) {
-            this->n_ca_c_angle.push_back(backboneBondAngles[i]);
-        } else if (i % 3 == 1) {
-            this->ca_c_n_angle.push_back(backboneBondAngles[i]);
-        } else {
-            this->c_n_ca_angle.push_back(backboneBondAngles[i]);
-        }
+    for (int i = 1; i < backboneBondAngles.size(); i+=3) {
+        this->n_ca_c_angle.push_back(backboneBondAngles[i]);
+        this->ca_c_n_angle.push_back(backboneBondAngles[i+1]);
+        this->c_n_ca_angle.push_back(backboneBondAngles[i+2]);
     }
 
     // Discretize
@@ -542,8 +534,8 @@ std::vector<BackboneChain> CompressedResidue::compress(
 
     // Need to extract backbone atoms in a separate vector
 
-    for (int i = 0; i < this->nResidue; i++) {
-        BackboneChain res;
+    BackboneChain res;
+    for (int i = 0; i < (this->nResidue - 1); i++) {
         currN = this->backbone[i * 3];
         currResCode = getOneLetterCode(currN.residue);
         res.residue = convertOneLetterCodeToInt(currResCode);
@@ -555,6 +547,12 @@ std::vector<BackboneChain> CompressedResidue::compress(
         res.c_n_ca_angle = this->c_n_ca_angleDiscretized[i];
         output.push_back(res);
     }
+    currN = this->backbone[(this->nResidue - 1) * 3];
+    currResCode = getOneLetterCode(currN.residue);
+    res.residue = convertOneLetterCodeToInt(currResCode);
+    res.psi = 0; res.omega = 0; res.phi = 0;
+    res.n_ca_c_angle = 0; res.ca_c_n_angle = 0; res.c_n_ca_angle = 0;
+    output.push_back(res);
     this->compressedBackBone = output;
 
     this->isCompressed = true;
@@ -1087,7 +1085,7 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
     std::ofstream outfile;
     outfile.open(filename);
     //
-    outfile << "ResidueInd,Residue,Type,Key,RawVal,DiscVal,DiscMin,DiscContF,ReconVal,Diff" << std::endl;
+    outfile << "ResidueInd,Residue,Type,Key,RawVal,DiscVal,DiscMin,DiscContF,ReconVal,Diff\n";
     int movingIndex = 0;
     std::vector< std::vector<AtomCoordinate> > atomByResidue = splitAtomByResidue(this->rawAtoms);
     std::map<std::string, float> currBondAngle;
@@ -1101,12 +1099,12 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondLength,";
             outfile << bl.first << "," << bl.second << ",NA,NA,NA,";
             outfile << this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << ",";
-            outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << std::endl;
+            outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << "\n";
         }
         for (auto ba : currBondAngle) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondAngle,";
             outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << ",";
-            outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << std::endl;
+            outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << "\n";
         }
         for (int j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             outfile << i << "," << this->residueThreeLetter[i] << ",TorsionAngle,";
@@ -1115,7 +1113,7 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].min << ",";
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].cont_f << ",";
             outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << ",";
-            outfile << this->sideChainAnglesPerResidue[i][j] - this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << std::endl;
+            outfile << this->sideChainAnglesPerResidue[i][j] - this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << "\n";
             movingIndex++;
         }
     }
