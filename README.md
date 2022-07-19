@@ -2,26 +2,28 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-20 02:31:41
+Last Modified: 2022-07-20 02:45:03
 ---
 
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively.
 
 ## Usage
-```sh
-# Compression
+```
+[Compression]
 foldcomp compress <pdb_file> [<fcz_file>]
 foldcomp compress [-t number] <pdb_dir> [<fcz_dir>]
-# Decompression
+
+[Decompression]
 foldcomp decompress <fcz_file> [<pdb_file>]
 foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
-# Options
+
+[Options]
  -t, --threads        number of threads to use [default=1]
  -h, --help           print this help message
 ```
 
-### Build
+## Build
 ```sh
 # Configure
 mkdir build
@@ -32,27 +34,9 @@ cd ..
 cmake --build ./build --target foldcomp
 ```
 
-### Compression
-```sh
-# Single PDB file
-./build/foldcomp compress test.pdb  # default output: test.fcz
-./build/foldcomp compress test.pdb compressed.fcz
 
-# Directory of PDB files
-./build/foldcomp compress pdb_dir/ # default output: pdb_dir_fcz/
-./build/foldcomp compress pdb_dir/ compressed_dir/
-```
-### Decompression
-```sh
-# Single FCZ file
-./build/foldcomp decompress compressed.fcz # default output: compressed.pdb
-./build/foldcomp decompress compressed.fcz decompressed.pdb
+## About
 
-# Directory of FCZ files
-./build/foldcomp decompress fcz_dir/ # default output: fcz_dir_pdb/
-./build/foldcomp decompress fcz_dir/ decompressed_dir/
-```
-
----
+Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude than saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact format.
 
 ![abstract](.github/img/Abstract.jpg)
