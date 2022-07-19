@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-07-20 01:59:02
+ * Last Modified: 2022-07-20 06:48:49
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -182,7 +182,7 @@ std::vector<AtomCoordinate> weightedAverage(
 // 2021-01-18 13:53:00 TESTED.
 
 int writeAtomCoordinatesToPDB(
-    std::vector<AtomCoordinate>& atoms, std::string pdb_path
+    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
 ) {
     std::ofstream pdb_file;
     pdb_file.open(pdb_path);
@@ -190,6 +190,28 @@ int writeAtomCoordinatesToPDB(
         std::cout << "Error: Cannot open file: " << pdb_path << std::endl;
         return 1;
     }
+    // Write title 
+    // 2022-07-20 05:15:06 Currently NOT WORKING.
+    if (title != "") {
+        int title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        // Split title into lines of 70 characters.
+        std::vector<std::string> title_per_line;
+        for (int i = 0; i < title_line_num; i++) {
+            if (i == 0) {
+                title_per_line.push_back(title.substr(0, 70));
+            } else {
+                title_per_line.push_back(title.substr(i * 72 - 2, 72));
+            }
+        }
+        for (int i = 0; i < title_line_num; i++) {
+            if (i == 0) {
+                pdb_file << "TITLE     " << title_per_line[i] << "\n";
+            } else {
+                pdb_file << "TITLE   " << title_per_line[i] << std::endl;
+            }
+        }
+    }
+
     int total = atoms.size();
     std::string residue;
     int residue_index;
@@ -228,7 +250,7 @@ int writeAtomCoordinatesToPDB(
             pdb_file << "TER   " << std::setw(5) << total + 1 << "      ";
             pdb_file << std::setw(3) << std::right << atoms[i].residue;
             pdb_file << " " << atoms[i].chain;
-            pdb_file << std::setw(4) << atoms[i].residue_index << "\n";
+            pdb_file << std::setw(4) << atoms[i].residue_index << std::endl;
         }
     }
     pdb_file.close();

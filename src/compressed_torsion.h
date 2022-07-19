@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 01:57:27
+ * Last Modified: 2022-07-20 07:00:01
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -19,6 +19,7 @@
 #include <cmath>
 #include <iostream>
 #include <bitset>
+#include <string.h>
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
@@ -97,12 +98,13 @@ struct FileOffset {
 
 struct CompressedFileHeader {
     /* data */
-    // TOTAL: 61 bytes
+    // TOTAL: 62 bytes
     // Backbone
     unsigned int nResidue: 16; // 16 bits
     unsigned int nAtom: 16;    // 16 bits
     unsigned int idxResidue: 16; // 16 bits
     unsigned int idxAtom: 16;    // 16 bits
+    char chain;
     // Sidechain
     unsigned int nSideChainTorsion: 32;
     char firstResidue;
@@ -281,12 +283,14 @@ public:
     // Indices for residue & atom
     int idxResidue = 0;
     int idxAtom = 0;
+    char chain;
     char firstResidue;
     char lastResidue;
+    char hasOXT = 1;
 
     // Metadata
     std::string strTitle;
-    const char* title;
+    // const char* title;
     int lenTitle;
     std::map<std::string, std::string> strMetadata;
     std::map<std::string, std::vector<float> > floatMetadata;
@@ -305,6 +309,8 @@ public:
     std::vector<int> backboneBreaks;
     std::vector<char> residues;
     std::vector<std::string> residueThreeLetter;
+    AtomCoordinate OXT;
+    std::vector<float> OXT_coords;
 
     // Angles
     std::vector<float> psi;

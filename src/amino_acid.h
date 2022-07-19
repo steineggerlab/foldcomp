@@ -6,7 +6,7 @@
  * Description:
  *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-07-20 02:04:49
+ * Last Modified: 2022-07-20 05:29:21
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -27,6 +27,7 @@ public:
     std::vector<std::string> atoms;
     std::vector<std::string> backboneAtoms = {"N", "CA", "C"};
     std::vector<std::string> sideChainAtoms;
+    std::vector<std::string> altAtomsOrder;
 
     // sideChain uses atom as key and
     std::map < std::string, std::vector<std::string> > sideChain;
@@ -43,14 +44,26 @@ public:
     AminoAcid(
         char ab1, std::string ab3, std::string name,
         std::vector<std::string> atms,
-        std::map< std::string, std::vector<std::string> > sc
-     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc) {
+        std::map< std::string, std::vector<std::string> > sc,
+        std::vector<std::string> alt
+     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc), altAtomsOrder(alt) {
         for (std::string atm : atms) {
             if (atm != "N" && atm != "CA" && atm != "C") {
                 this->sideChainAtoms.push_back(atm);
             }
         }
-     }
+    };
+    AminoAcid(
+        char ab1, std::string ab3, std::string name,
+        std::vector<std::string> atms,
+        std::map< std::string, std::vector<std::string> > sc
+    ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc) {
+        for (std::string atm : atms) {
+            if (atm != "N" && atm != "CA" && atm != "C") {
+                this->sideChainAtoms.push_back(atm);
+            }
+        }
+    };
     ~AminoAcid(){};
 
     std::map<std::string, AminoAcid> AminoAcids() {
@@ -59,7 +72,8 @@ public:
         output["ALA"] = AminoAcid(
             'A', "ALA", "Alanine", // name
             {"N", "CA", "C", "O", "CB",}, // atoms
-            {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}}} // sidechain
+            {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}}}, // sidechain
+            {"N", "CA", "C", "CB", "O"}
         );
         output["ALA"].bondLengths = {{"CA_CB", 1.52}, {"C_O", 1.23}};
         output["ALA"].bondAngles = {{"CA_C_O", 120.31}, {"C_CA_CB", 110.852}};
@@ -70,7 +84,8 @@ public:
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"CD", {"CA", "CB", "CG"}},
              {"NE", {"CB", "CG", "CD"}},{"CZ", {"CG", "CD", "NE"}},
-             {"NH1", {"CD", "NE", "CZ"}},{"NH2", {"CD", "NE", "CZ"}}} // sidechain
+             {"NH1", {"CD", "NE", "CZ"}},{"NH2", {"CD", "NE", "CZ"}}}, // sidechain
+            { "N", "CA", "C", "CB", "O", "CG", "CD", "NE", "NH1", "NH2", "CZ"}
         );
         output["ARG"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.53},
