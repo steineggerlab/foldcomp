@@ -1,12 +1,12 @@
 /**
  * File: discretizer.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-02-05 13:41:54
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     Functions for discretizing float values and restoring them
  * ---
- * Last Modified: 2022-06-08 16:53:38
+ * Last Modified: 2022-07-20 01:56:31
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

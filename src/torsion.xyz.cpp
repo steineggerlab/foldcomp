@@ -1,10 +1,9 @@
 /**
  * File: torsion.xyz.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-13 10:34:34
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
  *     This code calculates torsion angles from the atomic coordinates.
  * Reference:
  *     1) "torsion.xyz.R" in Bio3D R package
@@ -12,7 +11,7 @@
  *     2) "XYZ.h" in pdbtools
  *     https://github.com/realbigws/PDB_Tool
  * ---
- * Last Modified: 2022-06-02 19:31:43
+ * Last Modified: 2022-07-20 01:53:07
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

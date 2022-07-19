@@ -2,7 +2,7 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-05 10:13:51
+Last Modified: 2022-07-20 02:02:07
 ---
 
 # Foldcomp
@@ -43,4 +43,4 @@ cmake --build ./build --target foldcomp
 
 ---
 
-![abstract](img/Abstract.jpg)
+![abstract](.github/img/Abstract.jpg)

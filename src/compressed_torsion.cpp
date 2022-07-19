@@ -1,12 +1,13 @@
 /**
  * File: compressed_torsion.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-02-04 13:31:52
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     This file contains main data structures for torsion angle compression and
+ *     functions for handling them.
  * ---
- * Last Modified: 2022-06-30 17:25:32
+ * Last Modified: 2022-07-20 01:57:49
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

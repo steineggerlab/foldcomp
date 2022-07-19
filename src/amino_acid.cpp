@@ -1,12 +1,12 @@
 /**
  * File: amino_acid.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-08-18 23:20:01
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-06-17 10:35:08
+ * Last Modified: 2022-07-20 01:59:54
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

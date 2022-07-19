@@ -1,5 +1,5 @@
 # Author: Hyunbin Kim (khb7840@gmail.com)
-# Reference: Martin's CMakeLists.txt & many websites
+# Reference: MMSeq2's CMakeLists.txt & many websites
 
 # 01. minimum version
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)

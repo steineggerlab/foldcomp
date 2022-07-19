@@ -1,12 +1,12 @@
 /**
  * File: pdb_reader.h
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-04 16:32:18
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "FoldU_background_search".
+ *     Functions and a class for reading PDB files
  * ---
- * Last Modified: 2022-06-02 19:23:04
+ * Last Modified: 2022-07-20 01:53:38
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

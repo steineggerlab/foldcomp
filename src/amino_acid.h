@@ -1,12 +1,12 @@
 /**
  * File: amino_acid.h
- * Project: hbk
+ * Project: foldcomp
  * Created: 2021-02-04 13:32:06
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-06-22 22:42:27
+ * Last Modified: 2022-07-20 02:04:49
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

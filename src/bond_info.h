@@ -1,14 +1,12 @@
 /**
  * File: bond_info.h
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-26 14:37:08
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
- *     2021-01-26 14:51:57: Current version only has the information on
-*          backbone atoms ("N", "CA", "C")
+ *     This file contains informations about bonds in protein structures.
  * ---
- * Last Modified: 2021-01-27 14:30:10
+ * Last Modified: 2022-07-20 01:58:44
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

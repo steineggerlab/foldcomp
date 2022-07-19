@@ -1,13 +1,13 @@
 /**
  * File: compressed_torsion.h
- * Project: src
+ * Project: foldcomp
  * Created: 2021-02-02 14:04:40
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
- *     AminoAcid typedef was referred to "https://cboard.cprogramming.com/c-programming/131836-using-scanf-enum-types.html"
+ *     This file contains main data structures for torsion angle compression and
+ *     functions for handling them.
  * ---
- * Last Modified: 2022-06-24 16:29:39
+ * Last Modified: 2022-07-20 01:57:27
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
