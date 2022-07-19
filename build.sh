@@ -1,11 +1,11 @@
 # File: build.sh
-# Project: FoldU_background_search
+# Project: foldcomp
 # Created: 2022-05-30 17:11:11
 # Author: Hyunbin Kim (khb7840@gmail.com)
 # Description:
-#     This code is written as part of project "FoldU_background_search".
+#     Build script for foldcomp.
 # ---
-# Last Modified: 2022-05-31 18:05:46
+# Last Modified: 2022-07-20 01:51:51
 # Modified By: Hyunbin Kim (khb7840@gmail.com)
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved

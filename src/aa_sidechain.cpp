@@ -1,12 +1,12 @@
 /**
  * File: aa_sidechain.cpp
- * Project: hbk
+ * Project: foldcomp
  * Created: 2021-08-19 19:14:16
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     Functions for handling side-chain atoms of amino acids
  * ---
- * Last Modified: 2022-06-19 03:18:33
+ * Last Modified: 2022-07-20 02:00:24
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

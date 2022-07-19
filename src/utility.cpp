@@ -1,12 +1,12 @@
 /**
  * File: utility.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-05 14:29:04
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "FoldU_background_search".
+ *     Utility functions
  * ---
- * Last Modified: 2022-06-08 16:58:54
+ * Last Modified: 2022-07-20 01:52:42
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

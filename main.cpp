@@ -4,12 +4,15 @@
  * Created: 2021-12-23 17:44:53
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
+ *     This code contains main function for "foldcomp".
+ *     Foldcomp is a fast lossy compression algorithm for protein structure.
+ *     It encodes torsion angles with optimal number of bits and reconstruct
+ *     3D coordinates from the encoded angles.
  * Usage:
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-14 07:58:44
+ * Last Modified: 2022-07-20 02:11:31
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -31,10 +34,11 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <cstring>
+#include <getopt.h>
 // OpenMP for parallelization
 #include <omp.h>
 
-int print_usage_with_error(void) {
+int print_usage(void) {
     std::cout << "Usage: foldcomp compress input.pdb" << std::endl;
     std::cout << "       foldcomp compress input.pdb output.fcz" << std::endl;
     std::cout << "       foldcomp compress pdb_dir" << std::endl;
@@ -96,10 +100,17 @@ std::string getFileWithoutExt(std::string& file) {
     return extStart == std::string::npos ? file : file.substr(0, extStart);
 }
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char* const *argv) {
     if (argc < 3) {
-        return print_usage_with_error();
+        return print_usage();
     }
+    
+    int flag = 0;
+    int option_index = 0;
+    int num_threads = 1;
+    int has_output = 0;
+
+    // Mode - non-optional argument
     enum {
         COMPRESS,
         DECOMPRESS,
@@ -107,15 +118,51 @@ int main(int argc, char const *argv[]) {
         DECOMPRESS_MULTIPLE
     } mode = COMPRESS;
 
+    // Define command line options
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"threads", required_argument, 0, 't'},
+        {0, 0, 0, 0}
+    };
+
+    // Parse command line options with getopt_long
+    flag = getopt_long(argc, argv, "ht:", long_options, &option_index);
+
+    while (flag != -1) {
+        switch (flag) {
+        case 'h':
+            return print_usage();
+        case 't':
+            num_threads = atoi(optarg);
+            break;
+        case '?':
+            return print_usage();
+        default:
+            break;
+        }
+        flag = getopt_long(argc, argv, "ht:", long_options, &option_index);
+    }
+    // // Set number of threads
+    // omp_set_num_threads(num_threads);
+
+    // Parse non-option arguments
+    // argv[optind]: MODE
+    // argv[optind + 1]: INPUT
+    // argv[optind + 2]: OUTPUT (optional)
+
+    if ((optind + 1) >= argc) {
+        std::cerr << "Error: Not enough arguments." << std::endl;
+        return print_usage();
+    }
 
     struct stat st = {0};
-    if (stat(argv[2], &st) == -1) {
-        std::cerr << "Error: " << argv[2] << " does not exist." << std::endl;
+    if (stat(argv[optind + 1], &st) == -1) {
+        std::cerr << "Error: " << argv[optind + 1] << " does not exist." << std::endl;
         return 1;
     }
 
     // get mode from command line
-    if (strcmp(argv[1], "compress") == 0) {
+    if (strcmp(argv[optind], "compress") == 0) {
         // Check argv[2] is file or directory
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS
@@ -124,7 +171,7 @@ int main(int argc, char const *argv[]) {
         } else {
             mode = COMPRESS;
         }
-    } else if (strcmp(argv[1], "decompress") == 0) {
+    } else if (strcmp(argv[optind], "decompress") == 0) {
         // Check argv[2] is file or directory
         // If directory, mode = DECOMPRESS_MULTIPLE
         // If file, mode = DECOMPRESS
@@ -134,38 +181,36 @@ int main(int argc, char const *argv[]) {
             mode = DECOMPRESS;
         }
     } else {
-        return print_usage_with_error();
+        return print_usage();
     }
-
-    std::string input = argv[2];
+    std::string input = argv[optind + 1];
     std::string output;
-    if (argc == 4) {
-        output = argv[3];
+    if (argc == optind + 3) {
+        has_output = 1;
+        output = argv[optind + 2];
     }
-    int flag;
 
     // check if mode is compress or decompress
     if (mode == COMPRESS) {
         // compress
-        if (argc==3) {
+        if (!has_output) {
             output = getFileWithoutExt(input) + ".fcz";
         }
         std::cout << "Compressing " << input << " to " << output << std::endl;
         flag = compress(input, output);
     } else if (mode == DECOMPRESS) {
         // decompress
-        if (argc==3) {
+        if (!has_output) {
             output = getFileWithoutExt(input) + ".pdb";
         }
         std::cout << "Decompressing " << input << " to " << output << std::endl;
         flag = decompress(input, output);
     } else if (mode == COMPRESS_MULTIPLE) {
         // compress multiple files
-        // Check argument count
-        if (argc == 3) {
-            if (input[input.length() - 1] != '/') {
-                input += "/";
-            }
+        if (input[input.length() - 1] != '/') {
+            input += "/";
+        }
+        if (!has_output) {
             output = input.substr(0, input.length() - 1) + "_fcz/";
         }
         if (output[output.length() - 1] != '/') {
@@ -174,18 +219,22 @@ int main(int argc, char const *argv[]) {
         // Check output directory exists or not
         if (stat(output.c_str(), &st) == -1) {
         #if defined(_WIN32) || defined(_WIN64)
-            flag = _mkdir(output.c_str());
+            _mkdir(output.c_str());
         #else
-            flag = mkdir(output.c_str(), 0777);
+            mkdir(output.c_str(), 0777);
         #endif
         }
         // Get all files in input directory
         std::string file;
         std::string inputFile;
         std::string outputFile;
+        std::cout << "Compressing files in " << input;
+        std::cout << " using " << num_threads << " threads" <<std::endl;
+        std::cout << "Output directory: " << output << std::endl;
         std::vector<std::string> files = getFilesInDirectory(input);
-        // Testing with 6 threads
-        #pragma omp parallel num_threads(6)
+        // Parallelize
+        omp_set_num_threads(num_threads);
+        #pragma omp parallel
         {
             #pragma omp for
             for (int i = 0; i < files.size(); i++) {
@@ -195,26 +244,13 @@ int main(int argc, char const *argv[]) {
                 compress(inputFile, outputFile);
             }
         }
-        // for (std::string file : files) {
-        //     // Check file extension
-        //     if (file.substr(file.length() - 4) == ".pdb") {
-        //         outputFile = output + file.substr(0, file.length() - 4) + ".fcz";
-        //         // Compress file
-        //         inputFile = input + file;
-        //         flag = compress(inputFile, outputFile);
-        //         if (flag != 0) {
-        //             std::cerr << "Error compressing " << file << std::endl;
-        //             return 1;
-        //         }
-        //     }
-        // }
+        flag = 0;
     } else if (mode == DECOMPRESS_MULTIPLE) {
         // decompress multiple files
-        // Check argument count and input directory exists or not
-        if (argc == 3) {
-            if (input[input.length() - 1] != '/') {
-                input += "/";
-            }
+        if (input[input.length() - 1] != '/') {
+            input += "/";
+        }
+        if (!has_output) {
             output = input.substr(0, input.length() - 1) + "_pdb/";
         }
         if (output[output.length() - 1] != '/') {
@@ -223,19 +259,21 @@ int main(int argc, char const *argv[]) {
         // Check output directory exists or not
         if (stat(output.c_str(), &st) == -1) {
         #if defined(_WIN32) || defined(_WIN64)
-            flag = _mkdir(output.c_str());
+            _mkdir(output.c_str());
         #else
-            flag = mkdir(output.c_str(), 0777);
+            mkdir(output.c_str(), 0777);
         #endif
         }
         // Get all files in input directory
         std::string file;
         std::string inputFile;
         std::string outputFile;
-        std::cout << "Decompressing files in " << input << std::endl;
+        std::cout << "Decompressing files in " << input;
+        std::cout << " using " << num_threads << " threads" << std::endl;
         std::cout << "Output directory: " << output << std::endl;
         std::vector<std::string> files = getFilesInDirectory(input);
-        #pragma omp parallel num_threads(6)
+        omp_set_num_threads(num_threads);
+        #pragma omp parallel
         {
             #pragma omp for
             for (int i = 0; i < files.size(); i++) {
@@ -245,19 +283,7 @@ int main(int argc, char const *argv[]) {
                 decompress(inputFile, outputFile);
             }
         }
-        // for (std::string file : files) {
-        //     // Check file extension
-        //     if (file.substr(file.length() - 4) == ".fcz") {
-        //         inputFile = input + file;
-        //         outputFile = output + file.substr(0, file.length() - 4) + ".pdb";
-        //         // Decompress file
-        //         flag = decompress(inputFile, outputFile);
-        //         if (flag != 0) {
-        //             std::cerr << "Error decompressing " << file << std::endl;
-        //             return 1;
-        //         }
-        //     }
-        // }
+        flag = 0;
     } else {
         std::cout << "Invalid mode." << std::endl;
         return 1;

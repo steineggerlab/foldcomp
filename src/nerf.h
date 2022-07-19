@@ -1,13 +1,15 @@
 /**
  * File: nerf.h
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-11 16:42:32
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
- *     This code is written as part of project "src".
- * Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
+ *     This file contains NeRF (Natural Extension of Reference Frame) algorithm
+ *     implementation. NeRF is a method to calculate upcoming atoms' coordinates
+ *     with three preceding atoms and bond information.
+ *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-06-10 11:56:01
+ * Last Modified: 2022-07-20 01:55:43
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
