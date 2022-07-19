@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 01:57:49
+ * Last Modified: 2022-07-20 07:02:22
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -431,32 +431,47 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     // Extract backbone
     this->backbone = filterBackbone(atoms);
 
-    this->title = (char*)this->strTitle.c_str();
-    this->lenTitle = this->strTitle.size() + 1;
+    // this->title = this->strTitle.c_str();
+    this->lenTitle = this->strTitle.size();
 
     this->nResidue = this->backbone.size() / 3;
     this->nBackbone = this->backbone.size();
     this->nAtom = atoms.size();
     this->idxResidue = atoms[0].residue_index;
     this->idxAtom = atoms[0].atom_index;
+    this->chain = atoms[0].chain.c_str()[0];
     this->firstResidue = getOneLetterCode(atoms[0].residue);
     this->lastResidue = getOneLetterCode(atoms[atoms.size() - 1].residue);
+
+    if (atoms[atoms.size() - 1].atom == "OXT") {
+        this->hasOXT = 1;
+        this->OXT = atoms[atoms.size() - 1];
+        this->OXT_coords = atoms[atoms.size() - 1].coordinate;
+    } else {
+        this->hasOXT = 0;
+        this->OXT = AtomCoordinate();
+        this->OXT_coords = std::vector<float>(3, 0.0);
+    }
 
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
     // Split backbone into phi, psi, omega
     // Calculate phi, psi, omega
-    for (int i = 0; i < backboneTorsion.size(); i+=3) {
+    for (int i = 0; i < backboneTorsion.size(); i += 3) {
         this->psi.push_back(backboneTorsion[i]);
-        this->omega.push_back(backboneTorsion[i+1]);
-        this->phi.push_back(backboneTorsion[i+2]);
+        this->omega.push_back(backboneTorsion[i + 1]);
+        this->phi.push_back(backboneTorsion[i + 2]);
     }
 
     std::vector<float> backboneBondAngles = this->nerf.getBondAngles(backbone);
     // Split bond angles into three parts
-    for (int i = 1; i < backboneBondAngles.size(); i+=3) {
-        this->n_ca_c_angle.push_back(backboneBondAngles[i]);
-        this->ca_c_n_angle.push_back(backboneBondAngles[i+1]);
-        this->c_n_ca_angle.push_back(backboneBondAngles[i+2]);
+    for (int i = 1; i < backboneBondAngles.size(); i++) {
+        if (i % 3 == 0) {
+            this->n_ca_c_angle.push_back(backboneBondAngles[i]);
+        } else if (i % 3 == 1) {
+            this->ca_c_n_angle.push_back(backboneBondAngles[i]);
+        } else {
+            this->c_n_ca_angle.push_back(backboneBondAngles[i]);
+        }
     }
 
     // Discretize
@@ -800,6 +815,9 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
         }
     }
     // Reindex atom index of atom
+    if (this->hasOXT) {
+        atom.push_back(this->OXT);
+    }
     setAtomIndexSequentially(atom, this->header.idxAtom);
 
     // Set tempFactor
@@ -836,8 +854,9 @@ int CompressedResidue::read(std::string filename) {
     file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
 
     // Read the title
-    file.read(reinterpret_cast<char*>(&this->title), sizeof(char) * this->header.lenTitle);
-
+    char title[this->header.lenTitle];
+    file.read(title, sizeof(char) * this->header.lenTitle);
+    this->strTitle = std::string(title, (int)this->header.lenTitle);
     // Read the prev atoms
     // In the file, only xyz coordinates are stored
     // So, we need to reconstruct the atomcoordinate from the xyz coordinates & the information from the header
@@ -849,6 +868,14 @@ int CompressedResidue::read(std::string filename) {
     for (int i = 0; i < 3; i++) {
         this->lastAtomCoordinates.push_back({ lastAtomCoords[i*3], lastAtomCoords[i*3 + 1], lastAtomCoords[i*3+ 2] });
     }
+    file.read(&this->hasOXT, sizeof(char));
+    float oxtCoords[3];
+    file.read(reinterpret_cast<char*>(oxtCoords), sizeof(oxtCoords));
+    this->OXT_coords = { oxtCoords[0], oxtCoords[1], oxtCoords[2] };
+    this->OXT = AtomCoordinate(
+        "OXT", getThreeLetterCode(this->header.lastResidue), std::string(1, this->header.chain),
+        (int)this->header.nAtom, (int)this->header.nResidue, this->OXT_coords
+    );
 
     // Read sidechain discretizers
     // file.read(reinterpret_cast<char*>(&this->sideChainDisc), sizeof(SideChainDiscretizers));time
@@ -921,7 +948,7 @@ int CompressedResidue::read(std::string filename) {
 
     // Close file
     file.close();
-    return 0;
+    return success;
 }
 
 int CompressedResidue::write(std::string filename) {
@@ -940,8 +967,10 @@ int CompressedResidue::write(std::string filename) {
         // Write header
         outfile.write((char*)&this->header, sizeof(CompressedFileHeader));
         // Write title
-        outfile.write(this->title, sizeof(char) * this->header.lenTitle);
-
+        char* title = new char[this->strTitle.length() + 1];
+        strcpy(title, this->strTitle.c_str());
+        outfile.write((char*)title, sizeof(char) * this->header.lenTitle);
+        delete[] title;
         // Write prev atoms
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -954,6 +983,12 @@ int CompressedResidue::write(std::string filename) {
                 outfile.write((char*)&this->lastAtoms[i].coordinate[j], sizeof(float));
             }
         }
+
+        outfile.write(&this->hasOXT, sizeof(char));
+        for (int i = 0; i < 3; i++) {
+            outfile.write((char*)&this->OXT_coords[i], sizeof(float));
+        }
+        
         // END OF BACKBONE METADATA
         // // Write sidechain discretizers
         // outfile.write((char*)&this->sideChainDisc, sizeof(SideChainDiscretizers));
@@ -1017,6 +1052,8 @@ CompressedFileHeader CompressedResidue::get_header() {
     header.firstResidue = this->firstResidue;
     header.lastResidue = this->lastResidue;
     header.lenTitle = this->lenTitle;
+    //
+    header.chain = this->chain;
     // discretizer parameters
     header.mins[0] = this->phiDisc.min;
     header.mins[1] = this->psiDisc.min;

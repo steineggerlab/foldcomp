@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-07-20 01:59:12
+ * Last Modified: 2022-07-20 04:42:18
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <cmath>
 
 class AtomCoordinate {
 private:
@@ -68,7 +69,7 @@ std::vector<AtomCoordinate> weightedAverage(
 );
 
 int writeAtomCoordinatesToPDB(
-    std::vector<AtomCoordinate>& atoms, std::string pdb_path
+    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
 );
 
 std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(

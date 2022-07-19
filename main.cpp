@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 02:27:47
+ * Last Modified: 2022-07-20 06:53:58
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -54,11 +54,11 @@ int compress(std::string input, std::string output) {
     std::vector<AtomCoordinate> atomCoordinates;
     atomCoordinates = pdbReader.loadAllAtomCoordinatesWithSideChain();
     std::string title = pdbReader.readTitle();
+    pdbReader.infile.close();
     std::vector<BackboneChain> compData;
     CompressedResidue compRes = CompressedResidue();
     // Convert title to char
-    compRes.title = title.c_str();
-    compRes.lenTitle = title.length() + 1;
+    compRes.strTitle = title;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
     compRes.write(output);
@@ -86,11 +86,9 @@ int decompress(std::string input, std::string output) {
         return 1;
     }
     // Write decompressed data to file
-    writeAtomCoordinatesToPDB(atomCoordinates, output);
-    // DEBUGGING
-    Nerf nerf;
-    // nerf.writeInfoForChecking(atomCoordinates, "AFTER_COMPRESSION.csv");
-    return 0;
+    flag = writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, output);
+
+    return flag;
 }
 
 std::string getFileWithoutExt(std::string& file) {
@@ -195,14 +193,16 @@ int main(int argc, char* const *argv) {
             output = getFileWithoutExt(input) + ".fcz";
         }
         std::cout << "Compressing " << input << " to " << output << std::endl;
-        flag = compress(input, output);
+        compress(input, output);
+        flag = 0;
     } else if (mode == DECOMPRESS) {
         // decompress
         if (!has_output) {
-            output = getFileWithoutExt(input) + ".pdb";
+            output = getFileWithoutExt(input) + "_fcz.pdb";
         }
         std::cout << "Decompressing " << input << " to " << output << std::endl;
-        flag = decompress(input, output);
+        decompress(input, output);
+        flag = 0;
     } else if (mode == COMPRESS_MULTIPLE) {
         // compress multiple files
         if (input[input.length() - 1] != '/') {
@@ -287,10 +287,6 @@ int main(int argc, char* const *argv) {
         return 1;
     }
     // Print log
-    if (flag) {
-        std::cout << "Error occurred." << std::endl;
-    } else {
-        std::cout << "Done." << std::endl;
-    }
+    std::cout << "Done." << std::endl;
     return flag;
 }

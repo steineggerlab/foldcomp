@@ -6,7 +6,7 @@
  * Description:
  *     Functions and a class for reading PDB files
  * ---
- * Last Modified: 2022-07-20 01:53:46
+ * Last Modified: 2022-07-20 06:51:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -24,13 +24,25 @@ std::string PDBReader::readTitle() {
     std::string line;
     std::string rec_type;
     std::string empty_title = "";
+    bool title_found = false;
+    this->infile.clear();
+    this->infile.seekg(0, std::ios::beg);
     while (std::getline(this->infile, line)) {
         rec_type = line.substr(0, 6);
         if (rec_type == "TITLE ") {
-            this->title += line.substr(10);
+            if (!title_found) {
+                title_found = true;
+                this->title += line.substr(10);
+            } else {
+                this->title += line.substr(8);
+            }
         }
     }
-    return this->title;
+    if (this->title.empty()) {
+        return empty_title;
+    } else {
+        return this->title;
+    }
 }
 
 
