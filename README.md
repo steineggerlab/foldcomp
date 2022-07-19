@@ -2,13 +2,24 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-20 02:02:07
+Last Modified: 2022-07-20 02:31:41
 ---
 
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively.
 
 ## Usage
+```sh
+# Compression
+foldcomp compress <pdb_file> [<fcz_file>]
+foldcomp compress [-t number] <pdb_dir> [<fcz_dir>]
+# Decompression
+foldcomp decompress <fcz_file> [<pdb_file>]
+foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
+# Options
+ -t, --threads        number of threads to use [default=1]
+ -h, --help           print this help message
+```
 
 ### Build
 ```sh
@@ -20,6 +31,7 @@ cd ..
 # Build
 cmake --build ./build --target foldcomp
 ```
+
 ### Compression
 ```sh
 # Single PDB file

@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 02:11:31
+ * Last Modified: 2022-07-20 02:27:47
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -39,14 +39,12 @@
 #include <omp.h>
 
 int print_usage(void) {
-    std::cout << "Usage: foldcomp compress input.pdb" << std::endl;
-    std::cout << "       foldcomp compress input.pdb output.fcz" << std::endl;
-    std::cout << "       foldcomp compress pdb_dir" << std::endl;
-    std::cout << "       foldcomp compress pdb_dir fcz_dir" << std::endl;
-    std::cout << "       foldcomp decompress input.fcz" << std::endl;
-    std::cout << "       foldcomp decompress input.fcz output.pdb" << std::endl;
-    std::cout << "       foldcomp decompress fcz_dir" << std::endl;
-    std::cout << "       foldcomp decompress fcz_dir pdb_dir" << std::endl;
+    std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
+    std::cout << "       foldcomp compress [-t number] <pdb_dir> [<fcz_dir>]" << std::endl;
+    std::cout << "       foldcomp decompress <fcz_file> [<pdb_file>]" << std::endl;
+    std::cout << "       foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]" << std::endl;
+    std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
+    std::cout << " -h, --help           print this help message" << std::endl;
     return 1;
 }
 
