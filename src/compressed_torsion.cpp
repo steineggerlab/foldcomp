@@ -1,13 +1,13 @@
 /**
  * File: compressed_torsion.cpp
- * Project: foldcomp
+ * Project: src
  * Created: 2021-02-04 13:31:52
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 07:02:22
+ * Last Modified: 2022-07-20 10:36:15
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -805,6 +805,9 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
         fullResidue = nerf.reconstructAminoAcid(
             backBonePerResidue[i], this->sideChainAnglesPerResidue[i], aminoAcidMap[currResidue]
         );
+        if (this->useAltAtomOrder) {
+            _reorderAtoms(fullResidue, aminoAcidMap[currResidue]);
+        }
         backBonePerResidue[i] = fullResidue;
     }
     // Flatten backBonePerResidue
@@ -988,7 +991,7 @@ int CompressedResidue::write(std::string filename) {
         for (int i = 0; i < 3; i++) {
             outfile.write((char*)&this->OXT_coords[i], sizeof(float));
         }
-        
+
         // END OF BACKBONE METADATA
         // // Write sidechain discretizers
         // outfile.write((char*)&this->sideChainDisc, sizeof(SideChainDiscretizers));
@@ -1157,6 +1160,23 @@ void CompressedResidue::printSideChainTorsion(std::string filename) {
     }
     outfile.close();
 }
+
+void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa) {
+    std::vector<AtomCoordinate> newAtoms = atoms;
+    for (int i = 0; i < atoms.size(); i++) {
+        if (atoms[i].atom == aa.altAtoms[i]) {
+            continue;
+        } else {
+            for (int j = 0; j < aa.altAtoms.size(); j++) {
+                if (atoms[i].atom == aa.altAtoms[j]) {
+                    newAtoms[j] = atoms[i];
+                }
+            }
+        }
+    }
+    atoms = newAtoms;
+}
+
 
 // Sidechain
 

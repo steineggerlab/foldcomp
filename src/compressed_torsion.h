@@ -1,13 +1,13 @@
 /**
  * File: compressed_torsion.h
- * Project: foldcomp
+ * Project: src
  * Created: 2021-02-02 14:04:40
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 07:00:01
+ * Last Modified: 2022-07-20 10:14:35
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -241,6 +241,9 @@ int fillSideChainDiscretizerMap(
     SideChainDiscretizers& scDiscretizers,
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap
 );
+
+void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa);
+
 // Print
 void printCompressedResidue(BackboneChain& res);
 
@@ -275,6 +278,8 @@ public:
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
+    bool useAltAtomOrder = false;
+
     // Number of atoms & residues
     int nResidue = 0;
     int nAtom = 0;

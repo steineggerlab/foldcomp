@@ -1,6 +1,6 @@
 /**
  * File: main.cpp
- * Project: hbk
+ * Project: foldcomp
  * Created: 2021-12-23 17:44:53
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 06:53:58
+ * Last Modified: 2022-07-20 10:31:50
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -38,14 +38,17 @@
 // OpenMP for parallelization
 #include <omp.h>
 
+static int use_alt_order = 0;
+
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
     std::cout << "       foldcomp compress [-t number] <pdb_dir> [<fcz_dir>]" << std::endl;
     std::cout << "       foldcomp decompress <fcz_file> [<pdb_file>]" << std::endl;
     std::cout << "       foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]" << std::endl;
-    std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
-    return 1;
+    std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
+    std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
+    return 0;
 }
 
 int compress(std::string input, std::string output) {
@@ -80,6 +83,7 @@ int decompress(std::string input, std::string output) {
         return 1;
     }
     std::vector<AtomCoordinate> atomCoordinates;
+    compRes.useAltAtomOrder = use_alt_order;
     flag = compRes.decompress(atomCoordinates);
     if (flag != 0) {
         std::cerr << "Error decompressing compressed data." << std::endl;
@@ -100,7 +104,7 @@ int main(int argc, char* const *argv) {
     if (argc < 3) {
         return print_usage();
     }
-    
+
     int flag = 0;
     int option_index = 0;
     int num_threads = 1;
@@ -118,11 +122,12 @@ int main(int argc, char* const *argv) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"threads", required_argument, 0, 't'},
+        {"alt", no_argument, 0, 'a'},
         {0, 0, 0, 0}
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "ht:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hta:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
@@ -130,6 +135,9 @@ int main(int argc, char* const *argv) {
             return print_usage();
         case 't':
             num_threads = atoi(optarg);
+            break;
+        case 'a':
+            use_alt_order = 1;
             break;
         case '?':
             return print_usage();
