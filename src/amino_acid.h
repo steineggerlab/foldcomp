@@ -1,12 +1,12 @@
 /**
  * File: amino_acid.h
- * Project: foldcomp
+ * Project: src
  * Created: 2021-02-04 13:32:06
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-07-20 05:29:21
+ * Last Modified: 2022-07-20 09:48:27
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -27,7 +27,7 @@ public:
     std::vector<std::string> atoms;
     std::vector<std::string> backboneAtoms = {"N", "CA", "C"};
     std::vector<std::string> sideChainAtoms;
-    std::vector<std::string> altAtomsOrder;
+    std::vector<std::string> altAtoms;
 
     // sideChain uses atom as key and
     std::map < std::string, std::vector<std::string> > sideChain;
@@ -46,7 +46,7 @@ public:
         std::vector<std::string> atms,
         std::map< std::string, std::vector<std::string> > sc,
         std::vector<std::string> alt
-     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc), altAtomsOrder(alt) {
+     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc), altAtoms(alt) {
         for (std::string atm : atms) {
             if (atm != "N" && atm != "CA" && atm != "C") {
                 this->sideChainAtoms.push_back(atm);
@@ -103,7 +103,8 @@ public:
             { "N", "CA", "C", "O", "CB", "CG", "OD1", "ND2"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"OD1", {"CA", "CB", "CG"}},
-             {"ND2", {"CA", "CB", "CG"}}} // sidechain
+             {"ND2", {"CA", "CB", "CG"}}}, // sidechain
+            { "N", "CA", "C", "CB", "O", "CG", "ND2", "OD1"}
         );
         output["ASN"].bondLengths = {
             {"CA_CB", 1.52}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_OD1", 1.23}, {"CG_ND2", 1.325}
@@ -118,7 +119,8 @@ public:
             { "N", "CA", "C", "O", "CB", "CG", "OD1", "OD2" }, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"OD1", {"CA", "CB", "CG"}},
-             {"OD2", {"CA", "CB", "CG"}}} // sidechain
+             {"OD2", {"CA", "CB", "CG"}}}, // sidechain
+            { "N", "CA", "C", "CB", "O", "CG", "OD1", "OD2"}
         );
         output["ASP"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_OD1", 1.248}, {"CG_OD2", 1.248}
@@ -132,7 +134,8 @@ public:
             'C', "CYS", "Cysteine", // name
             {"N", "CA", "C", "O", "CB", "SG"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
-             {"SG", {"N", "CA", "CB"}}} // sidechain
+             {"SG", {"N", "CA", "CB"}}}, // sidechain
+            { "N", "CA", "C", "CB", "O", "SG"}
         );
         output["CYS"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_SG", 1.8}
@@ -146,7 +149,8 @@ public:
             {"N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "NE2"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"CD", {"CA", "CB", "CG"}},
-             {"OE1", {"CB", "CG", "CD"}},{"NE2", {"CB", "CG", "CD"}}} // sidechain
+             {"OE1", {"CB", "CG", "CD"}},{"NE2", {"CB", "CG", "CD"}}}, // sidechain
+            { "N", "CA", "C", "CB", "O", "CG", "CD", "NE2", "OE1"}
         );
         output["GLN"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
@@ -162,7 +166,8 @@ public:
             {"N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2"},
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"CD", {"CA", "CB", "CG"}},
-             {"OE1", {"CB", "CG", "CD"}},{"OE2", {"CB", "CG", "CD"}}}
+             {"OE1", {"CB", "CG", "CD"}},{"OE2", {"CB", "CG", "CD"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD", "OE1", "OE2"}
         );
         output["GLU"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
@@ -176,7 +181,8 @@ public:
         output["GLY"] = AminoAcid(
             'G', "GLY", "Glycine", // name
             {"N", "CA", "C", "O"}, // atoms
-            {{"O", {"N", "CA", "C"}}} // sidechain
+            {{"O", {"N", "CA", "C"}}}, // sidechain
+            { "N", "CA", "C", "O"}
         );
         output["GLY"].bondLengths = {{"C_O", 1.23}};
         output["GLY"].bondAngles = {{"CA_C_O", 120.522}};
@@ -187,7 +193,8 @@ public:
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"ND1", {"CA", "CB", "CG"}},
              {"CD2", {"CA", "CB", "CG"}}, {"CE1", {"CB", "CG", "ND1"}},
-             {"NE2", {"CB", "CG", "CD2"}}}
+             {"NE2", {"CB", "CG", "CD2"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD2", "ND1", "CE1", "NE2" }
         );
         output["HIS"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.5}, {"CG_ND1", 1.38},
@@ -204,7 +211,8 @@ public:
             {"N", "CA", "C", "O", "CB", "CG1", "CG2", "CD1"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}},
-             {"CD1", {"CA", "CB", "CG1"}}}
+             {"CD1", {"CA", "CB", "CG1"}}},
+             { "N", "CA", "C", "CB", "O", "CG1", "CG2", "CD1" }
         );
         output["ILE"].bondLengths = {
             {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.53}, {"CB_CG2", 1.52},
@@ -220,7 +228,8 @@ public:
             { "N", "CA", "C", "O", "CB", "CG", "CD1", "CD2" }, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD1", {"CA", "CB", "CG"}},
-             {"CD2", {"CA", "CB", "CG"}} }
+             {"CD2", {"CA", "CB", "CG"}} },
+            { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2" }
         );
         output["LEU"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.235}, {"CB_CG", 1.53}, {"CG_CD1", 1.52},
@@ -237,7 +246,8 @@ public:
             { "N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ" }, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD", {"CA", "CB", "CG"}},
-             {"CE", {"CB", "CG", "CD"}}, {"NZ", {"CG", "CD", "CE"}}}
+             {"CE", {"CB", "CG", "CD"}}, {"NZ", {"CG", "CD", "CE"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD", "CE", "NZ" }
         );
         output["LYS"].bondLengths = {
             {"C_O", 1.23}, {"CA_CB", 1.53}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
@@ -253,7 +263,8 @@ public:
             { "N", "CA", "C", "O", "CB", "CG", "SD", "CE"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"SD", {"CA", "CB", "CG"}},
-             {"CE", {"CB", "CG", "SD"}}}
+             {"CE", {"CB", "CG", "SD"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "SD", "CE" }
         );
         output["MET"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_SD", 1.8},
@@ -270,7 +281,8 @@ public:
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD1", {"CA", "CB", "CG"}},
              {"CD2", {"CA", "CB", "CG"}}, {"CE1", {"CB", "CG", "CD1"}},
-             {"CE2", {"CB", "CG", "CD2"}}, {"CZ", {"CG", "CD1", "CE1"}}}
+             {"CE2", {"CB", "CG", "CD2"}}, {"CZ", {"CG", "CD1", "CE1"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2", "CE1", "CE2", "CZ" }
         );
         output["PHE"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.51}, {"CG_CD1", 1.385},
@@ -287,7 +299,8 @@ public:
             'P', "PRO", "Proline", // name
             { "N", "CA", "C", "O", "CB", "CG", "CD"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
-             {"CG", {"N", "CA", "CB"}}, {"CD", {"CA", "CB", "CG"}}}
+             {"CG", {"N", "CA", "CB"}}, {"CD", {"CA", "CB", "CG"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD" } // atoms
         );
         output["PRO"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.49}, {"CG_CD", 1.50}
@@ -301,7 +314,8 @@ public:
             'S', "SER", "Serine",
             { "N", "CA", "C", "O", "CB", "OG"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
-             {"OG", {"N", "CA", "CB"}}}
+             {"OG", {"N", "CA", "CB"}}},
+            { "N", "CA", "C", "CB", "O", "OG" }
         );
         output["SER"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG", 1.417}
@@ -314,7 +328,8 @@ public:
             'T', "THR", "Threonine",
             {"N", "CA", "C", "O", "CB", "OG1", "CG2"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
-             {"OG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}}
+             {"OG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}},
+            { "N", "CA", "C", "CB", "O", "CG2", "OG1" }
         );
         output["THR"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG1", 1.43}, {"CB_CG2", 1.52}
@@ -333,7 +348,9 @@ public:
              {"CD2", {"CA", "CB", "CG"}}, {"NE1", {"CB", "CG", "CD1"}},
              {"CE2", {"CB", "CG", "CD2"}}, {"CE3", {"CB", "CG", "CD2"}},
              {"CZ2", {"CG", "CD2", "CE2"}}, {"CZ3", {"CG", "CD2", "CE3"}},
-             {"CH2", {"CD2", "CE2", "CZ2"}}}
+             {"CH2", {"CD2", "CE2", "CZ2"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2",
+              "CE2", "CE3", "NE1", "CH2", "CZ2", "CZ3" }
         );
         output["TRP"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.50},
@@ -356,7 +373,9 @@ public:
              {"CG", {"N", "CA", "CB"}}, {"CD1", {"CA", "CB", "CG"}},
              {"CD2", {"CA", "CB", "CG"}}, {"CE1", {"CB", "CG", "CD1"}},
              {"CE2", {"CB", "CG", "CD2"}}, {"CZ", {"CG", "CD1", "CE1"}},
-             {"OH", {"CD1", "CE1", "CZ"}}}
+             {"OH", {"CD1", "CE1", "CZ"}}},
+            { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2",
+              "CE1", "CE2", "OH", "CZ" }
         );
         output["TYR"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.235}, {"CB_CG", 1.51},
@@ -373,7 +392,8 @@ public:
             'V', "VAL", "Valine", // name
             { "N", "CA", "C", "O", "CB", "CG1", "CG2"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
-             {"CG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}}
+             {"CG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}},
+            { "N", "CA", "C", "CB", "O", "CG1", "CG2" }
         );
         output["VAL"].bondLengths = {
             {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.52}, {"CB_CG2", 1.52}
