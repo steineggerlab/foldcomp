@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 10:31:50
+ * Last Modified: 2022-07-20 13:13:13
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -121,13 +121,13 @@ int main(int argc, char* const *argv) {
     // Define command line options
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"threads", required_argument, 0, 't'},
         {"alt", no_argument, 0, 'a'},
+        {"threads", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hta:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hat:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
