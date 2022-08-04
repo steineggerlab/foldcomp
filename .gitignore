@@ -4,3 +4,5 @@ compressed.fcz
 decompressed.pdb
 compressed_cif.fcz
 decompressed_cif.pdb
+human/*
+human_cif/*

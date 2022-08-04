@@ -1,6 +1,6 @@
 /**
  * File: nerf.cpp
- * Project: foldcomp
+ * Project: src
  * Created: 2021-01-11 16:42:27
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
@@ -9,7 +9,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-07-20 01:55:53
+ * Last Modified: 2022-08-04 18:13:14
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -732,7 +732,7 @@ std::vector<int> Nerf::identifyBreaks(std::vector<AtomCoordinate> original_atoms
             // append i+1 to the output
             if (i <= (original_atoms.size() - 3)) {
                 output.push_back(i + 1);
-                std::cout << i + 1 << std::endl;
+                // std::cout << i + 1 << std::endl;
             }
         }
     }
