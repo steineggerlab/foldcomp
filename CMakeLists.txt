@@ -19,7 +19,6 @@ include_directories(${MY_GLOBAL_LIB_DIR})
 include_directories(${MY_GLOBAL_INCLUDE})
 include_directories(src)
 
-
 # 03-1. find pthreads
 # find_package(Threads REQUIRED)
 enable_testing()
@@ -44,7 +43,7 @@ set(MAIN_SRC ${PROJECT_SOURCE_DIR}/main.cpp)
 set(TARGET_NAME "foldcomp")
 add_executable(${TARGET_NAME} ${MY_SRCS} ${MAIN_SRC})
 
-# OPENMP
+# 09. OPENMP
 find_package(OpenMP REQUIRED)
 if(OPENMP_CXX_FOUND)
     target_link_libraries(${TARGET_NAME} PUBLIC OpenMP::OpenMP_CXX)
@@ -53,3 +52,8 @@ endif()
 target_include_directories(${TARGET_NAME} PUBLIC
     ${MY_INCLUDES}
 )
+
+# 10. Gemmi - for reading cif files & gzipped files
+find_package(ZLIB REQUIRED)
+target_link_libraries(${TARGET_NAME} PUBLIC ZLIB::ZLIB)
+include_directories(lib/gemmi)
