@@ -2,7 +2,7 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-07-20 12:31:51
+Last Modified: 2022-08-04 17:38:26
 ---
 
 # Foldcomp
@@ -11,8 +11,8 @@ Foldcomp compresses protein structures with torsion angles effectively.
 ## Usage
 ```
 [Compression]
-foldcomp compress <pdb_file> [<fcz_file>]
-foldcomp compress [-t number] <pdb_dir> [<fcz_dir>]
+foldcomp compress <pdb_file|cif_file> [<fcz_file>]
+foldcomp compress [-t number] <pdb_dir|cif_dir> [<fcz_dir>]
 
 [Decompression]
 foldcomp decompress <fcz_file> [<pdb_file>]
@@ -41,3 +41,7 @@ cmake --build ./build --target foldcomp
 Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude than saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact format.
 
 ![abstract](.github/img/Abstract.jpg)
+
+---
+
+> WARNING: Current version of Foldcomp does not support compression of multiple chains in a single file.
