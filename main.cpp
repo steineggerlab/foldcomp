@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 13:13:13
+ * Last Modified: 2022-08-04 16:40:11
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -24,7 +24,7 @@
 #include "compressed_torsion.h"
 #include "discretizer.h"
 #include "nerf.h"
-#include "pdb_reader.h"
+#include "input.h"
 #include "torsion.xyz.h"
 #include "utility.h"
 // Standard libraries
@@ -52,12 +52,12 @@ int print_usage(void) {
 }
 
 int compress(std::string input, std::string output) {
-    PDBReader pdbReader;
-    pdbReader.load(input);
+    StructureReader reader;
+    reader.load(input);
     std::vector<AtomCoordinate> atomCoordinates;
-    atomCoordinates = pdbReader.loadAllAtomCoordinatesWithSideChain();
-    std::string title = pdbReader.readTitle();
-    pdbReader.infile.close();
+    reader.readAllAtoms(atomCoordinates);
+    std::string title = reader.title;
+
     std::vector<BackboneChain> compData;
     CompressedResidue compRes = CompressedResidue();
     // Convert title to char
