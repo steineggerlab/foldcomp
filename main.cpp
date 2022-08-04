@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-04 16:40:11
+ * Last Modified: 2022-08-04 21:48:03
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -56,6 +56,10 @@ int compress(std::string input, std::string output) {
     reader.load(input);
     std::vector<AtomCoordinate> atomCoordinates;
     reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "Error: No atoms found in the input file: " << input << std::endl;
+        return 1;
+    }
     std::string title = reader.title;
 
     std::vector<BackboneChain> compData;
@@ -66,11 +70,11 @@ int compress(std::string input, std::string output) {
     // Write compressed data to file
     compRes.write(output);
     // DEBUGGING
-    Nerf nerf;
+    // Nerf nerf;
     // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
     // clear memory
-    atomCoordinates.clear();
-    compData.clear();
+    // atomCoordinates.clear();
+    // compData.clear();
     return 0;
 }
 
