@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 10:36:15
+ * Last Modified: 2022-08-08 22:31:50
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -175,8 +175,8 @@ std::vector<AtomCoordinate> reconstructBackboneAtoms(
     AtomCoordinate currN, currCA, currC;
     std::vector<float> currNCoord, currCACoord, currCCoord;
     float currBondLength, currBondAngle, currTorsionAngle;
-    int currAtomIndex = header.idxAtom + 3;
-    int currResidueIndex = header.idxResidue + 1;
+    int currAtomIndex = prevAtoms[2].atom_index + 1;
+    int currResidueIndex = prevAtoms[2].residue_index + 1;
     std::string currResidue;
     char currResidueChar;
 
@@ -235,6 +235,34 @@ std::vector<AtomCoordinate> reconstructBackboneAtoms(
     }
     return reconstructedAtoms;
 }
+
+int reconstructBackboneReverse(
+    std::vector<AtomCoordinate>& atom, std::vector< std::vector<float> >& lastCoords,
+    std::vector<float>& torsion_angles, Nerf& nerf
+) {
+    std::vector<AtomCoordinate> atomBack = atom;
+    // Last atoms
+    atomBack[atomBack.size() - 3].coordinate[0] = lastCoords[0][0];
+    atomBack[atomBack.size() - 3].coordinate[1] = lastCoords[0][1];
+    atomBack[atomBack.size() - 3].coordinate[2] = lastCoords[0][2];
+    atomBack[atomBack.size() - 2].coordinate[0] = lastCoords[1][0];
+    atomBack[atomBack.size() - 2].coordinate[1] = lastCoords[1][1];
+    atomBack[atomBack.size() - 2].coordinate[2] = lastCoords[1][2];
+    atomBack[atomBack.size() - 1].coordinate[0] = lastCoords[2][0];
+    atomBack[atomBack.size() - 1].coordinate[1] = lastCoords[2][1];
+    atomBack[atomBack.size() - 1].coordinate[2] = lastCoords[2][2];
+
+   std::vector<float> bond_angles = nerf.getBondAngles(atom);
+
+    std::vector<AtomCoordinate> atomBackward = nerf.reconstructWithReversed(
+        atomBack, torsion_angles, bond_angles
+    );
+
+    atomBack = weightedAverage(atom, atomBackward);
+    atom = atomBack;
+    return 0;
+}
+
 
 int discretizeSideChainTorsionAngles(
     std::vector< std::vector<float> >& torsionPerResidue,
@@ -442,6 +470,9 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     this->chain = atoms[0].chain.c_str()[0];
     this->firstResidue = getOneLetterCode(atoms[0].residue);
     this->lastResidue = getOneLetterCode(atoms[atoms.size() - 1].residue);
+
+    // Anchor atoms
+    this->_setAnchor();
 
     if (atoms[atoms.size() - 1].atom == "OXT") {
         this->hasOXT = 1;
@@ -711,6 +742,29 @@ int CompressedResidue::_restoreAtomCoordinate(float* coords) {
     return success;
 }
 
+int CompressedResidue::_getAnchorNum(int threshold) {
+    int nAnchor = 0;
+    nAnchor = this->nResidue / threshold;
+    return nAnchor;
+}
+
+void CompressedResidue::_setAnchor() {
+    this->nInnerAnchor = this->_getAnchorNum(this->anchorThreshold);
+    this->nAllAnchor = this->nInnerAnchor + 2; // Start and end
+    // Set the anchor points - residue index
+    this->anchorIndices.clear();
+    int interval = this->nResidue / (this->nAllAnchor - 1);
+    for (int i = 0; i < this->nAllAnchor - 1; i++) {
+        this->anchorIndices.push_back(i * interval);
+    }
+    this->anchorIndices.push_back(this->nResidue - 1);
+    //
+    std::vector<int> anchorResidueIndices;
+    for (int i = 0; i < this->anchorIndices.size(); i++) {
+        anchorResidueIndices.push_back(this->anchorIndices[i] + this->idxResidue);
+    }
+    this->anchorAtoms = getAtomsWithResidueIndex(this->rawAtoms, anchorResidueIndices);
+}
 
 std::vector<float> CompressedResidue::checkTorsionReconstruction() {
     std::vector<float> output;
@@ -762,30 +816,39 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
 
     //TODO: FILL IN THIS FUNCTION
     // nerf.reconstruct();
-    atom = reconstructBackboneAtoms(this->prevAtoms, this->compressedBackBone, this->header);
-
-    if (this->backwardReconstruction == true) {
-        std::vector<AtomCoordinate> atomBack = atom;
-        // Last atoms
-        atomBack[atomBack.size() - 1].coordinate[0] = this->lastAtomCoordinates[0][0];
-        atomBack[atomBack.size() - 1].coordinate[1] = this->lastAtomCoordinates[0][1];
-        atomBack[atomBack.size() - 1].coordinate[2] = this->lastAtomCoordinates[0][2];
-        atomBack[atomBack.size() - 2].coordinate[0] = this->lastAtomCoordinates[1][0];
-        atomBack[atomBack.size() - 2].coordinate[1] = this->lastAtomCoordinates[1][1];
-        atomBack[atomBack.size() - 2].coordinate[2] = this->lastAtomCoordinates[1][2];
-        atomBack[atomBack.size() - 3].coordinate[0] = this->lastAtomCoordinates[2][0];
-        atomBack[atomBack.size() - 3].coordinate[1] = this->lastAtomCoordinates[2][1];
-        atomBack[atomBack.size() - 3].coordinate[2] = this->lastAtomCoordinates[2][2];
-
-        bond_angles = this->nerf.getBondAngles(atom);
-
-        std::vector<AtomCoordinate> atomBackward = this->nerf.reconstructWithReversed(
-            atomBack, torsion_angles, bond_angles
+    std::vector<AtomCoordinate> prevForAnchor;
+    std::vector<AtomCoordinate> atomByAnchor;
+    for (int i = 0; i < this->nAllAnchor - 1; i++) {
+        if (i == 0) {
+            prevForAnchor = this->prevAtoms;
+        }
+        // std::vector<int>   sub(&data[100000],&data[101000]);
+        std::vector<BackboneChain> subBackbone(
+            &this->compressedBackBone[this->anchorIndices[i]],
+            &this->compressedBackBone[this->anchorIndices[i + 1]] + 1
         );
-
-        atomBack = weightedAverage(atom, atomBackward);
-        atom = atomBack;
+        atomByAnchor = reconstructBackboneAtoms(prevForAnchor, subBackbone, this->header);
+        // Subset torsion_angles
+        std::vector<float> subTorsionAngles(
+            &torsion_angles[this->anchorIndices[i] * 3],
+            &torsion_angles[this->anchorIndices[i + 1] * 3]
+        );
+        success = reconstructBackboneReverse(
+            atomByAnchor, this->anchorCoordinates[i], subTorsionAngles, this->nerf
+        );
+        // Append atomByAnchor to atom
+        if (i != this->nAllAnchor - 2) {
+            atom.insert(atom.end(), atomByAnchor.begin(), atomByAnchor.end() - 3);
+        } else {
+            atom.insert(atom.end(), atomByAnchor.begin(), atomByAnchor.end());
+        }
+        // Update prevForAnchor - last 3 atoms of atomByAnchor
+        prevForAnchor = std::vector<AtomCoordinate>(
+            &atomByAnchor[atomByAnchor.size() - 3],
+            &atomByAnchor[atomByAnchor.size()]
+        );
     }
+
     // Reconstruct sidechain
     std::vector< std::vector<AtomCoordinate> > backBonePerResidue = splitAtomByResidue(atom);
     std::string currResidue = getThreeLetterCode(this->header.firstResidue);
@@ -855,7 +918,11 @@ int CompressedResidue::read(std::string filename) {
     }
     // Read the header
     file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
-
+    this->read_header(this->header);
+    // Read anchorIndices
+    this->anchorIndices.resize(this->nAllAnchor);
+    // Read int vector
+    file.read(reinterpret_cast<char*>(&this->anchorIndices[0]), sizeof(int) * this->nAllAnchor);
     // Read the title
     char title[this->header.lenTitle];
     file.read(title, sizeof(char) * this->header.lenTitle);
@@ -865,12 +932,32 @@ int CompressedResidue::read(std::string filename) {
     // So, we need to reconstruct the atomcoordinate from the xyz coordinates & the information from the header
     float prevAtomCoords[9];
     file.read(reinterpret_cast<char*>(prevAtomCoords), sizeof(prevAtomCoords));
+
+    // ANCHOR ATOMS
+    if (this->header.nAnchor > 2) {
+        float innerAnchorCoords[9 * (this->header.nAnchor - 2)];
+        file.read(reinterpret_cast<char*>(innerAnchorCoords), sizeof(innerAnchorCoords));
+        for (int i = 0; i < (this->header.nAnchor - 2); i++) {
+            std::vector< std::vector<float> > innerAnchorCoord;
+            for (int j = 0; j < 3; j++) {
+                innerAnchorCoord.push_back({
+                    innerAnchorCoords[i * 9 + j * 3],
+                    innerAnchorCoords[i * 9 + j * 3 + 1],
+                    innerAnchorCoords[i * 9 + j * 3 + 2]
+                });
+            }
+            this->anchorCoordinates.push_back(innerAnchorCoord);
+        }
+    }
+
+    // LAST ATOMS
     float lastAtomCoords[9];
     file.read(reinterpret_cast<char*>(lastAtomCoords), sizeof(lastAtomCoords));
-
     for (int i = 0; i < 3; i++) {
         this->lastAtomCoordinates.push_back({ lastAtomCoords[i*3], lastAtomCoords[i*3 + 1], lastAtomCoords[i*3+ 2] });
     }
+    this->anchorCoordinates.push_back(this->lastAtomCoordinates);
+
     file.read(&this->hasOXT, sizeof(char));
     float oxtCoords[3];
     file.read(reinterpret_cast<char*>(oxtCoords), sizeof(oxtCoords));
@@ -969,21 +1056,23 @@ int CompressedResidue::write(std::string filename) {
         outfile.write(MAGICNUMBER, MAGICNUMBER_LENGTH);
         // Write header
         outfile.write((char*)&this->header, sizeof(CompressedFileHeader));
+        // Write anchorIndices
+        for (int i = 0; i < this->anchorIndices.size(); i++) {
+            outfile.write((char*)&this->anchorIndices[i], sizeof(int));
+        }
         // Write title
         char* title = new char[this->strTitle.length() + 1];
         strcpy(title, this->strTitle.c_str());
         outfile.write((char*)title, sizeof(char) * this->header.lenTitle);
         delete[] title;
-        // Write prev atoms
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                outfile.write((char*)&this->prevAtoms[i].coordinate[j], sizeof(float));
-            }
-        }
-        // Write last atoms
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                outfile.write((char*)&this->lastAtoms[i].coordinate[j], sizeof(float));
+
+        // 2022-08-08 19:15:30 - Changed to write all anchor atoms
+        // TODO: NEED TO BE CHECKED
+        for (auto anchors : this->anchorAtoms) {
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    outfile.write((char*)&anchors[i].coordinate[j], sizeof(float));
+                }
             }
         }
 
@@ -1051,6 +1140,7 @@ CompressedFileHeader CompressedResidue::get_header() {
     header.nAtom = this->nAtom;
     header.idxResidue = this->idxResidue;
     header.idxAtom = this->idxAtom;
+    header.nAnchor = this->nAllAnchor;
     header.nSideChainTorsion = this->nSideChainTorsion;
     header.firstResidue = this->firstResidue;
     header.lastResidue = this->lastResidue;
@@ -1071,6 +1161,34 @@ CompressedFileHeader CompressedResidue::get_header() {
     header.cont_fs[4] = this->ca_c_n_angleDisc.cont_f;
     header.cont_fs[5] = this->c_n_ca_angleDisc.cont_f;
     return header;
+}
+
+int CompressedResidue::read_header(CompressedFileHeader& header) {
+    this->nResidue = header.nResidue;
+    this->nAtom = header.nAtom;
+    this->idxResidue = header.idxResidue;
+    this->idxAtom = header.idxAtom;
+    this->nAllAnchor = header.nAnchor;
+    this->nSideChainTorsion = header.nSideChainTorsion;
+    this->firstResidue = header.firstResidue;
+    this->lastResidue = header.lastResidue;
+    this->lenTitle = header.lenTitle;
+    //
+    this->chain = header.chain;
+    // discretizer parameters
+    this->phiDisc.min = header.mins[0];
+    this->psiDisc.min = header.mins[1];
+    this->omegaDisc.min = header.mins[2];
+    this->n_ca_c_angleDisc.min = header.mins[3];
+    this->ca_c_n_angleDisc.min = header.mins[4];
+    this->c_n_ca_angleDisc.min = header.mins[5];
+    this->phiDisc.cont_f = header.cont_fs[0];
+    this->psiDisc.cont_f = header.cont_fs[1];
+    this->omegaDisc.cont_f = header.cont_fs[2];
+    this->n_ca_c_angleDisc.cont_f = header.cont_fs[3];
+    this->ca_c_n_angleDisc.cont_f = header.cont_fs[4];
+    this->c_n_ca_angleDisc.cont_f = header.cont_fs[5];
+    return 0;
 }
 
 void CompressedResidue::print(int length) {

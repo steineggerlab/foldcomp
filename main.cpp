@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-07-20 13:13:13
+ * Last Modified: 2022-08-08 22:30:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -24,7 +24,7 @@
 #include "compressed_torsion.h"
 #include "discretizer.h"
 #include "nerf.h"
-#include "pdb_reader.h"
+#include "input.h"
 #include "torsion.xyz.h"
 #include "utility.h"
 // Standard libraries
@@ -39,6 +39,7 @@
 #include <omp.h>
 
 static int use_alt_order = 0;
+static int anchor_residue_threshold = 200;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -52,25 +53,30 @@ int print_usage(void) {
 }
 
 int compress(std::string input, std::string output) {
-    PDBReader pdbReader;
-    pdbReader.load(input);
+    StructureReader reader;
+    reader.load(input);
     std::vector<AtomCoordinate> atomCoordinates;
-    atomCoordinates = pdbReader.loadAllAtomCoordinatesWithSideChain();
-    std::string title = pdbReader.readTitle();
-    pdbReader.infile.close();
+    reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "Error: No atoms found in the input file: " << input << std::endl;
+        return 1;
+    }
+    std::string title = reader.title;
+
     std::vector<BackboneChain> compData;
     CompressedResidue compRes = CompressedResidue();
     // Convert title to char
     compRes.strTitle = title;
+    compRes.anchorThreshold = anchor_residue_threshold;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
     compRes.write(output);
     // DEBUGGING
-    Nerf nerf;
+    // Nerf nerf;
     // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
     // clear memory
-    atomCoordinates.clear();
-    compData.clear();
+    // atomCoordinates.clear();
+    // compData.clear();
     return 0;
 }
 
@@ -123,6 +129,7 @@ int main(int argc, char* const *argv) {
         {"help", no_argument, 0, 'h'},
         {"alt", no_argument, 0, 'a'},
         {"threads", required_argument, 0, 't'},
+        {"break", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
@@ -138,6 +145,9 @@ int main(int argc, char* const *argv) {
             break;
         case 'a':
             use_alt_order = 1;
+            break;
+        case 'b':
+            anchor_residue_threshold = atoi(optarg);
             break;
         case '?':
             return print_usage();
