@@ -1,12 +1,12 @@
 /**
  * File: atom_coordinate.h
- * Project: foldcomp
+ * Project: src
  * Created: 2021-01-18 12:43:08
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-07-20 04:42:18
+ * Last Modified: 2022-08-08 16:33:04
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -83,3 +83,13 @@ std::vector<std::string> getResidueNameVector(
 AtomCoordinate findFirstAtom(std::vector<AtomCoordinate>& atoms, std::string atom_name);
 void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start);
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms);
+
+std::vector<AtomCoordinate> getAtomsWithResidueIndex(
+    std::vector<AtomCoordinate>& atoms, int residue_index,
+    std::vector<std::string> atomNames = {"N", "CA", "C"}
+);
+
+std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
+    std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
+    std::vector<std::string> atomNames = {"N", "CA", "C"}
+);

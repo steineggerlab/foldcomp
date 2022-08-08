@@ -1,12 +1,12 @@
 /**
  * File: atom_coordinate.cpp
- * Project: foldcomp
+ * Project: src
  * Created: 2021-01-18 12:53:34
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-07-20 06:48:49
+ * Last Modified: 2022-08-08 21:12:28
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -190,7 +190,7 @@ int writeAtomCoordinatesToPDB(
         std::cout << "Error: Cannot open file: " << pdb_path << std::endl;
         return 1;
     }
-    // Write title 
+    // Write title
     // 2022-07-20 05:15:06 Currently NOT WORKING.
     if (title != "") {
         int title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
@@ -323,4 +323,33 @@ void removeAlternativePosition(std::vector<AtomCoordinate>& atoms) {
             i--;
         }
     }
+}
+
+std::vector<AtomCoordinate> getAtomsWithResidueIndex(
+    std::vector<AtomCoordinate>& atoms, int residue_index,
+    std::vector<std::string> atomNames
+) {
+    std::vector<AtomCoordinate> output;
+    for (AtomCoordinate curr_atm : atoms) {
+        if (curr_atm.residue_index == residue_index) {
+            for (std::string atom_name : atomNames) {
+                if (curr_atm.atom == atom_name) {
+                    output.push_back(curr_atm);
+                }
+            }
+        }
+    }
+    return output;
+}
+
+std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
+    std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
+    std::vector<std::string> atomNames
+) {
+    std::vector< std::vector<AtomCoordinate> > output;
+    for (int curr_index : residue_index) {
+        std::vector<AtomCoordinate> curr_atoms = getAtomsWithResidueIndex(atoms, curr_index, atomNames);
+        output.push_back(curr_atoms);
+    }
+    return output;
 }
