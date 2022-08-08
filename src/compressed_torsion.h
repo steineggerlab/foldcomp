@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-07-20 10:14:35
+ * Last Modified: 2022-08-08 22:28:19
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -98,12 +98,14 @@ struct FileOffset {
 
 struct CompressedFileHeader {
     /* data */
-    // TOTAL: 62 bytes
+    // TOTAL:
     // Backbone
     unsigned int nResidue: 16; // 16 bits
     unsigned int nAtom: 16;    // 16 bits
     unsigned int idxResidue: 16; // 16 bits
     unsigned int idxAtom: 16;    // 16 bits
+    // Anchor points - 2022-08-08 18:28:51
+    unsigned int nAnchor: 8; // 8 bits
     char chain;
     // Sidechain
     unsigned int nSideChainTorsion: 32;
@@ -113,7 +115,7 @@ struct CompressedFileHeader {
     // Discretizer for backbone chain
     float mins[6];
     float cont_fs[6];
-    // 2022-02-08 15:06:08 TODO: Offset for each part will be added here
+    // IDEA: Offset?
 };
 
 struct CompressedFileOffset {
@@ -264,6 +266,11 @@ private:
     int _preprocessBackbone();
     int _preprocessSideChain();
 
+    // Anchor
+    int _getAnchorNum(int threshold);
+    void _setAnchor();
+    std::vector<AtomCoordinate> _getAnchorAtoms(bool includeStartAndEnd = true);
+
     int _discretizeSideChainTorsionAngles(
         std::vector< std::vector<float> >& input, std::vector<unsigned int>& output
     );
@@ -285,6 +292,9 @@ public:
     int nAtom = 0;
     int nBackbone = 0;
     int nSideChainTorsion = 0;
+    int nInnerAnchor = 0;
+    int nAllAnchor = 0;
+    int anchorThreshold = 200;
     // Indices for residue & atom
     int idxResidue = 0;
     int idxAtom = 0;
@@ -309,6 +319,11 @@ public:
     std::vector<AtomCoordinate> lastAtoms; // 3 atoms
     std::vector< std::vector<float> > lastAtomCoordinates; // 3 atoms
     std::vector<AtomCoordinate> backbone;
+    // 2022-08-05 20:47:57 - Anchors for reducing RMSD
+    std::vector< std::vector<AtomCoordinate> > anchorAtoms;
+    std::vector< std::vector< std::vector<float> > > anchorCoordinates;
+    std::vector<int> anchorIndices;
+
     std::vector<BackboneChain> compressedBackBone;
     std::vector<unsigned int> compressedSideChain;
     std::vector<int> backboneBreaks;
@@ -358,6 +373,9 @@ public:
     int write(std::string filename);
     int reconstruct(std::vector<AtomCoordinate>& atoms, int mode);
     CompressedFileHeader get_header();
+    int read_header(CompressedFileHeader& header);
+    //
+
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
