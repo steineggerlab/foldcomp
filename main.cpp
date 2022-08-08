@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-04 21:48:03
+ * Last Modified: 2022-08-08 22:30:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -39,6 +39,7 @@
 #include <omp.h>
 
 static int use_alt_order = 0;
+static int anchor_residue_threshold = 200;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -66,6 +67,7 @@ int compress(std::string input, std::string output) {
     CompressedResidue compRes = CompressedResidue();
     // Convert title to char
     compRes.strTitle = title;
+    compRes.anchorThreshold = anchor_residue_threshold;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
     compRes.write(output);
@@ -127,6 +129,7 @@ int main(int argc, char* const *argv) {
         {"help", no_argument, 0, 'h'},
         {"alt", no_argument, 0, 'a'},
         {"threads", required_argument, 0, 't'},
+        {"break", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
@@ -142,6 +145,9 @@ int main(int argc, char* const *argv) {
             break;
         case 'a':
             use_alt_order = 1;
+            break;
+        case 'b':
+            anchor_residue_threshold = atoi(optarg);
             break;
         case '?':
             return print_usage();
