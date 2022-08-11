@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 02. project name & language
 project(foldu_compression C CXX)
 
+set(HAVE_GCS 0 CACHE BOOL "Have Google Cloud Storage SDK")
+
 # 03. settings for google test
 set(MY_GLOBAL_LIB_DIR /usr/local/lib)
 set(MY_GLOBAL_INCLUDE /usr/local/include)
@@ -57,3 +59,9 @@ target_include_directories(${TARGET_NAME} PUBLIC
 find_package(ZLIB REQUIRED)
 target_link_libraries(${TARGET_NAME} PUBLIC ZLIB::ZLIB)
 include_directories(lib/gemmi)
+
+if(HAVE_GCS)
+    find_package(google_cloud_cpp_storage REQUIRED)
+    target_link_libraries(${TARGET_NAME} PUBLIC google-cloud-cpp::storage)
+    target_compile_definitions(${TARGET_NAME} PUBLIC HAVE_GCS)
+endif()
