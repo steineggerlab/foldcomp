@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-08 22:30:00
+ * Last Modified: 2022-08-11 15:42:43
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -37,6 +37,11 @@
 #include <getopt.h>
 // OpenMP for parallelization
 #include <omp.h>
+
+#ifdef HAVE_GCS
+#include "google/cloud/storage/client.h"
+#endif
+
 
 static int use_alt_order = 0;
 static int anchor_residue_threshold = 200;
@@ -80,6 +85,35 @@ int compress(std::string input, std::string output) {
     return 0;
 }
 
+
+int compressFromBuffer(const std::string& content, const std::string& output, std::string& name) {
+    StructureReader reader;
+    reader.loadFromBuffer(content.c_str(), content.size(), name);
+    std::vector<AtomCoordinate> atomCoordinates;
+    reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "Error: No atoms found in the input" << std::endl;
+        return 1;
+    }
+    std::string title = reader.title;
+
+    std::vector<BackboneChain> compData;
+    CompressedResidue compRes = CompressedResidue();
+    // Convert title to char
+    compRes.strTitle = name;
+    compRes.anchorThreshold = anchor_residue_threshold;
+    compData = compRes.compress(atomCoordinates);
+    // Write compressed data to file
+    compRes.write(output + "/" + name + ".fcz");
+    // DEBUGGING
+    // Nerf nerf;
+    // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
+    // clear memory
+    // atomCoordinates.clear();
+    // compData.clear();
+    return 0;
+}
+
 int decompress(std::string input, std::string output) {
     int flag = 0;
     CompressedResidue compRes = CompressedResidue();
@@ -106,6 +140,39 @@ std::string getFileWithoutExt(std::string& file) {
     return extStart == std::string::npos ? file : file.substr(0, extStart);
 }
 
+bool stringEndsWith(const std::string& suffix, const std::string& str) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+
+    return (!str.compare(str.length() - suffix.length(), suffix.length(), suffix));
+}
+
+bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset = 0) {
+    if (str.length() < prefix.length()) {
+        return false;
+    }
+    return (!str.compare(offset, prefix.length(), prefix));
+}
+
+
+std::vector<std::string> stringSplit(const std::string& str, const std::string& sep) {
+    std::vector<std::string> arr;
+
+    char* cstr = strdup(str.c_str());
+    const char* csep = sep.c_str();
+    char* rest;
+    char* current = strtok_r(cstr, csep, &rest);
+    while (current != NULL) {
+        arr.emplace_back(current);
+        current = strtok_r(NULL, csep, &rest);
+    }
+    free(cstr);
+
+    return arr;
+}
+
+
 int main(int argc, char* const *argv) {
     if (argc < 3) {
         return print_usage();
@@ -121,6 +188,7 @@ int main(int argc, char* const *argv) {
         COMPRESS,
         DECOMPRESS,
         COMPRESS_MULTIPLE,
+        COMPRESS_MULTIPLE_GCS,
         DECOMPRESS_MULTIPLE
     } mode = COMPRESS;
 
@@ -169,17 +237,17 @@ int main(int argc, char* const *argv) {
         return print_usage();
     }
 
-    struct stat st = {0};
-    if (stat(argv[optind + 1], &st) == -1) {
-        std::cerr << "Error: " << argv[optind + 1] << " does not exist." << std::endl;
-        return 1;
-    }
-
+    struct stat st = { 0 };
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
         // Check argv[2] is file or directory
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS
+#ifdef HAVE_GCS
+        if ((optind + 1) < argc && stringStartsWith("gcs://", argv[optind + 1])) {
+            mode = COMPRESS_MULTIPLE_GCS;
+        } else
+#endif
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
         } else {
@@ -197,6 +265,12 @@ int main(int argc, char* const *argv) {
     } else {
         return print_usage();
     }
+
+    if (mode != COMPRESS_MULTIPLE_GCS && stat(argv[optind + 1], &st) == -1) {
+        std::cerr << "Error: " << argv[optind + 1] << " does not exist." << std::endl;
+        return 1;
+    }
+
     std::string input = argv[optind + 1];
     std::string output;
     if (argc == optind + 3) {
@@ -260,6 +334,66 @@ int main(int argc, char* const *argv) {
                 compress(inputFile, outputFile);
             }
         }
+    } else if (mode == COMPRESS_MULTIPLE_GCS) {
+        // compress multiple files from gcs
+#ifdef HAVE_GCS
+        if (!has_output) {
+            std::cerr << "Please specify output directory" << std::endl;
+            return 1;
+        }
+        if (output[output.length() - 1] != '/') {
+            output += "/";
+        }
+        // Check output directory exists or not
+        if (stat(output.c_str(), &st) == -1) {
+#if defined(_WIN32) || defined(_WIN64)
+            _mkdir(output.c_str());
+#else
+            mkdir(output.c_str(), 0755);
+#endif
+        }
+        // Get all files in input directory
+        std::cout << "Compressing files in " << input;
+        std::cout << " using " << num_threads << " threads" << std::endl;
+        std::cout << "Output directory: " << output << std::endl;
+        // Parallelize
+        namespace gcs = ::google::cloud::storage;
+        auto options = google::cloud::Options{}
+            .set<gcs::ConnectionPoolSizeOption>(num_threads)
+            .set<google::cloud::storage_experimental::HttpVersionOption>("2.0");
+        auto client = gcs::Client(options);
+        std::vector<std::string> parts = stringSplit(input, "/");
+        if (parts.size() == 1) {
+            std::cerr << "Invalid gcs URI" << std::endl;
+            return 1;
+        }
+        std::string bucket_name = parts[1];
+        char filter = parts[2][0];
+        omp_set_num_threads(num_threads);
+#pragma omp parallel
+        {
+
+#pragma omp single
+            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(10))) {
+                std::string obj_name = object_metadata->name();
+#pragma omp task firstprivate(obj_name)
+                {
+                    bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
+                    if (skipFilter && allowedSuffix) {
+                        auto reader = client.ReadObject(bucket_name, obj_name);
+                        if (!reader.status().ok()) {
+                            std::cerr << "Could not read object " << obj_name << std::endl;
+                        }
+                        else {
+                            std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
+                            compressFromBuffer(contents, output, obj_name);
+                        }
+                    }
+                }
+            }
+        }
+#endif
         flag = 0;
     } else if (mode == DECOMPRESS_MULTIPLE) {
         // decompress multiple files
