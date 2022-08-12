@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-12 14:18:39
+ * Last Modified: 2022-08-12 14:27:20
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -202,7 +202,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hat:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hat:b:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
