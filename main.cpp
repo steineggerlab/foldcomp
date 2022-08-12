@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-12 14:27:20
+ * Last Modified: 2022-08-12 14:30:08
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -222,7 +222,7 @@ int main(int argc, char* const *argv) {
         default:
             break;
         }
-        flag = getopt_long(argc, argv, "ht:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hat:b:", long_options, &option_index);
     }
     // // Set number of threads
     // omp_set_num_threads(num_threads);
