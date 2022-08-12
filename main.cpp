@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-11 15:42:43
+ * Last Modified: 2022-08-12 14:18:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -243,15 +243,21 @@ int main(int argc, char* const *argv) {
         // Check argv[2] is file or directory
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS
+        int fileExists = stat(argv[optind + 1], &st);
 #ifdef HAVE_GCS
         if ((optind + 1) < argc && stringStartsWith("gcs://", argv[optind + 1])) {
             mode = COMPRESS_MULTIPLE_GCS;
+            fileExists = 0;
         } else
 #endif
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
         } else {
             mode = COMPRESS;
+        }
+        if (fileExists == -1) {
+            std::cerr << "Error: Input file " << argv[optind + 1] << " does not exist." << std::endl;
+            return 1;
         }
     } else if (strcmp(argv[optind], "decompress") == 0) {
         // Check argv[2] is file or directory
