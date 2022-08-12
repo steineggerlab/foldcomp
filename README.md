@@ -2,7 +2,7 @@
 File: README.md
 ProjectName: Foldcomp
 Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-08-04 17:38:26
+Last Modified: 2022-08-12 20:27:36
 ---
 
 # Foldcomp
@@ -22,6 +22,7 @@ foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
  -h, --help           print this help message
  -t, --threads        number of threads to use [default=1]
  -a, --alt            use alternative atom order [default=false]
+ -b, --break          interval size to save absolute atom coordinates [default=200]
 ```
 
 ## Build

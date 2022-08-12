@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-12 14:32:48
+ * Last Modified: 2022-08-12 22:39:32
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -42,7 +42,6 @@
 #include "google/cloud/storage/client.h"
 #endif
 
-
 static int use_alt_order = 0;
 static int anchor_residue_threshold = 200;
 
@@ -54,6 +53,7 @@ int print_usage(void) {
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
+    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=200]" << std::endl;
     return 0;
 }
 
@@ -241,7 +241,9 @@ int main(int argc, char* const *argv) {
     int fileExists = stat(argv[optind + 1], &st);
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
-        // Check argv[2] is file or directory
+        // Check argv[2] is file, directory, or gcs URI
+        // TODO: stdin support
+        // If gcs URI, mode = COMPRESS_MULTIPLE_GCS
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS
 #ifdef HAVE_GCS
@@ -255,10 +257,6 @@ int main(int argc, char* const *argv) {
         } else {
             mode = COMPRESS;
         }
-        if (fileExists == -1) {
-            std::cerr << "Error: Input file " << argv[optind + 1] << " does not exist." << std::endl;
-            return 1;
-        }
     } else if (strcmp(argv[optind], "decompress") == 0) {
         // Check argv[2] is file or directory
         // If directory, mode = DECOMPRESS_MULTIPLE
@@ -271,8 +269,8 @@ int main(int argc, char* const *argv) {
     } else {
         return print_usage();
     }
-
-    if (mode != COMPRESS_MULTIPLE_GCS && stat(argv[optind + 1], &st) == -1) {
+    // Error if no input file given
+    if (mode != COMPRESS_MULTIPLE_GCS && fileExists == -1) {
         std::cerr << "Error: " << argv[optind + 1] << " does not exist." << std::endl;
         return 1;
     }
@@ -286,7 +284,7 @@ int main(int argc, char* const *argv) {
 
     // check if mode is compress or decompress
     if (mode == COMPRESS) {
-        // compress
+        // compress a single file
         if (!has_output) {
             output = getFileWithoutExt(input) + ".fcz";
         }
@@ -294,7 +292,7 @@ int main(int argc, char* const *argv) {
         compress(input, output);
         flag = 0;
     } else if (mode == DECOMPRESS) {
-        // decompress
+        // decompress a single file
         if (!has_output) {
             output = getFileWithoutExt(input) + "_fcz.pdb";
         }
@@ -374,24 +372,29 @@ int main(int argc, char* const *argv) {
             return 1;
         }
         std::string bucket_name = parts[1];
-        char filter = parts[2][0];
+
+        // Filter for splitting input into 10 different processes
+        // char filter = parts[2][0];
         omp_set_num_threads(num_threads);
 #pragma omp parallel
         {
-
 #pragma omp single
+            // Get object list from gcs bucket
             for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(10))) {
                 std::string obj_name = object_metadata->name();
+                std::cout << obj_name << std::endl;
 #pragma omp task firstprivate(obj_name)
                 {
-                    bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    // Filter for splitting input into 10 different processes
+                    // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    bool skipFilter = true;
+
                     bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
                     if (skipFilter && allowedSuffix) {
                         auto reader = client.ReadObject(bucket_name, obj_name);
                         if (!reader.status().ok()) {
                             std::cerr << "Could not read object " << obj_name << std::endl;
-                        }
-                        else {
+                        } else {
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
                             compressFromBuffer(contents, output, obj_name);
                         }
