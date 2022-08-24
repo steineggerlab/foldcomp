@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-12 22:39:32
+ * Last Modified: 2022-08-24 17:02:33
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -44,6 +44,7 @@
 
 static int use_alt_order = 0;
 static int anchor_residue_threshold = 200;
+static int save_as_tar = 0;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -54,6 +55,7 @@ int print_usage(void) {
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=200]" << std::endl;
+    std::cout << " --tar                save as tar file [default=false]" << std::endl;
     return 0;
 }
 
