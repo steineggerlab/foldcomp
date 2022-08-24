@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-08 22:31:50
+ * Last Modified: 2022-08-24 17:49:05
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1131,6 +1131,32 @@ int CompressedResidue::write(std::string filename) {
         flag = -1;
     }
     return flag;
+}
+
+size_t CompressedResidue::getSize() {
+    // Calculate the size of the compressed format
+    size_t size = 0;
+    // Magic number
+    size += MAGICNUMBER_LENGTH;
+    // Header
+    size += sizeof(CompressedFileHeader);
+    // Anchor indices
+    size += sizeof(int) * this->anchorIndices.size();
+    // Title
+    size += sizeof(char) * this->header.lenTitle;
+    // Anchor atoms
+    size += sizeof(float) * 3 * 3 * this->anchorAtoms.size();
+    // OXT
+    size += sizeof(char);
+    size += sizeof(float) * 3;
+    // Backbone
+    size += sizeof(char) * 8 * this->compressedBackBone.size();
+    // Side chain torsion angles
+    size += sizeof(unsigned char) * this->sideChainAnglesDiscretized.size();
+    // Temperature factors
+    size += sizeof(float) * 2;
+    size += sizeof(unsigned char) * this->tempFactorsDiscretized.size();
+    return size;
 }
 
 CompressedFileHeader CompressedResidue::get_header() {

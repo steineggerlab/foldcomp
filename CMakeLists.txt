@@ -60,6 +60,10 @@ find_package(ZLIB REQUIRED)
 target_link_libraries(${TARGET_NAME} PUBLIC ZLIB::ZLIB)
 include_directories(lib/gemmi)
 
+# 11. Microtar - for reading/writing tar files
+include_directories(lib/microtar)
+
+# 12
 if(HAVE_GCS)
     find_package(google_cloud_cpp_storage REQUIRED)
     target_link_libraries(${TARGET_NAME} PUBLIC google-cloud-cpp::storage)
