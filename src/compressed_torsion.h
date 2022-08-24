@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-24 19:01:56
+ * Last Modified: 2022-08-24 19:07:48
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -29,7 +29,7 @@
 #include "utility.h"
 
 // TAR format handling
-#include "microtar.h"
+#include "microtar/microtar.h"
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
