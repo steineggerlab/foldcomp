@@ -62,6 +62,8 @@ include_directories(lib/gemmi)
 
 # 11. Microtar - for reading/writing tar files
 include_directories(lib/microtar)
+add_subdirectory(lib/microtar)
+target_link_libraries(${TARGET_NAME} PUBLIC microtar)
 
 # 12
 if(HAVE_GCS)

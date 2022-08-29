@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-24 17:49:05
+ * Last Modified: 2022-08-29 17:41:17
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1063,7 +1063,7 @@ int CompressedResidue::write(std::string filename) {
         // Write title
         char* title = new char[this->strTitle.length() + 1];
         strcpy(title, this->strTitle.c_str());
-        outfile.write((char*)title, sizeof(char) * this->header.lenTitle);
+        outfile.write((char*)title, strlen(title));
         delete[] title;
 
         // 2022-08-08 19:15:30 - Changed to write all anchor atoms
@@ -1133,6 +1133,74 @@ int CompressedResidue::write(std::string filename) {
     return flag;
 }
 
+// 2022-08-29 15:42:29 TAR format support
+int CompressedResidue::writeTar(mtar_t& tar, std::string filename, size_t size) {
+    int flag = 0;
+    mtar_write_file_header(&tar, filename.c_str(), size);
+    // Magic number
+    mtar_write_data(&tar, MAGICNUMBER, MAGICNUMBER_LENGTH);
+    // Write header
+    mtar_write_data(&tar, &this->header, sizeof(CompressedFileHeader));
+    // Write anchorIndices
+    for (int i = 0; i < this->anchorIndices.size(); i++) {
+        mtar_write_data(&tar, &this->anchorIndices[i], sizeof(int));
+    }
+    // Write title
+    mtar_write_data(&tar, this->strTitle.c_str(), strlen(this->strTitle.c_str()));
+    // Write anchor atoms
+    for (auto anchors : this->anchorAtoms) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                mtar_write_data(&tar, &anchors[i].coordinate[j], sizeof(float));
+            }
+        }
+    }
+    // Write hasOXT
+    mtar_write_data(&tar, &this->hasOXT, sizeof(char));
+    // Write OXT_coords
+    for (int i = 0; i < 3; i++) {
+        mtar_write_data(&tar, &this->OXT_coords[i], sizeof(float));
+    }
+    // Write sideChainDisc
+    // mtar_write_data(&tar, &this->sideChainDisc, sizeof(SideChainDiscretizers));
+    // Write the compressed backbone
+    char* buffer = new char[8];
+    for (int i = 0; i < this->compressedBackBone.size(); i++) {
+        flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
+        mtar_write_data(&tar, buffer, 8);
+    }
+    delete[] buffer;
+    // Write side chain torsion angles
+    int encodedSideChainSize = this->nSideChainTorsion;
+    if (encodedSideChainSize % 2 == 1) {
+        encodedSideChainSize++;
+    }
+    encodedSideChainSize /= 2;
+
+    unsigned char* charSideChainTorsion = new unsigned char[this->nSideChainTorsion];
+    // Get array of unsigned int from sideChainAnglesDiscretized and convert to char array
+    for (int i = 0; i < this->nSideChainTorsion; i++) {
+        // convert unsigned int to char
+        charSideChainTorsion[i] = (unsigned char)this->sideChainAnglesDiscretized[i];
+    }
+    mtar_write_data(&tar, charSideChainTorsion, this->sideChainAnglesDiscretized.size());
+    delete[] charSideChainTorsion;
+    // Write temperature factors
+    // Disc
+    mtar_write_data(&tar, &this->tempFactorsDisc.min, sizeof(float));
+    mtar_write_data(&tar, &this->tempFactorsDisc.cont_f, sizeof(float));
+    // Convert unsigned int to char array
+    unsigned char* charTempFactors = new unsigned char[this->header.nAtom];
+    // Get array of unsigned int from tempFactorsDiscretized and convert to char array
+    for (int i = 0; i < this->header.nAtom; i++) {
+        // convert unsigned int to char
+        charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
+    }
+    mtar_write_data(&tar, charTempFactors, this->tempFactorsDiscretized.size());
+    delete[] charTempFactors;
+    return flag;
+}
+
 size_t CompressedResidue::getSize() {
     // Calculate the size of the compressed format
     size_t size = 0;
@@ -1143,7 +1211,7 @@ size_t CompressedResidue::getSize() {
     // Anchor indices
     size += sizeof(int) * this->anchorIndices.size();
     // Title
-    size += sizeof(char) * this->header.lenTitle;
+    size += strlen(this->strTitle.c_str());
     // Anchor atoms
     size += sizeof(float) * 3 * 3 * this->anchorAtoms.size();
     // OXT
