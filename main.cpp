@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-29 19:40:47
+ * Last Modified: 2022-08-29 19:42:35
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -452,9 +452,8 @@ int main(int argc, char* const *argv) {
         // char filter = parts[2][0];
         int id = 1;
         int count = 0;
-        int n_zero = 4;
         mtar_t tar;
-        std::string seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
+        std::string seqID = std::to_string(id);
         std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
         mtar_open(&tar, tarFile.c_str(), "w");
 
@@ -489,7 +488,7 @@ int main(int argc, char* const *argv) {
                         mtar_finalize(&tar);
                         mtar_close(&tar);
                         id++;
-                        seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
+                        seqID = std::to_string(id);
                         tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
                         mtar_open(&tar, tarFile.c_str(), "w");
                         count = 0;
