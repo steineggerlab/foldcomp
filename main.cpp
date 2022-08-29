@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-29 19:24:54
+ * Last Modified: 2022-08-29 19:40:47
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -450,18 +450,19 @@ int main(int argc, char* const *argv) {
 
         // Filter for splitting input into 10 different processes
         // char filter = parts[2][0];
+        int id = 1;
+        int count = 0;
+        int n_zero = 4;
+        mtar_t tar;
+        std::string seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
+        std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
+        mtar_open(&tar, tarFile.c_str(), "w");
+
         omp_set_num_threads(num_threads);
 #pragma omp parallel
         {
 #pragma omp single
             // Get object list from gcs bucket
-            int id = 1;
-            int count = 0;
-            int n_zero = 4;
-            mtar_t tar;
-            std::string seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
-            std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
-            mtar_open(&tar, tarFile.c_str(), "w");
             for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(25000))) {
                 std::string obj_name = object_metadata->name();
                 // Set zero padding for ID with 4 digits
@@ -493,7 +494,6 @@ int main(int argc, char* const *argv) {
                         mtar_open(&tar, tarFile.c_str(), "w");
                         count = 0;
                     }
-
                 }
             }
             // Close tar
