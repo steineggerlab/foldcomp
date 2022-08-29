@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-24 17:02:33
+ * Last Modified: 2022-08-29 19:24:54
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -55,7 +55,7 @@ int print_usage(void) {
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=200]" << std::endl;
-    std::cout << " --tar                save as tar file [default=false]" << std::endl;
+    std::cout << " -z, --tar                save as tar file [default=false]" << std::endl;
     return 0;
 }
 
@@ -113,6 +113,44 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
     // clear memory
     // atomCoordinates.clear();
     // compData.clear();
+    return 0;
+}
+
+
+int compressWithoutWriting(CompressedResidue& compRes, std::string input) {
+    StructureReader reader;
+    reader.load(input);
+    std::vector<AtomCoordinate> atomCoordinates;
+    reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "Error: No atoms found in the input file: " << input << std::endl;
+        return 1;
+    }
+    std::string title = reader.title;
+
+    std::vector<BackboneChain> compData;
+    // Convert title to char
+    compRes.strTitle = title;
+    compRes.anchorThreshold = anchor_residue_threshold;
+    compData = compRes.compress(atomCoordinates);
+    return 0;
+}
+
+int compressFromBufferWithoutWriting(CompressedResidue& compRes, const std::string& content, std::string& name) {
+    StructureReader reader;
+    reader.loadFromBuffer(content.c_str(), content.size(), name);
+    std::vector<AtomCoordinate> atomCoordinates;
+    reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "Error: No atoms found in the input" << std::endl;
+        return 1;
+    }
+    std::string title = name;
+    std::vector<BackboneChain> compData;
+    // Convert title to char
+    compRes.strTitle = name;
+    compRes.anchorThreshold = anchor_residue_threshold;
+    compData = compRes.compress(atomCoordinates);
     return 0;
 }
 
@@ -198,13 +236,14 @@ int main(int argc, char* const *argv) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"alt", no_argument, 0, 'a'},
+        {"tar", no_argument, 0, 'z'},
         {"threads", required_argument, 0, 't'},
         {"break", required_argument, 0, 'b'},
         {0, 0, 0, 0}
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hat:b:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
@@ -216,6 +255,9 @@ int main(int argc, char* const *argv) {
         case 'a':
             use_alt_order = 1;
             break;
+        case 'z':
+            save_as_tar = 1;
+            break;
         case 'b':
             anchor_residue_threshold = atoi(optarg);
             break;
@@ -224,7 +266,7 @@ int main(int argc, char* const *argv) {
         default:
             break;
         }
-        flag = getopt_long(argc, argv, "hat:b:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
     }
     // // Set number of threads
     // omp_set_num_threads(num_threads);
@@ -308,17 +350,24 @@ int main(int argc, char* const *argv) {
         }
         if (!has_output) {
             output = input.substr(0, input.length() - 1) + "_fcz/";
+        } else {
+            if (stringEndsWith(output, ".tar")) {
+                save_as_tar = 1;
+            }
         }
-        if (output[output.length() - 1] != '/') {
+
+        if (output[output.length() - 1] != '/' && !save_as_tar) {
             output += "/";
         }
         // Check output directory exists or not
-        if (stat(output.c_str(), &st) == -1) {
-        #if defined(_WIN32) || defined(_WIN64)
-            _mkdir(output.c_str());
-        #else
-            mkdir(output.c_str(), 0777);
-        #endif
+        if (!save_as_tar) {
+            if (stat(output.c_str(), &st) == -1) {
+            #if defined(_WIN32) || defined(_WIN64)
+                _mkdir(output.c_str());
+            #else
+                mkdir(output.c_str(), 0755);
+            #endif
+            }
         }
         // Get all files in input directory
         std::string file;
@@ -326,19 +375,43 @@ int main(int argc, char* const *argv) {
         std::string outputFile;
         std::cout << "Compressing files in " << input;
         std::cout << " using " << num_threads << " threads" <<std::endl;
-        std::cout << "Output directory: " << output << std::endl;
+        if (save_as_tar) {
+            std::cout << "Output tar file: " << output << std::endl;
+        } else {
+            std::cout << "Output directory: " << output << std::endl;
+        }
         std::vector<std::string> files = getFilesInDirectory(input);
         // Parallelize
         omp_set_num_threads(num_threads);
-        #pragma omp parallel
-        {
+        if (!save_as_tar) {
+            #pragma omp parallel
+            {
             #pragma omp for
-            for (int i = 0; i < files.size(); i++) {
-                std::string file = files[i];
-                std::string inputFile = input + file;
-                std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                compress(inputFile, outputFile);
+                for (int i = 0; i < files.size(); i++) {
+                    std::string file = files[i];
+                    std::string inputFile = input + file;
+                    std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
+                    compress(inputFile, outputFile);
+                }
             }
+        } else {
+            mtar_t tar;
+            std::string tarFile = output.substr(0, output.length() - 1) + ".tar";
+            mtar_open(&tar, tarFile.c_str(), "w");
+            #pragma omp parallel
+            {
+            #pragma omp for
+                for (int i = 0; i < files.size(); i++) {
+                    std::string file = files[i];
+                    std::string inputFile = input + file;
+                    std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
+                    CompressedResidue compRes = CompressedResidue();
+                    compressWithoutWriting(compRes, inputFile);
+                    compRes.writeTar(tar, outputFile, compRes.getSize());
+                }
+            }
+            mtar_finalize(&tar);
+            mtar_close(&tar);
         }
     } else if (mode == COMPRESS_MULTIPLE_GCS) {
         // compress multiple files from gcs
@@ -382,27 +455,50 @@ int main(int argc, char* const *argv) {
         {
 #pragma omp single
             // Get object list from gcs bucket
-            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(10))) {
+            int id = 1;
+            int count = 0;
+            int n_zero = 4;
+            mtar_t tar;
+            std::string seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
+            std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
+            mtar_open(&tar, tarFile.c_str(), "w");
+            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(25000))) {
                 std::string obj_name = object_metadata->name();
-                std::cout << obj_name << std::endl;
+                // Set zero padding for ID with 4 digits
 #pragma omp task firstprivate(obj_name)
                 {
                     // Filter for splitting input into 10 different processes
                     // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
                     bool skipFilter = true;
-
                     bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
                     if (skipFilter && allowedSuffix) {
                         auto reader = client.ReadObject(bucket_name, obj_name);
                         if (!reader.status().ok()) {
                             std::cerr << "Could not read object " << obj_name << std::endl;
                         } else {
+                            count++;
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
-                            compressFromBuffer(contents, output, obj_name);
+                            CompressedResidue compRes = CompressedResidue();
+                            std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
+                            compressFromBufferWithoutWriting(compRes, contents, obj_name);
+                            compRes.writeTar(tar, outputFile, compRes.getSize());
                         }
                     }
+                    if (count == 25000) {
+                        mtar_finalize(&tar);
+                        mtar_close(&tar);
+                        id++;
+                        seqID = std::string(n_zero - std::min(n_zero, std::to_string(id).length()), '0') + std::to_string(id);
+                        tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
+                        mtar_open(&tar, tarFile.c_str(), "w");
+                        count = 0;
+                    }
+
                 }
             }
+            // Close tar
+            mtar_finalize(&tar);
+            mtar_close(&tar);
         }
 #endif
         flag = 0;
