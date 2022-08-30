@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:33:35
+ * Last Modified: 2022-08-31 02:40:06
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -451,7 +451,7 @@ int main(int argc, char* const *argv) {
         // Filter for splitting input into 10 different processes
         char filter = parts[2][0];
         mtar_t tar;
-        std::string seqID = std::to_string(filter);
+        std::string seqID(1, filter);
         std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
         std::cout << "Compressing " << tarFile << std::endl;
         mtar_open(&tar, tarFile.c_str(), "w");
