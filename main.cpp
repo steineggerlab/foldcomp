@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:09:37
+ * Last Modified: 2022-08-31 02:22:16
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -485,19 +485,17 @@ int main(int argc, char* const *argv) {
                             #pragma omp critical
                             {
                                 compRes.writeTar(tar, outputFile, compRes.getSize());
-                            }
-                            #pragma omp taskwait
-                            if (count == 10000) {
-                                mtar_finalize(&tar);
-                                mtar_close(&tar);
-                                id++;
-                                seqID = std::to_string(id);
-                                tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
-                                std::cout << "Compressing " << tarFile << std::endl;
-                                mtar_open(&tar, tarFile.c_str(), "w");
-                                count = 0;
-                            } else {
                                 count++;
+                                if (count == 10000) {
+                                    mtar_finalize(&tar);
+                                    mtar_close(&tar);
+                                    id++;
+                                    seqID = std::to_string(id);
+                                    tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
+                                    std::cout << "Compressing " << tarFile << std::endl;
+                                    mtar_open(&tar, tarFile.c_str(), "w");
+                                    count = 0;
+                                }
                             }
                         }
                     }
