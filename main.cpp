@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:04:02
+ * Last Modified: 2022-08-31 02:09:37
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -487,7 +487,7 @@ int main(int argc, char* const *argv) {
                                 compRes.writeTar(tar, outputFile, compRes.getSize());
                             }
                             #pragma omp taskwait
-                            if (count == 10) {
+                            if (count == 10000) {
                                 mtar_finalize(&tar);
                                 mtar_close(&tar);
                                 id++;
