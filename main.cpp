@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:25:46
+ * Last Modified: 2022-08-31 02:33:35
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -449,11 +449,9 @@ int main(int argc, char* const *argv) {
         std::string bucket_name = parts[1];
 
         // Filter for splitting input into 10 different processes
-        // char filter = parts[2][0];
-        int id = 1;
-        int count = 0;
+        char filter = parts[2][0];
         mtar_t tar;
-        std::string seqID = std::to_string(id);
+        std::string seqID = std::to_string(filter);
         std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
         std::cout << "Compressing " << tarFile << std::endl;
         mtar_open(&tar, tarFile.c_str(), "w");
@@ -469,8 +467,8 @@ int main(int argc, char* const *argv) {
 #pragma omp task firstprivate(obj_name)
                 {
                     // Filter for splitting input into 10 different processes
-                    // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
-                    bool skipFilter = true;
+                    bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    // bool skipFilter = true;
                     bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
                     if (skipFilter && allowedSuffix) {
                         auto reader = client.ReadObject(bucket_name, obj_name);
@@ -482,20 +480,9 @@ int main(int argc, char* const *argv) {
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
-                            compRes.writeTar(tar, outputFile, compRes.getSize());
                             #pragma omp critical
                             {
-                                count++;
-                                if (count == 10000) {
-                                    mtar_finalize(&tar);
-                                    mtar_close(&tar);
-                                    id++;
-                                    seqID = std::to_string(id);
-                                    tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
-                                    std::cout << "Compressing " << tarFile << std::endl;
-                                    mtar_open(&tar, tarFile.c_str(), "w");
-                                    count = 0;
-                                }
+                                compRes.writeTar(tar, outputFile, compRes.getSize());
                             }
                         }
                     }
