@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:22:16
+ * Last Modified: 2022-08-31 02:25:46
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -482,9 +482,9 @@ int main(int argc, char* const *argv) {
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
+                            compRes.writeTar(tar, outputFile, compRes.getSize());
                             #pragma omp critical
                             {
-                                compRes.writeTar(tar, outputFile, compRes.getSize());
                                 count++;
                                 if (count == 10000) {
                                     mtar_finalize(&tar);
