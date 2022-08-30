@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:01:04
+ * Last Modified: 2022-08-31 02:04:02
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -477,7 +477,7 @@ int main(int argc, char* const *argv) {
                         if (!reader.status().ok()) {
                             std::cerr << "Could not read object " << obj_name << std::endl;
                         } else {
-                            count++;
+
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
@@ -496,6 +496,8 @@ int main(int argc, char* const *argv) {
                                 std::cout << "Compressing " << tarFile << std::endl;
                                 mtar_open(&tar, tarFile.c_str(), "w");
                                 count = 0;
+                            } else {
+                                count++;
                             }
                         }
                     }
