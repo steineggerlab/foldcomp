@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-29 20:05:04
+ * Last Modified: 2022-08-31 01:54:18
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -455,6 +455,7 @@ int main(int argc, char* const *argv) {
         mtar_t tar;
         std::string seqID = std::to_string(id);
         std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
+        std::cout << "Compressing " << tarFile << std::endl;
         mtar_open(&tar, tarFile.c_str(), "w");
 
         omp_set_num_threads(num_threads);
@@ -462,7 +463,7 @@ int main(int argc, char* const *argv) {
         {
 #pragma omp single
             // Get object list from gcs bucket
-            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(25000))) {
+            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(20000))) {
                 std::string obj_name = object_metadata->name();
                 // Set zero padding for ID with 4 digits
 #pragma omp task firstprivate(obj_name)
@@ -481,9 +482,13 @@ int main(int argc, char* const *argv) {
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
-                            compRes.writeTar(tar, outputFile, compRes.getSize());
+                            #pragma omp critical
+                            {
+                                compRes.writeTar(tar, outputFile, compRes.getSize());
+                            }
                         }
                     }
+                    #pragma omp taskwait
                     if (count == 10) {
                         mtar_finalize(&tar);
                         mtar_close(&tar);
