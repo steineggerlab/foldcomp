@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-29 17:41:17
+ * Last Modified: 2022-08-31 16:39:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -539,9 +539,12 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     }
     this->nSideChainTorsion = this->sideChainAnglesDiscretized.size();
 
-    // Get tempFactor
+    // Get tempFactors
+    // 2022-08-31 16:28:30 - Changed to save one tempFactor per residue
     for (int i = 0; i < atoms.size(); i++) {
-        this->tempFactors.push_back(atoms[i].tempFactor);
+        if (atoms[i].atom == "CA") {
+            this->tempFactors.push_back(atoms[i].tempFactor);
+        }
     }
     // Discretize
     this->tempFactorsDisc = Discretizer(this->tempFactors, pow(2, NUM_BITS_TEMP) - 1);
@@ -873,10 +876,14 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
         }
         backBonePerResidue[i] = fullResidue;
     }
-    // Flatten backBonePerResidue
+    // Flatten backBonePerResidue & set tempFactor
     atom.clear();
+    // Prepare tempFactor
+    std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+    // Iterate over each residue
     for (int i = 0; i < backBonePerResidue.size(); i++) {
         for (int j = 0; j < backBonePerResidue[i].size(); j++) {
+            backBonePerResidue[i][j].tempFactor = tempFactors[i];
             atom.push_back(backBonePerResidue[i][j]);
         }
     }
@@ -885,12 +892,6 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
         atom.push_back(this->OXT);
     }
     setAtomIndexSequentially(atom, this->header.idxAtom);
-
-    // Set tempFactor
-    std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
-    for (int i = 0; i < atom.size(); i++) {
-        atom[i].tempFactor = tempFactors[i];
-    }
 
     this->rawAtoms = atom;
 
@@ -1017,11 +1018,11 @@ int CompressedResidue::read(std::string filename) {
     file.read(reinterpret_cast<char*>(&this->tempFactorsDisc.min), sizeof(float));
     file.read(reinterpret_cast<char*>(&this->tempFactorsDisc.cont_f), sizeof(float));
 
-    unsigned char* encodedTempFactors = new unsigned char[this->header.nAtom];
-    file.read(reinterpret_cast<char*>(encodedTempFactors), this->header.nAtom);
+    unsigned char* encodedTempFactors = new unsigned char[this->header.nResidue];
+    file.read(reinterpret_cast<char*>(encodedTempFactors), this->header.nResidue);
 
     unsigned int tempFactor;
-    for (int i = 0; i < this->header.nAtom; i++) {
+    for (int i = 0; i < this->header.nResidue; i++) {
         tempFactor = (unsigned int)encodedTempFactors[i];
         this->tempFactorsDiscretized.push_back(tempFactor);
     }
@@ -1117,8 +1118,8 @@ int CompressedResidue::write(std::string filename) {
         outfile.write((char*)&this->tempFactorsDisc.min, sizeof(float));
         outfile.write((char*)&this->tempFactorsDisc.cont_f, sizeof(float));
 
-        unsigned char* charTempFactors = new unsigned char[this->header.nAtom];
-        for (int i = 0; i < this->header.nAtom; i++) {
+        unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
+        for (int i = 0; i < this->header.nResidue; i++) {
             charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
         }
         outfile.write((char*)charTempFactors, this->tempFactorsDiscretized.size());
@@ -1190,9 +1191,9 @@ int CompressedResidue::writeTar(mtar_t& tar, std::string filename, size_t size) 
     mtar_write_data(&tar, &this->tempFactorsDisc.min, sizeof(float));
     mtar_write_data(&tar, &this->tempFactorsDisc.cont_f, sizeof(float));
     // Convert unsigned int to char array
-    unsigned char* charTempFactors = new unsigned char[this->header.nAtom];
+    unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
     // Get array of unsigned int from tempFactorsDiscretized and convert to char array
-    for (int i = 0; i < this->header.nAtom; i++) {
+    for (int i = 0; i < this->header.nResidue; i++) {
         // convert unsigned int to char
         charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
     }
