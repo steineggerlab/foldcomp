@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:40:06
+ * Last Modified: 2022-08-31 13:14:36
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -450,11 +450,13 @@ int main(int argc, char* const *argv) {
 
         // Filter for splitting input into 10 different processes
         char filter = parts[2][0];
-        mtar_t tar;
-        std::string seqID(1, filter);
-        std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
-        std::cout << "Compressing " << tarFile << std::endl;
-        mtar_open(&tar, tarFile.c_str(), "w");
+        mtar_t tarArray[num_threads];
+        std::vector<std::string> tarFiles;
+        for (int i = 0; i < num_threads; i++) {
+            std::string tarFile = output + "AF2_Uniprot_foldcomp." + std::to_string(i) + ".tar";
+            tarFiles.push_back(tarFile);
+            mtar_open(&tarArray[i], tarFile.c_str(), "w");
+        }
 
         omp_set_num_threads(num_threads);
 #pragma omp parallel
@@ -480,18 +482,21 @@ int main(int argc, char* const *argv) {
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
-                            #pragma omp critical
-                            {
-                                compRes.writeTar(tar, outputFile, compRes.getSize());
-                            }
+                            //compRes.writeTar(tar, outputFile, compRes.getSize());
+                            int thread_id = omp_get_thread_num();
+                            compRes.writeTar(tarArray[thread_id], outputFile, compRes.getSize());
                         }
                     }
 
                 }
             }
             // Close tar
-            mtar_finalize(&tar);
-            mtar_close(&tar);
+#pragma omp taskwait
+            for (int i = 0; i < num_threads; i++) {
+                mtar_finalize(&tarArray[i]);
+                mtar_close(&tarArray[i]);
+            }
+
         }
 #endif
         flag = 0;
