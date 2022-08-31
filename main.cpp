@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 02:40:06
+ * Last Modified: 2022-08-31 14:58:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -449,26 +449,29 @@ int main(int argc, char* const *argv) {
         std::string bucket_name = parts[1];
 
         // Filter for splitting input into 10 different processes
-        char filter = parts[2][0];
-        mtar_t tar;
-        std::string seqID(1, filter);
-        std::string tarFile = output + "AF2_Uniprot_foldcomp." + seqID + ".tar";
-        std::cout << "Compressing " << tarFile << std::endl;
-        mtar_open(&tar, tarFile.c_str(), "w");
+        //char filter = parts[2][0];
+        int num_tar = num_threads;
+        mtar_t tarArray[num_tar];
+        std::vector<std::string> tarFiles;
+        for (int i = 0; i < num_tar; i++) {
+            std::string tarFile = output + "AF2_Uniprot_foldcomp." + std::to_string(i) + ".tar";
+            tarFiles.push_back(tarFile);
+            mtar_open(&tarArray[i], tarFile.c_str(), "w");
+        }
 
         omp_set_num_threads(num_threads);
 #pragma omp parallel
         {
 #pragma omp single
             // Get object list from gcs bucket
-            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(20000))) {
+            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(100000))) {
                 std::string obj_name = object_metadata->name();
                 // Set zero padding for ID with 4 digits
 #pragma omp task firstprivate(obj_name)
                 {
                     // Filter for splitting input into 10 different processes
-                    bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
-                    // bool skipFilter = true;
+                    // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    bool skipFilter = true;
                     bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
                     if (skipFilter && allowedSuffix) {
                         auto reader = client.ReadObject(bucket_name, obj_name);
@@ -480,18 +483,21 @@ int main(int argc, char* const *argv) {
                             CompressedResidue compRes = CompressedResidue();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
-                            #pragma omp critical
-                            {
-                                compRes.writeTar(tar, outputFile, compRes.getSize());
-                            }
+                            //compRes.writeTar(tar, outputFile, compRes.getSize());
+                            int tar_id = omp_get_thread_num();
+                            compRes.writeTar(tarArray[tar_id], outputFile, compRes.getSize());
                         }
                     }
 
                 }
             }
             // Close tar
-            mtar_finalize(&tar);
-            mtar_close(&tar);
+#pragma omp taskwait
+            for (int i = 0; i < num_tar; i++) {
+                mtar_finalize(&tarArray[i]);
+                mtar_close(&tarArray[i]);
+            }
+
         }
 #endif
         flag = 0;
