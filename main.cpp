@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 13:34:46
+ * Last Modified: 2022-08-31 14:58:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -450,7 +450,7 @@ int main(int argc, char* const *argv) {
 
         // Filter for splitting input into 10 different processes
         //char filter = parts[2][0];
-        int num_tar = num_threads / 2;
+        int num_tar = num_threads;
         mtar_t tarArray[num_tar];
         std::vector<std::string> tarFiles;
         for (int i = 0; i < num_tar; i++) {
@@ -484,7 +484,7 @@ int main(int argc, char* const *argv) {
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
-                            int tar_id = omp_get_thread_num() / 2;
+                            int tar_id = omp_get_thread_num();
                             compRes.writeTar(tarArray[tar_id], outputFile, compRes.getSize());
                         }
                     }
@@ -493,7 +493,7 @@ int main(int argc, char* const *argv) {
             }
             // Close tar
 #pragma omp taskwait
-            for (int i = 0; i < num_threads; i++) {
+            for (int i = 0; i < num_tar; i++) {
                 mtar_finalize(&tarArray[i]);
                 mtar_close(&tarArray[i]);
             }
