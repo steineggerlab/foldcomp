@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 13:32:21
+ * Last Modified: 2022-08-31 13:34:46
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -449,7 +449,7 @@ int main(int argc, char* const *argv) {
         std::string bucket_name = parts[1];
 
         // Filter for splitting input into 10 different processes
-        char filter = parts[2][0];
+        //char filter = parts[2][0];
         int num_tar = num_threads / 2;
         mtar_t tarArray[num_tar];
         std::vector<std::string> tarFiles;
@@ -462,17 +462,16 @@ int main(int argc, char* const *argv) {
         omp_set_num_threads(num_threads);
 #pragma omp parallel
         {
-//#pragma omp single
-#pragma omp for
+#pragma omp single
             // Get object list from gcs bucket
             for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(100000))) {
                 std::string obj_name = object_metadata->name();
                 // Set zero padding for ID with 4 digits
-//#pragma omp task firstprivate(obj_name)
+#pragma omp task firstprivate(obj_name)
                 {
                     // Filter for splitting input into 10 different processes
-                    bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
-                    // bool skipFilter = true;
+                    // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
+                    bool skipFilter = true;
                     bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
                     if (skipFilter && allowedSuffix) {
                         auto reader = client.ReadObject(bucket_name, obj_name);
