@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 13:24:47
+ * Last Modified: 2022-08-31 13:32:21
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -462,12 +462,13 @@ int main(int argc, char* const *argv) {
         omp_set_num_threads(num_threads);
 #pragma omp parallel
         {
-#pragma omp single
+//#pragma omp single
+#pragma omp for
             // Get object list from gcs bucket
-            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(20000))) {
+            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(100000))) {
                 std::string obj_name = object_metadata->name();
                 // Set zero padding for ID with 4 digits
-#pragma omp task firstprivate(obj_name)
+//#pragma omp task firstprivate(obj_name)
                 {
                     // Filter for splitting input into 10 different processes
                     bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
