@@ -42,5 +42,3 @@ Foldcomp is a compression method and format to compress protein structures requi
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
   <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
 </a>
----
-
