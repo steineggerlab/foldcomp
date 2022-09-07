@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-08 05:01:27
+ * Last Modified: 2022-09-08 05:12:33
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -803,6 +803,9 @@ int main(int argc, char* const *argv) {
                                     dataBuffer = (char*)realloc(dataBuffer, bufferSize);
                                 }
                                 if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                                    if (mtar_read_data(&tar, dataBuffer, header.size) == MTAR_EBADCHKSUM) {
+                                        continue;
+                                    }
                                     int err = mtar_read_data(&tar, dataBuffer, header.size);
                                     const char* errStr = mtar_strerror(err);
                                     std::cerr << "Error: " << errStr << std::endl;
