@@ -193,7 +193,10 @@ int writeAtomCoordinatesToPDB(
     // Write title
     // 2022-07-20 05:15:06 Currently NOT WORKING.
     if (title != "") {
-        int title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        int title_line_num = 1;
+        if(title.length() > 70){
+            title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        }
         // Split title into lines of 70 characters.
         std::vector<std::string> title_per_line;
         for (int i = 0; i < title_line_num; i++) {
