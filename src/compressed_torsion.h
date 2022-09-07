@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-08 22:28:19
+ * Last Modified: 2022-09-08 03:06:54
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -27,6 +27,9 @@
 #include "torsion.xyz.h"
 #include "nerf.h"
 #include "utility.h"
+
+// TAR format handling
+#include "microtar/microtar.h"
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
@@ -369,13 +372,21 @@ public:
     int preprocess(std::vector<AtomCoordinate>& atoms);
     std::vector<BackboneChain> compress(std::vector<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
-    int read(std::string filename);
+    int read(std::istream & filename);
     int write(std::string filename);
+    // Read & write for tar files
+    // int readTar(mtar_t& tar, std::string filename, size_t size);
+    int writeTar(mtar_t& tar, std::string filename, size_t size);
+
     int reconstruct(std::vector<AtomCoordinate>& atoms, int mode);
     CompressedFileHeader get_header();
     int read_header(CompressedFileHeader& header);
-    //
-
+    size_t getSize();
+    // methods for getting plddt (tempFactors) or amino acid sequence
+    int continuizeTempFactors();
+    int writeFASTALike(std::string filename, std::vector<std::string>& data);
+    int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
+    int extract(std::vector<std::string>& data, int type);
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();

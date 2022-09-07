@@ -5,7 +5,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: 2022-08-04 16:55:50
+# Last Modified: 2022-09-08 00:44:51
 # Modified By: Hyunbin Kim (khb7840@gmail.com)
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -13,7 +13,7 @@
 # Configure
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cd ..
 # Build
 cmake --build ./build --target foldcomp

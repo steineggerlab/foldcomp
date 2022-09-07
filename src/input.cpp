@@ -6,7 +6,7 @@
  * Description:
  *     This code is written as part of project "src".
  * ---
- * Last Modified: 2022-08-04 16:51:31
+ * Last Modified: 2022-09-08 03:40:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -26,7 +26,16 @@ void StructureReader::updateStructure(void* void_st, std::string& filename) {
 
     this->title.clear();
     this->atoms.clear();
+    // cif
     this->title = st->get_info("_entry.id");
+    // pdb
+    if (this->title.empty()) {
+        this->title = st->get_info("_struct.title");
+    }
+    // else
+    if (this->title.empty()) {
+        this->title = filename;
+    }
 
     for (gemmi::Model& model : st->models) {
         for (gemmi::Chain& ch : model.chains) {

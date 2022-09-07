@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-08 22:31:50
+ * Last Modified: 2022-09-08 03:07:08
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -539,9 +539,12 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
     }
     this->nSideChainTorsion = this->sideChainAnglesDiscretized.size();
 
-    // Get tempFactor
+    // Get tempFactors
+    // 2022-08-31 16:28:30 - Changed to save one tempFactor per residue
     for (int i = 0; i < atoms.size(); i++) {
-        this->tempFactors.push_back(atoms[i].tempFactor);
+        if (atoms[i].atom == "CA") {
+            this->tempFactors.push_back(atoms[i].tempFactor);
+        }
     }
     // Discretize
     this->tempFactorsDisc = Discretizer(this->tempFactors, pow(2, NUM_BITS_TEMP) - 1);
@@ -873,10 +876,14 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
         }
         backBonePerResidue[i] = fullResidue;
     }
-    // Flatten backBonePerResidue
+    // Flatten backBonePerResidue & set tempFactor
     atom.clear();
+    // Prepare tempFactor
+    std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+    // Iterate over each residue
     for (int i = 0; i < backBonePerResidue.size(); i++) {
         for (int j = 0; j < backBonePerResidue[i].size(); j++) {
+            backBonePerResidue[i][j].tempFactor = tempFactors[i];
             atom.push_back(backBonePerResidue[i][j]);
         }
     }
@@ -886,33 +893,22 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
     }
     setAtomIndexSequentially(atom, this->header.idxAtom);
 
-    // Set tempFactor
-    std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
-    for (int i = 0; i < atom.size(); i++) {
-        atom[i].tempFactor = tempFactors[i];
-    }
-
     this->rawAtoms = atom;
 
     return success;
 }
 
-int CompressedResidue::read(std::string filename) {
+int CompressedResidue::read(std::istream & file) {
     int success;
     // Open file in reading binary mode
-    std::ifstream file(filename, std::ios::binary);
-    // Check if file is open
-    if (!file.is_open()) {
-        std::cout << "Error: Could not open file " << filename << std::endl;
-        return -1;
-    }
+
     // Check the file starts with magic number
     char mNum[MAGICNUMBER_LENGTH];
     file.read(mNum, MAGICNUMBER_LENGTH);
     // compare mNum and this->magicNumber
     for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
         if (mNum[i] != MAGICNUMBER[i]) {
-            std::cout << "Error: File " << filename << " is not a valid compressed residue file" << std::endl;
+            std::cout << "Error: File is not a valid compressed residue file" << std::endl;
             return -1;
         }
     }
@@ -1017,11 +1013,11 @@ int CompressedResidue::read(std::string filename) {
     file.read(reinterpret_cast<char*>(&this->tempFactorsDisc.min), sizeof(float));
     file.read(reinterpret_cast<char*>(&this->tempFactorsDisc.cont_f), sizeof(float));
 
-    unsigned char* encodedTempFactors = new unsigned char[this->header.nAtom];
-    file.read(reinterpret_cast<char*>(encodedTempFactors), this->header.nAtom);
+    unsigned char* encodedTempFactors = new unsigned char[this->header.nResidue];
+    file.read(reinterpret_cast<char*>(encodedTempFactors), this->header.nResidue);
 
     unsigned int tempFactor;
-    for (int i = 0; i < this->header.nAtom; i++) {
+    for (int i = 0; i < this->header.nResidue; i++) {
         tempFactor = (unsigned int)encodedTempFactors[i];
         this->tempFactorsDiscretized.push_back(tempFactor);
     }
@@ -1037,7 +1033,6 @@ int CompressedResidue::read(std::string filename) {
     }
 
     // Close file
-    file.close();
     return success;
 }
 
@@ -1063,7 +1058,7 @@ int CompressedResidue::write(std::string filename) {
         // Write title
         char* title = new char[this->strTitle.length() + 1];
         strcpy(title, this->strTitle.c_str());
-        outfile.write((char*)title, sizeof(char) * this->header.lenTitle);
+        outfile.write((char*)title, strlen(title));
         delete[] title;
 
         // 2022-08-08 19:15:30 - Changed to write all anchor atoms
@@ -1117,8 +1112,8 @@ int CompressedResidue::write(std::string filename) {
         outfile.write((char*)&this->tempFactorsDisc.min, sizeof(float));
         outfile.write((char*)&this->tempFactorsDisc.cont_f, sizeof(float));
 
-        unsigned char* charTempFactors = new unsigned char[this->header.nAtom];
-        for (int i = 0; i < this->header.nAtom; i++) {
+        unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
+        for (int i = 0; i < this->header.nResidue; i++) {
             charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
         }
         outfile.write((char*)charTempFactors, this->tempFactorsDiscretized.size());
@@ -1133,6 +1128,173 @@ int CompressedResidue::write(std::string filename) {
     return flag;
 }
 
+// 2022-08-29 15:42:29 TAR format support
+int CompressedResidue::writeTar(mtar_t& tar, std::string filename, size_t size) {
+    int flag = 0;
+    mtar_write_file_header(&tar, filename.c_str(), size);
+    // Magic number
+    mtar_write_data(&tar, MAGICNUMBER, MAGICNUMBER_LENGTH);
+    // Write header
+    mtar_write_data(&tar, &this->header, sizeof(CompressedFileHeader));
+    // Write anchorIndices
+    for (int i = 0; i < this->anchorIndices.size(); i++) {
+        mtar_write_data(&tar, &this->anchorIndices[i], sizeof(int));
+    }
+    // Write title
+    mtar_write_data(&tar, this->strTitle.c_str(), strlen(this->strTitle.c_str()));
+    // Write anchor atoms
+    for (auto anchors : this->anchorAtoms) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                mtar_write_data(&tar, &anchors[i].coordinate[j], sizeof(float));
+            }
+        }
+    }
+    // Write hasOXT
+    mtar_write_data(&tar, &this->hasOXT, sizeof(char));
+    // Write OXT_coords
+    for (int i = 0; i < 3; i++) {
+        mtar_write_data(&tar, &this->OXT_coords[i], sizeof(float));
+    }
+    // Write sideChainDisc
+    // mtar_write_data(&tar, &this->sideChainDisc, sizeof(SideChainDiscretizers));
+    // Write the compressed backbone
+    char* buffer = new char[8];
+    for (int i = 0; i < this->compressedBackBone.size(); i++) {
+        flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
+        mtar_write_data(&tar, buffer, 8);
+    }
+    delete[] buffer;
+    // Write side chain torsion angles
+    int encodedSideChainSize = this->nSideChainTorsion;
+    if (encodedSideChainSize % 2 == 1) {
+        encodedSideChainSize++;
+    }
+    encodedSideChainSize /= 2;
+
+    unsigned char* charSideChainTorsion = new unsigned char[this->nSideChainTorsion];
+    // Get array of unsigned int from sideChainAnglesDiscretized and convert to char array
+    for (int i = 0; i < this->nSideChainTorsion; i++) {
+        // convert unsigned int to char
+        charSideChainTorsion[i] = (unsigned char)this->sideChainAnglesDiscretized[i];
+    }
+    mtar_write_data(&tar, charSideChainTorsion, this->sideChainAnglesDiscretized.size());
+    delete[] charSideChainTorsion;
+    // Write temperature factors
+    // Disc
+    mtar_write_data(&tar, &this->tempFactorsDisc.min, sizeof(float));
+    mtar_write_data(&tar, &this->tempFactorsDisc.cont_f, sizeof(float));
+    // Convert unsigned int to char array
+    unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
+    // Get array of unsigned int from tempFactorsDiscretized and convert to char array
+    for (int i = 0; i < this->header.nResidue; i++) {
+        // convert unsigned int to char
+        charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
+    }
+    mtar_write_data(&tar, charTempFactors, this->tempFactorsDiscretized.size());
+    delete[] charTempFactors;
+    return flag;
+}
+
+size_t CompressedResidue::getSize() {
+    // Calculate the size of the compressed format
+    size_t size = 0;
+    // Magic number
+    size += MAGICNUMBER_LENGTH;
+    // Header
+    size += sizeof(CompressedFileHeader);
+    // Anchor indices
+    size += sizeof(int) * this->anchorIndices.size();
+    // Title
+    size += strlen(this->strTitle.c_str());
+    // Anchor atoms
+    size += sizeof(float) * 3 * 3 * this->anchorAtoms.size();
+    // OXT
+    size += sizeof(char);
+    size += sizeof(float) * 3;
+    // Backbone
+    size += sizeof(char) * 8 * this->compressedBackBone.size();
+    // Side chain torsion angles
+    size += sizeof(unsigned char) * this->sideChainAnglesDiscretized.size();
+    // Temperature factors
+    size += sizeof(float) * 2;
+    size += sizeof(unsigned char) * this->tempFactorsDiscretized.size();
+    return size;
+}
+
+
+// Functions to extract temperature factors only
+int CompressedResidue::continuizeTempFactors() {
+    this->tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+    return 0;
+}
+
+int CompressedResidue::writeFASTALike(std::string filename, std::vector<std::string>& data) {
+    int flag = 0;
+    // outfile is a text file
+    std::ofstream outfile(filename, std::ios::out);
+    // Output format
+    // >title
+    // 95461729... 889 // plddt of all residues converted to 1 decimal place or
+    // MKLLSKPR... YVK // amino acid sequence
+    // Write title
+    outfile << ">" << this->strTitle << std::endl;
+    // Write data
+    for (auto s : data) {
+        outfile << s;
+    }
+    outfile << std::endl;
+    // Close file
+    outfile.close();
+    return flag;
+}
+
+int CompressedResidue::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
+    int flag = 0;
+    // Output format
+    // >title
+    // 95461729... 889 // plddt of all residues converted to 1 decimal place or
+    // MKLLSKPR... YVK // amino acid sequence
+    // Write title
+    std::string str = ">" + this->strTitle + "\n";
+    for (auto s : data) {
+        str += s;
+    }
+    str += "\n";
+    mtar_write_file_header(&tar, filename.c_str(), str.size());
+    mtar_write_data(&tar, str.c_str(), str.size());
+    return flag;
+}
+
+/**
+ * @brief Extract information from the compressed file and write to a FASTA-like file
+ * 
+ * @param filename 
+ * @param type 0: plddt, 1: sequence
+ * @return int 
+ */
+int CompressedResidue::extract(std::vector<std::string>& data, int type) {
+    int flag = 0;
+    if (type == 0) {
+        // Extract temperature factors
+        this->continuizeTempFactors();
+        int tempFactorInt;
+        for (int i = 0; i < this->tempFactors.size(); i++) {
+            tempFactorInt = (int)(this->tempFactors[i] / 10);
+            data.push_back(std::to_string(tempFactorInt));
+        }
+    } else if (type == 1) {
+        // Extract sequence
+        for (int i = 0; i < this->header.nResidue; i++) {
+            char res = convertIntToOneLetterCode(this->compressedBackBone[i].residue);
+            data.push_back(std::string(1, res));
+        }
+    }
+    return flag;
+}
+
+
+// 
 CompressedFileHeader CompressedResidue::get_header() {
     CompressedFileHeader header;
     // counts
