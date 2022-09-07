@@ -31,7 +31,7 @@ foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
 # Configure
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cd ..
 # Build
 cmake --build ./build --target foldcomp
