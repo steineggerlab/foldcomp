@@ -13,8 +13,8 @@ foldcomp decompress <fcz_file> [<pdb_file>]
 foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
 
 [Extraction]
-foldcomp extract [--plddt|--amino-acid] <fcz_file> [<txt_file|fasta_file>]
-foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<output_dir>]
+foldcomp extract [--plddt|--fasta] <fcz_file> [<txt_file|fasta_file>]
+foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
 
 [Options]
  -h, --help           print this help message
