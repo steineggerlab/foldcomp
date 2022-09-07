@@ -24,6 +24,7 @@ foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
  -z, --tar            save as tar file [default=false]
  --plddt              extract pLDDT score (only for extraction mode)
  --fasta              extract amino acid sequence (only for extraction mode)
+ --no-merge           do not merge output files (only for extraction mode)
 ```
 
 ## Build
