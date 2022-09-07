@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-08 03:35:02
+ * Last Modified: 2022-09-08 04:37:19
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -46,6 +46,7 @@ static int use_alt_order = 0;
 static int anchor_residue_threshold = 200;
 static int save_as_tar = 0;
 static int ext_mode = 0;
+static int ext_merge = 1;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -61,6 +62,7 @@ int print_usage(void) {
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
+    std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
     return 0;
 }
 
@@ -257,14 +259,15 @@ int main(int argc, char* const *argv) {
 
     // Define command line options
     static struct option long_options[] = {
-            {"help",          no_argument,         0, 'h'},
-            {"alt",           no_argument,         0, 'a'},
-            {"tar",           no_argument,         0, 'z'},
-            {"plddt",         no_argument, &ext_mode,  0 },
-            {"fasta",         no_argument, &ext_mode,  1 },
-            {"threads", required_argument,         0, 't'},
-            {"break",   required_argument,         0, 'b'},
-            {0, 0,                                 0,  0 }
+            {"help",          no_argument,          0, 'h'},
+            {"alt",           no_argument,          0, 'a'},
+            {"tar",           no_argument,          0, 'z'},
+            {"plddt",         no_argument,  &ext_mode,  0 },
+            {"fasta",         no_argument,  &ext_mode,  1 },
+            {"no-merge",      no_argument, &ext_merge,  0 },
+            {"threads", required_argument,          0, 't'},
+            {"break",   required_argument,          0, 'b'},
+            {0,                         0,          0,  0 }
     };
 
     // Parse command line options with getopt_long
@@ -688,6 +691,17 @@ int main(int argc, char* const *argv) {
 #endif
                 }
                 // Get all files in input directory
+                std::string defaultOutputFile = "";
+                if (ext_mode == 0){
+                    defaultOutputFile = output + "plddt.txt";
+                } else if (ext_mode == 1) {
+                    defaultOutputFile = output + "aa.fasta";
+                }
+                std::ofstream defaultOutput(defaultOutputFile, std::ios::out);
+                if (ext_merge == 0) {
+                    // close and delete defaultOutput
+                    defaultOutput.close();
+                }
                 std::cout << "Extracting files in " << input;
                 std::cout << " using " << num_threads << " threads" << std::endl;
                 std::cout << "Output directory: " << output << std::endl;
@@ -705,18 +719,37 @@ int main(int argc, char* const *argv) {
                             continue;
                         }
                         std::string outputFile;
-                        if (ext_mode == 0) {
-                            // output file extension is ".plddt.txt"
-                            outputFile = output + getFileWithoutExt(files[i]) + ".plddt.txt";
+                        if (ext_merge == 1) {
+                            std::vector<std::string> data;
+                            CompressedResidue compRes = CompressedResidue();
+                            compRes.read(input);
+                            compRes.extract(data, ext_mode);
+                            #pragma omp critical
+                            {
+                                defaultOutput << ">" << compRes.strTitle << "\n";
+                                for (int j = 0; j < data.size(); j++) {
+                                    defaultOutput << data[j];
+                                }
+                                defaultOutput << "\n";
+                            }
+                        } else {
+                            if (ext_mode == 0) {
+                                // output file extension is ".plddt.txt"
+                                outputFile = output + getFileWithoutExt(files[i]) + ".plddt.txt";
+                            }
+                            else if (ext_mode == 1) {
+                                outputFile = output + getFileWithoutExt(files[i]) + ".fasta";
+                            }
+                            extract(input, outputFile);
                         }
-                        else if (ext_mode == 1) {
-                            outputFile = output + getFileWithoutExt(files[i]) + ".fasta";
-                        }
-                        extract(input, outputFile);
                         input.close();
                     }
                 }
                 flag = 0;
+                if (ext_merge == 1) {
+                    // close and delete defaultOutput
+                    defaultOutput.close();
+                }
             } else if (mode == EXTRACT_MULTIPLE_TAR) {
                 omp_set_num_threads(num_threads);
                 mtar_t tar;
@@ -724,14 +757,18 @@ int main(int argc, char* const *argv) {
                     std::cerr << "Error: open tar " << input << " failed." << std::endl;
                     return 1;
                 }
+                std::string defaultOutputFile = "";
                 if (!has_output) {
                     if (ext_mode == 0) {
                         output = getFileWithoutExt(input) + "_plddt/";
+                        defaultOutputFile = output + "plddt.txt";
                     }
                     else if (ext_mode == 1) {
                         output = getFileWithoutExt(input) + "_fasta/";
+                        defaultOutputFile = output + "aa.fasta";
                     }
                 }
+
                 // Check output directory exists or not
                 if (stat(output.c_str(), &st) == -1) {
 #if defined(_WIN32) || defined(_WIN64)
@@ -739,6 +776,11 @@ int main(int argc, char* const *argv) {
 #else
                     mkdir(output.c_str(), 0755);
 #endif
+                }
+                std::ofstream defaultOutput(defaultOutputFile, std::ios::out);
+                if (ext_merge == 0) {
+                    // close and delete defaultOutput
+                    defaultOutput.close();
                 }
                 std::cout << "Extracting files in " << input << " using " << num_threads << " threads" << std::endl;
                 // TAR READING PART BY MARTIN STEINEGGER
@@ -781,18 +823,38 @@ int main(int argc, char* const *argv) {
                             std::istringstream input(std::string(dataBuffer, header.size));
                             std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
                             std::string outputFile = "";
-                            if (ext_mode == 0) {
-                                // output file extension is ".plddt.txt"
-                                outputFile = output + name_clean + ".plddt.txt";
+                            
+                            if (ext_merge == 1) {
+                                std::vector<std::string> data;
+                                CompressedResidue compRes = CompressedResidue();
+                                compRes.read(input);
+                                compRes.extract(data, ext_mode);
+                            #pragma omp critical
+                                {
+                                    defaultOutput << ">" << compRes.strTitle << "\n";
+                                    for (int j = 0; j < data.size(); j++) {
+                                        defaultOutput << data[j];
+                                    }
+                                    defaultOutput << "\n";
+                                }
+                            } else {
+                                if (ext_mode == 0) {
+                                    // output file extension is ".plddt.txt"
+                                    outputFile = output + name_clean + ".plddt.txt";
+                                }
+                                else if (ext_mode == 1) {
+                                    outputFile = output + name_clean + ".fasta";
+                                }
+                                extract(input, outputFile);
                             }
-                            else if (ext_mode == 1) {
-                                outputFile = output + name_clean + ".fasta";
-                            }
-                            extract(input, outputFile);
                         }
                     } // end while loop
                 } // end openmp
                 flag = 0;
+                if (ext_merge == 1) {
+                    // close and delete defaultOutput
+                    defaultOutput.close();
+                }
             }   
     } else {
         std::cout << "Invalid mode." << std::endl;
