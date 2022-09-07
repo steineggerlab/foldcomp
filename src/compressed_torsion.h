@@ -372,7 +372,7 @@ public:
     int preprocess(std::vector<AtomCoordinate>& atoms);
     std::vector<BackboneChain> compress(std::vector<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
-    int read(std::string filename);
+    int read(std::istream & filename);
     int write(std::string filename);
     // Read & write for tar files
     // int readTar(mtar_t& tar, std::string filename, size_t size);

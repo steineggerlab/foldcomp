@@ -898,22 +898,17 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
     return success;
 }
 
-int CompressedResidue::read(std::string filename) {
+int CompressedResidue::read(std::istream & file) {
     int success;
     // Open file in reading binary mode
-    std::ifstream file(filename, std::ios::binary);
-    // Check if file is open
-    if (!file.is_open()) {
-        std::cout << "Error: Could not open file " << filename << std::endl;
-        return -1;
-    }
+
     // Check the file starts with magic number
     char mNum[MAGICNUMBER_LENGTH];
     file.read(mNum, MAGICNUMBER_LENGTH);
     // compare mNum and this->magicNumber
     for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
         if (mNum[i] != MAGICNUMBER[i]) {
-            std::cout << "Error: File " << filename << " is not a valid compressed residue file" << std::endl;
+            std::cout << "Error: File is not a valid compressed residue file" << std::endl;
             return -1;
         }
     }
@@ -1038,7 +1033,6 @@ int CompressedResidue::read(std::string filename) {
     }
 
     // Close file
-    file.close();
     return success;
 }
 
