@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-08 04:37:19
+ * Last Modified: 2022-09-08 04:51:41
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -730,7 +730,7 @@ int main(int argc, char* const *argv) {
                                 for (int j = 0; j < data.size(); j++) {
                                     defaultOutput << data[j];
                                 }
-                                defaultOutput << "\n";
+                                defaultOutput << std::endl;
                             }
                         } else {
                             if (ext_mode == 0) {
@@ -835,7 +835,7 @@ int main(int argc, char* const *argv) {
                                     for (int j = 0; j < data.size(); j++) {
                                         defaultOutput << data[j];
                                     }
-                                    defaultOutput << "\n";
+                                    defaultOutput << std::endl;
                                 }
                             } else {
                                 if (ext_mode == 0) {
