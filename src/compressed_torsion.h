@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-07 22:33:21
+ * Last Modified: 2022-09-08 03:06:54
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -382,9 +382,11 @@ public:
     CompressedFileHeader get_header();
     int read_header(CompressedFileHeader& header);
     size_t getSize();
-    // methods for 
+    // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
-    int writeTempFactors(std::string filename);
+    int writeFASTALike(std::string filename, std::vector<std::string>& data);
+    int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
+    int extract(std::vector<std::string>& data, int type);
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
