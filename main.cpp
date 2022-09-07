@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-08-31 14:58:39
+ * Last Modified: 2022-09-07 21:30:43
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -503,23 +503,45 @@ int main(int argc, char* const *argv) {
         flag = 0;
     } else if (mode == DECOMPRESS_MULTIPLE) {
         // decompress multiple files
-        if (input[input.length() - 1] != '/') {
-            input += "/";
+        int read_tar = 0;
+        // Check input
+        if (stringEndsWith(input, ".tar")) {
+            // If input is a tar file, decompress all files in the tar file
+            read_tar = 1;
+        } else {
+            // If input is a directory, decompress all files in the directory
+            if (input[input.length() - 1] != '/') {
+                input += "/";
+            }
+            // Check input directory exists or not
+            if (stat(input.c_str(), &st) == -1) {
+                std::cerr << "Input directory does not exist" << std::endl;
+                return 1;
+            }
         }
+        // Check output
         if (!has_output) {
             output = input.substr(0, input.length() - 1) + "_pdb/";
+        } else {
+            // If output is a tar file, set save_as_tar to 1
+            if (stringEndsWith(output, ".tar")) {
+                save_as_tar = 1;
+            } else {
+                // If output is a directory, check if it exists or not
+                if (output[output.length() - 1] != '/') {
+                    output += "/";
+                }
+                // Check output directory exists or not
+                if (stat(output.c_str(), &st) == -1) {
+                #if defined(_WIN32) || defined(_WIN64)
+                    _mkdir(output.c_str());
+                #else
+                    mkdir(output.c_str(), 0777);
+                #endif
+                }
+            }
         }
-        if (output[output.length() - 1] != '/') {
-            output += "/";
-        }
-        // Check output directory exists or not
-        if (stat(output.c_str(), &st) == -1) {
-        #if defined(_WIN32) || defined(_WIN64)
-            _mkdir(output.c_str());
-        #else
-            mkdir(output.c_str(), 0777);
-        #endif
-        }
+
         // Get all files in input directory
         std::string file;
         std::string inputFile;

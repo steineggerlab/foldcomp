@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-31 16:39:39
+ * Last Modified: 2022-09-07 21:30:50
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1228,6 +1228,29 @@ size_t CompressedResidue::getSize() {
     return size;
 }
 
+// RMSD output
+int CompressedResidue::writeTempFactors(std::string filename) {
+    int flag = 0;
+    // outfile is a text file
+    std::ofstream outfile(filename, std::ios::out);
+    // Output format
+    // >title
+    // 95461729... 889 // plddt of all residues converted to 1 decimal place
+    // Write title
+    outfile << ">" << this->strTitle << std::endl;
+    // Write tempFactor
+    int tempFactorInt;
+    for (int i = 0; i < this->tempFactors.size(); i++) {
+        tempFactorInt = (int)(this->tempFactors[i] / 10);
+        outfile << tempFactorInt;
+    }
+    outfile << std::endl;
+    // Close file
+    outfile.close();
+    return flag;
+}
+
+// 
 CompressedFileHeader CompressedResidue::get_header() {
     CompressedFileHeader header;
     // counts

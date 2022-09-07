@@ -1,12 +1,6 @@
----
-File: README.md
-ProjectName: Foldcomp
-Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-08-12 20:27:36
----
-
 # Foldcomp
-Foldcomp compresses protein structures with torsion angles effectively.
+Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb.
+
 
 ## Usage
 ```
@@ -43,6 +37,9 @@ Foldcomp is a compression method and format to compress protein structures requi
 
 ![abstract](.github/img/Abstract.jpg)
 
----
-
 > WARNING: Current version of Foldcomp does not support compression of multiple chains in a single file.
+
+## Contributor
+<a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
+  <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
+</a>

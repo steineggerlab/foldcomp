@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-08-29 16:48:57
+ * Last Modified: 2022-09-07 22:33:21
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -375,14 +375,16 @@ public:
     int read(std::string filename);
     int write(std::string filename);
     // Read & write for tar files
-    int readTar(mtar_t& tar, std::string filename, size_t size);
+    // int readTar(mtar_t& tar, std::string filename, size_t size);
     int writeTar(mtar_t& tar, std::string filename, size_t size);
 
     int reconstruct(std::vector<AtomCoordinate>& atoms, int mode);
     CompressedFileHeader get_header();
     int read_header(CompressedFileHeader& header);
     size_t getSize();
-    //
+    // methods for 
+    int continuizeTempFactors();
+    int writeTempFactors(std::string filename);
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
