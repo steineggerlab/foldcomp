@@ -36,8 +36,11 @@ Foldcomp is a compression method and format to compress protein structures requi
 
 ![abstract](.github/img/Abstract.jpg)
 
-## Author
+> WARNING: Current version of Foldcomp does not support compression of multiple chains in a single file.
 
+## Contributor
+<a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
+  <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
+</a>
 ---
 
-> WARNING: Current version of Foldcomp does not support compression of multiple chains in a single file.
