@@ -23,7 +23,7 @@ foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
 # Configure
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cd ..
 # Build
 cmake --build ./build --target foldcomp
