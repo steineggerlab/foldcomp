@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-08-08 21:12:28
+ * Last Modified: 2022-09-08 00:42:34
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -191,9 +191,12 @@ int writeAtomCoordinatesToPDB(
         return 1;
     }
     // Write title
-    // 2022-07-20 05:15:06 Currently NOT WORKING.
+    // Check if title is too long and if so, write the title in multiple lines
     if (title != "") {
-        int title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        int title_line_num = 1;
+        if(title.length() > 70){
+            title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        }
         // Split title into lines of 70 characters.
         std::vector<std::string> title_per_line;
         for (int i = 0; i < title_line_num; i++) {
