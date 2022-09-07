@@ -1,12 +1,6 @@
----
-File: README.md
-ProjectName: Foldcomp
-Author: Hyunbin Kim (khb7840@gmail.com)
-Last Modified: 2022-08-04 17:38:26
----
-
 # Foldcomp
-Foldcomp compresses protein structures with torsion angles effectively.
+Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes pre residue, an averaged sized protein of 350 residues require ~4.2kb.
+
 
 ## Usage
 ```
@@ -41,6 +35,8 @@ cmake --build ./build --target foldcomp
 Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude than saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact format.
 
 ![abstract](.github/img/Abstract.jpg)
+
+## Author
 
 ---
 
