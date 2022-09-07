@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-07 21:30:50
+ * Last Modified: 2022-09-08 03:07:08
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1222,27 +1222,77 @@ size_t CompressedResidue::getSize() {
     return size;
 }
 
-// RMSD output
-int CompressedResidue::writeTempFactors(std::string filename) {
+
+// Functions to extract temperature factors only
+int CompressedResidue::continuizeTempFactors() {
+    this->tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+    return 0;
+}
+
+int CompressedResidue::writeFASTALike(std::string filename, std::vector<std::string>& data) {
     int flag = 0;
     // outfile is a text file
     std::ofstream outfile(filename, std::ios::out);
     // Output format
     // >title
-    // 95461729... 889 // plddt of all residues converted to 1 decimal place
+    // 95461729... 889 // plddt of all residues converted to 1 decimal place or
+    // MKLLSKPR... YVK // amino acid sequence
     // Write title
     outfile << ">" << this->strTitle << std::endl;
-    // Write tempFactor
-    int tempFactorInt;
-    for (int i = 0; i < this->tempFactors.size(); i++) {
-        tempFactorInt = (int)(this->tempFactors[i] / 10);
-        outfile << tempFactorInt;
+    // Write data
+    for (auto s : data) {
+        outfile << s;
     }
     outfile << std::endl;
     // Close file
     outfile.close();
     return flag;
 }
+
+int CompressedResidue::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
+    int flag = 0;
+    // Output format
+    // >title
+    // 95461729... 889 // plddt of all residues converted to 1 decimal place or
+    // MKLLSKPR... YVK // amino acid sequence
+    // Write title
+    std::string str = ">" + this->strTitle + "\n";
+    for (auto s : data) {
+        str += s;
+    }
+    str += "\n";
+    mtar_write_file_header(&tar, filename.c_str(), str.size());
+    mtar_write_data(&tar, str.c_str(), str.size());
+    return flag;
+}
+
+/**
+ * @brief Extract information from the compressed file and write to a FASTA-like file
+ * 
+ * @param filename 
+ * @param type 0: plddt, 1: sequence
+ * @return int 
+ */
+int CompressedResidue::extract(std::vector<std::string>& data, int type) {
+    int flag = 0;
+    if (type == 0) {
+        // Extract temperature factors
+        this->continuizeTempFactors();
+        int tempFactorInt;
+        for (int i = 0; i < this->tempFactors.size(); i++) {
+            tempFactorInt = (int)(this->tempFactors[i] / 10);
+            data.push_back(std::to_string(tempFactorInt));
+        }
+    } else if (type == 1) {
+        // Extract sequence
+        for (int i = 0; i < this->header.nResidue; i++) {
+            char res = convertIntToOneLetterCode(this->compressedBackBone[i].residue);
+            data.push_back(std::string(1, res));
+        }
+    }
+    return flag;
+}
+
 
 // 
 CompressedFileHeader CompressedResidue::get_header() {

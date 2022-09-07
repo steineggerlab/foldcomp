@@ -12,11 +12,18 @@ foldcomp compress [-t number] <pdb_dir|cif_dir> [<fcz_dir>]
 foldcomp decompress <fcz_file> [<pdb_file>]
 foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
 
+[Extraction]
+foldcomp extract [--plddt|--amino-acid] <fcz_file> [<txt_file|fasta_file>]
+foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<output_dir>]
+
 [Options]
  -h, --help           print this help message
  -t, --threads        number of threads to use [default=1]
  -a, --alt            use alternative atom order [default=false]
  -b, --break          interval size to save absolute atom coordinates [default=200]
+ -z, --tar            save as tar file [default=false]
+ --plddt              extract pLDDT score (only for extraction mode)
+ --fasta              extract amino acid sequence (only for extraction mode)
 ```
 
 ## Build
