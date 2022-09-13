@@ -1,13 +1,13 @@
 /**
  * File: foldcomp.h
- * Project: src
+ * Project: foldcomp
  * Created: 2021-02-02 14:04:40
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-13 14:50:42
+ * Last Modified: 2022-09-13 15:16:16
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -23,8 +23,8 @@
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
-#include "aa_sidechain.h"
-#include "torsion.xyz.h"
+#include "sidechain.h"
+#include "torsion_angle.h"
 #include "nerf.h"
 #include "utility.h"
 

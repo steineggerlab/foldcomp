@@ -1,12 +1,12 @@
 /**
- * File: torsion.xyz.h
+ * File: torsion_angle.h
  * Project: foldcomp
  * Created: 2021-01-13 10:35:56
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     Functions for torsion angle calculation
  * ---
- * Last Modified: 2022-07-20 01:52:58
+ * Last Modified: 2022-09-13 15:14:10
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

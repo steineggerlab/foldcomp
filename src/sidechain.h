@@ -1,12 +1,12 @@
 /**
- * File: aa_sidechain.h
+ * File: sidechain.h
  * Project: foldcomp
  * Created: 2021-07-07 13:38:27
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     Functions for handling side-chain atoms of amino acids
  * ---
- * Last Modified: 2022-07-20 02:00:18
+ * Last Modified: 2022-09-13 15:16:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -19,7 +19,7 @@
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "nerf.h"
-#include "torsion.xyz.h"
+#include "torsion_angle.h"
 #include "utility.h"
 
 /**

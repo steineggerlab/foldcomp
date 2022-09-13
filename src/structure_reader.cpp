@@ -1,18 +1,18 @@
 /**
- * File: input.cpp
- * Project: src
+ * File: structure_reader.cpp
+ * Project: foldcomp
  * Created: 2022-08-04 15:02:09
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     This code is written as part of project "src".
  * ---
- * Last Modified: 2022-09-08 03:40:00
+ * Last Modified: 2022-09-13 15:14:22
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2022 Hyunbin Kim, All rights reserved
  */
 
-#include "input.h"
+#include "structure_reader.h"
 
 /**
  * @brief StructureReader::updateStructure

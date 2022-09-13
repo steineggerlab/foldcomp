@@ -12,20 +12,20 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-13 14:51:29
+ * Last Modified: 2022-09-13 15:16:35
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 // Headers in the project
-#include "aa_sidechain.h"
+#include "sidechain.h"
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "foldcomp.h"
 #include "discretizer.h"
 #include "nerf.h"
-#include "input.h"
-#include "torsion.xyz.h"
+#include "structure_reader.h"
+#include "torsion_angle.h"
 #include "utility.h"
 // Standard libraries
 #include <vector>

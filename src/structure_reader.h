@@ -1,6 +1,6 @@
 /**
- * File: input.h
- * Project: src
+ * File: structure_reader.h
+ * Project: foldcomp
  * Created: 2022-08-04 15:02:17
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
@@ -8,7 +8,7 @@
  * References:
  *     GemmiWrapper.cpp in https://github.com/steineggerlab/foldseek
  * ---
- * Last Modified: 2022-08-04 16:42:32
+ * Last Modified: 2022-09-13 15:14:16
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2022 Hyunbin Kim, All rights reserved
