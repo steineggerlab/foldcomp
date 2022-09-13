@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-08 05:43:06
+ * Last Modified: 2022-09-13 14:51:29
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -21,7 +21,7 @@
 #include "aa_sidechain.h"
 #include "amino_acid.h"
 #include "atom_coordinate.h"
-#include "compressed_torsion.h"
+#include "foldcomp.h"
 #include "discretizer.h"
 #include "nerf.h"
 #include "input.h"
@@ -78,7 +78,7 @@ int compress(std::string input, std::string output) {
     std::string title = reader.title;
 
     std::vector<BackboneChain> compData;
-    CompressedResidue compRes = CompressedResidue();
+    Foldcomp compRes = Foldcomp();
     // Convert title to char
     compRes.strTitle = title;
     compRes.anchorThreshold = anchor_residue_threshold;
@@ -107,7 +107,7 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
     std::string title = reader.title;
 
     std::vector<BackboneChain> compData;
-    CompressedResidue compRes = CompressedResidue();
+    Foldcomp compRes = Foldcomp();
     // Convert title to char
     compRes.strTitle = name;
     compRes.anchorThreshold = anchor_residue_threshold;
@@ -124,7 +124,7 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
 }
 
 
-int compressWithoutWriting(CompressedResidue& compRes, std::string input) {
+int compressWithoutWriting(Foldcomp& compRes, std::string input) {
     StructureReader reader;
     reader.load(input);
     std::vector<AtomCoordinate> atomCoordinates;
@@ -143,7 +143,7 @@ int compressWithoutWriting(CompressedResidue& compRes, std::string input) {
     return 0;
 }
 
-int compressFromBufferWithoutWriting(CompressedResidue& compRes, const std::string& content, std::string& name) {
+int compressFromBufferWithoutWriting(Foldcomp& compRes, const std::string& content, std::string& name) {
     StructureReader reader;
     reader.loadFromBuffer(content.c_str(), content.size(), name);
     std::vector<AtomCoordinate> atomCoordinates;
@@ -163,7 +163,7 @@ int compressFromBufferWithoutWriting(CompressedResidue& compRes, const std::stri
 
 int decompress(std::istream &file, std::string output) {
     int flag = 0;
-    CompressedResidue compRes = CompressedResidue();
+    Foldcomp compRes = Foldcomp();
     flag = compRes.read(file);
     if (flag != 0) {
         std::cerr << "Error reading" << std::endl;
@@ -184,7 +184,7 @@ int decompress(std::istream &file, std::string output) {
 
 int extract(std::istream& file, std::string output) {
     int flag = 0;
-    CompressedResidue compRes = CompressedResidue();
+    Foldcomp compRes = Foldcomp();
     flag = compRes.read(file);
     if (flag != 0) {
         std::cerr << "Error reading" << std::endl;
@@ -475,7 +475,7 @@ int main(int argc, char* const *argv) {
                     std::string file = files[i];
                     std::string inputFile = input + file;
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                    CompressedResidue compRes = CompressedResidue();
+                    Foldcomp compRes = Foldcomp();
                     compressWithoutWriting(compRes, inputFile);
                     compRes.writeTar(tar, outputFile, compRes.getSize());
                 }
@@ -550,7 +550,7 @@ int main(int argc, char* const *argv) {
                         } else {
 
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
-                            CompressedResidue compRes = CompressedResidue();
+                            Foldcomp compRes = Foldcomp();
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
@@ -721,7 +721,7 @@ int main(int argc, char* const *argv) {
                         std::string outputFile;
                         if (ext_merge == 1) {
                             std::vector<std::string> data;
-                            CompressedResidue compRes = CompressedResidue();
+                            Foldcomp compRes = Foldcomp();
                             compRes.read(input);
                             compRes.extract(data, ext_mode);
                             #pragma omp critical
@@ -823,10 +823,10 @@ int main(int argc, char* const *argv) {
                             std::istringstream input(std::string(dataBuffer, header.size));
                             std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
                             std::string outputFile = "";
-                            
+
                             if (ext_merge == 1) {
                                 std::vector<std::string> data;
-                                CompressedResidue compRes = CompressedResidue();
+                                Foldcomp compRes = Foldcomp();
                                 compRes.read(input);
                                 compRes.extract(data, ext_mode);
                             #pragma omp critical
@@ -855,7 +855,7 @@ int main(int argc, char* const *argv) {
                     // close and delete defaultOutput
                     defaultOutput.close();
                 }
-            }   
+            }
     } else {
         std::cout << "Invalid mode." << std::endl;
         return 1;
