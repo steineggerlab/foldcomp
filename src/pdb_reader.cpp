@@ -1,13 +1,13 @@
 /**
  * File: pdb_reader.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-04 17:31:03
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     Functions and a class for reading PDB files
  *     Deprecated. Use StructureReader in "input.h" instead.
  * ---
- * Last Modified: 2022-08-04 16:56:54
+ * Last Modified: 2022-09-13 15:15:12
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

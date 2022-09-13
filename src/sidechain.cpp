@@ -1,18 +1,18 @@
 /**
- * File: aa_sidechain.cpp
+ * File: sidechain.cpp
  * Project: foldcomp
  * Created: 2021-08-19 19:14:16
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     Functions for handling side-chain atoms of amino acids
  * ---
- * Last Modified: 2022-07-20 02:00:24
+ * Last Modified: 2022-09-13 15:15:23
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 
-#include "aa_sidechain.h"
+#include "sidechain.h"
 
 std::vector<AtomCoordinate> reconstructSideChain(
     std::vector<AtomCoordinate> backbone, AtomCoordinate c0

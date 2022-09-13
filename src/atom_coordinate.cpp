@@ -1,12 +1,12 @@
 /**
  * File: atom_coordinate.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-18 12:53:34
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-08 00:42:34
+ * Last Modified: 2022-09-13 15:14:37
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

@@ -1,5 +1,5 @@
 /**
- * File: torsion.xyz.cpp
+ * File: torsion_angle.cpp
  * Project: foldcomp
  * Created: 2021-01-13 10:34:34
  * Author: Hyunbin Kim (khb7840@gmail.com)
@@ -11,13 +11,13 @@
  *     2) "XYZ.h" in pdbtools
  *     https://github.com/realbigws/PDB_Tool
  * ---
- * Last Modified: 2022-07-20 01:53:07
+ * Last Modified: 2022-09-13 15:15:46
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 
-#include "torsion.xyz.h"
+#include "torsion_angle.h"
 
 
 

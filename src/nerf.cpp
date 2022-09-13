@@ -1,6 +1,6 @@
 /**
  * File: nerf.cpp
- * Project: src
+ * Project: foldcomp
  * Created: 2021-01-11 16:42:27
  * Author: Hyunbin Kim (khb7840@gmail.com)
  * Description:
@@ -9,7 +9,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-08-04 18:13:14
+ * Last Modified: 2022-09-13 15:15:02
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
