@@ -1,5 +1,5 @@
 /**
- * File: compressed_torsion.cpp
+ * File: foldcomp.cpp
  * Project: src
  * Created: 2021-02-04 13:31:52
  * Author: Hyunbin Kim (khb7840@gmail.com)
@@ -7,13 +7,13 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-08 03:07:08
+ * Last Modified: 2022-09-13 14:50:28
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 
-#include "compressed_torsion.h"
+#include "foldcomp.h"
 
 // Changed at 2022-04-14 16:02:30
 /**
@@ -389,7 +389,7 @@ int fillSideChainDiscretizerMap(
     return success;
 }
 
-int CompressedResidue::_discretizeSideChainTorsionAngles(
+int Foldcomp::_discretizeSideChainTorsionAngles(
     std::vector< std::vector<float> >& input,
     std::vector<unsigned int>& output
 ) {
@@ -404,7 +404,7 @@ int CompressedResidue::_discretizeSideChainTorsionAngles(
     return success;
 }
 
-int CompressedResidue::_continuizeSideChainTorsionAngles(
+int Foldcomp::_continuizeSideChainTorsionAngles(
     std::vector<unsigned int>& input, std::vector< std::vector<float> >& output
 ) {
     // Declare
@@ -444,7 +444,7 @@ void printCompressedResidue(BackboneChain& res) {
     std::cout << std::endl;
 }
 
-int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
+int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     int success = 0;
     this->rawAtoms = atoms;
     this->compressedBackBone.resize(atoms.size());
@@ -563,7 +563,7 @@ int CompressedResidue::preprocess(std::vector<AtomCoordinate>& atoms) {
 }
 
 
-std::vector<BackboneChain> CompressedResidue::compress(
+std::vector<BackboneChain> Foldcomp::compress(
     std::vector<AtomCoordinate>& atoms
 ) {
     std::vector<BackboneChain> output;
@@ -609,7 +609,7 @@ std::vector<BackboneChain> CompressedResidue::compress(
     return output;
 }
 
-std::vector< std::vector<float> > CompressedResidue::_calculateCoordinates() {
+std::vector< std::vector<float> > Foldcomp::_calculateCoordinates() {
 
     // Iterate through the compressed backbone vector
     std::vector< std::vector<float> > output;
@@ -635,7 +635,7 @@ int _restoreResidueNames(
     return success;
 }
 
-int CompressedResidue::_restoreDiscretizer(int angleType) {
+int Foldcomp::_restoreDiscretizer(int angleType) {
     int success = 0;
     std::vector<unsigned int> temp;
 
@@ -710,7 +710,7 @@ int CompressedResidue::_restoreDiscretizer(int angleType) {
  * @param coords
  * @return int
  */
-int CompressedResidue::_restoreAtomCoordinate(float* coords) {
+int Foldcomp::_restoreAtomCoordinate(float* coords) {
     int success = 0;
     std::string firstResidue = getThreeLetterCode(this->header.firstResidue);
     // TODO: Fix the chain alphabet according to the real data
@@ -745,13 +745,13 @@ int CompressedResidue::_restoreAtomCoordinate(float* coords) {
     return success;
 }
 
-int CompressedResidue::_getAnchorNum(int threshold) {
+int Foldcomp::_getAnchorNum(int threshold) {
     int nAnchor = 0;
     nAnchor = this->nResidue / threshold;
     return nAnchor;
 }
 
-void CompressedResidue::_setAnchor() {
+void Foldcomp::_setAnchor() {
     this->nInnerAnchor = this->_getAnchorNum(this->anchorThreshold);
     this->nAllAnchor = this->nInnerAnchor + 2; // Start and end
     // Set the anchor points - residue index
@@ -769,7 +769,7 @@ void CompressedResidue::_setAnchor() {
     this->anchorAtoms = getAtomsWithResidueIndex(this->rawAtoms, anchorResidueIndices);
 }
 
-std::vector<float> CompressedResidue::checkTorsionReconstruction() {
+std::vector<float> Foldcomp::checkTorsionReconstruction() {
     std::vector<float> output;
     // Continuize torsion angles
     this->phi = this->phiDisc.continuize(this->phiDiscretized);
@@ -784,7 +784,7 @@ std::vector<float> CompressedResidue::checkTorsionReconstruction() {
     return output;
 }
 
-int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
+int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     // TODO: convert the compressed residue back into a vector of atom coordinate
     // CURRENT VERSION - 2022-02-24 19:12:51
     std::vector<float> torsion_angles;
@@ -898,7 +898,7 @@ int CompressedResidue::decompress(std::vector<AtomCoordinate>& atom) {
     return success;
 }
 
-int CompressedResidue::read(std::istream & file) {
+int Foldcomp::read(std::istream & file) {
     int success;
     // Open file in reading binary mode
 
@@ -1036,7 +1036,7 @@ int CompressedResidue::read(std::istream & file) {
     return success;
 }
 
-int CompressedResidue::write(std::string filename) {
+int Foldcomp::write(std::string filename) {
     int flag = 0;
     std::ofstream outfile;
     outfile.open(filename, std::ios::out | std::ios::binary);
@@ -1129,7 +1129,7 @@ int CompressedResidue::write(std::string filename) {
 }
 
 // 2022-08-29 15:42:29 TAR format support
-int CompressedResidue::writeTar(mtar_t& tar, std::string filename, size_t size) {
+int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     int flag = 0;
     mtar_write_file_header(&tar, filename.c_str(), size);
     // Magic number
@@ -1196,7 +1196,7 @@ int CompressedResidue::writeTar(mtar_t& tar, std::string filename, size_t size) 
     return flag;
 }
 
-size_t CompressedResidue::getSize() {
+size_t Foldcomp::getSize() {
     // Calculate the size of the compressed format
     size_t size = 0;
     // Magic number
@@ -1224,12 +1224,12 @@ size_t CompressedResidue::getSize() {
 
 
 // Functions to extract temperature factors only
-int CompressedResidue::continuizeTempFactors() {
+int Foldcomp::continuizeTempFactors() {
     this->tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
     return 0;
 }
 
-int CompressedResidue::writeFASTALike(std::string filename, std::vector<std::string>& data) {
+int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& data) {
     int flag = 0;
     // outfile is a text file
     std::ofstream outfile(filename, std::ios::out);
@@ -1249,7 +1249,7 @@ int CompressedResidue::writeFASTALike(std::string filename, std::vector<std::str
     return flag;
 }
 
-int CompressedResidue::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
+int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
     int flag = 0;
     // Output format
     // >title
@@ -1268,12 +1268,12 @@ int CompressedResidue::writeFASTALikeTar(mtar_t& tar, std::string filename, std:
 
 /**
  * @brief Extract information from the compressed file and write to a FASTA-like file
- * 
- * @param filename 
+ *
+ * @param filename
  * @param type 0: plddt, 1: sequence
- * @return int 
+ * @return int
  */
-int CompressedResidue::extract(std::vector<std::string>& data, int type) {
+int Foldcomp::extract(std::vector<std::string>& data, int type) {
     int flag = 0;
     if (type == 0) {
         // Extract temperature factors
@@ -1294,8 +1294,8 @@ int CompressedResidue::extract(std::vector<std::string>& data, int type) {
 }
 
 
-// 
-CompressedFileHeader CompressedResidue::get_header() {
+//
+CompressedFileHeader Foldcomp::get_header() {
     CompressedFileHeader header;
     // counts
     header.nResidue = this->nResidue;
@@ -1325,7 +1325,7 @@ CompressedFileHeader CompressedResidue::get_header() {
     return header;
 }
 
-int CompressedResidue::read_header(CompressedFileHeader& header) {
+int Foldcomp::read_header(CompressedFileHeader& header) {
     this->nResidue = header.nResidue;
     this->nAtom = header.nAtom;
     this->idxResidue = header.idxResidue;
@@ -1353,7 +1353,7 @@ int CompressedResidue::read_header(CompressedFileHeader& header) {
     return 0;
 }
 
-void CompressedResidue::print(int length) {
+void Foldcomp::print(int length) {
     // Print the header
     std::cout << "[Header]" << std::endl;
     std::cout << "nResidue: " << this->header.nResidue << std::endl;
@@ -1402,7 +1402,7 @@ void CompressedResidue::print(int length) {
     }
 }
 
-void CompressedResidue::printSideChainTorsion(std::string filename) {
+void Foldcomp::printSideChainTorsion(std::string filename) {
     std::ofstream outfile;
     outfile.open(filename);
     //

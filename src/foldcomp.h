@@ -1,5 +1,5 @@
 /**
- * File: compressed_torsion.h
+ * File: foldcomp.h
  * Project: src
  * Created: 2021-02-02 14:04:40
  * Author: Hyunbin Kim (khb7840@gmail.com)
@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-08 03:06:54
+ * Last Modified: 2022-09-13 14:50:42
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -259,7 +259,7 @@ struct FloatArrayWithDisc {
     float* array;
 };
 
-class CompressedResidue {
+class Foldcomp {
 private:
     /* data */
     /* private methods */
@@ -283,8 +283,8 @@ private:
     );
 
 public:
-    CompressedResidue(/* args */){};
-    ~CompressedResidue(){};
+    Foldcomp(/* args */){};
+    ~Foldcomp(){};
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
