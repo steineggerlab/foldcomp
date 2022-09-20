@@ -6,7 +6,7 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: 2022-07-20 01:52:32
+ * Last Modified: 2022-09-20 11:51:18
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -21,6 +21,7 @@
 #include <chrono>
 #include <sstream>
 #include <dirent.h>
+#include <cstring>
 
 const float PI = 3.14159265;
 
@@ -168,6 +169,12 @@ public:
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir);
 std::string baseName(std::string const& path);
+
+std::string getFileWithoutExt(std::string& file);
+bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset = 0);
+bool stringEndsWith(const std::string& suffix, const std::string& str);
+std::vector<std::string> stringSplit(const std::string& str, const std::string& sep);
+
 // One letter code to Three letter code
 char getOneLetterCode(std::string threeLetterCode);
 std::string getThreeLetterCode(char oneLetterCode);
