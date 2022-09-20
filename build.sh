@@ -5,13 +5,16 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: 2022-09-08 00:44:51
+# Last Modified: 2022-09-20 11:52:22
 # Modified By: Hyunbin Kim (khb7840@gmail.com)
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
 
 # Configure
-mkdir build
+# If directory "build" does not exist, create it.
+if [ ! -d "build" ]; then
+    mkdir build
+fi
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 cd ..

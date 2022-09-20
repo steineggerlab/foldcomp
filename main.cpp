@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-13 15:16:35
+ * Last Modified: 2022-09-20 11:53:26
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -195,44 +195,6 @@ int extract(std::istream& file, std::string output) {
     compRes.writeFASTALike(output, data);
     return 0;
 }
-
-std::string getFileWithoutExt(std::string& file) {
-    size_t extStart = file.find_last_of('.');
-    return extStart == std::string::npos ? file : file.substr(0, extStart);
-}
-
-bool stringEndsWith(const std::string& suffix, const std::string& str) {
-    if (str.length() < suffix.length()) {
-        return false;
-    }
-
-    return (!str.compare(str.length() - suffix.length(), suffix.length(), suffix));
-}
-
-bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset = 0) {
-    if (str.length() < prefix.length()) {
-        return false;
-    }
-    return (!str.compare(offset, prefix.length(), prefix));
-}
-
-
-std::vector<std::string> stringSplit(const std::string& str, const std::string& sep) {
-    std::vector<std::string> arr;
-
-    char* cstr = strdup(str.c_str());
-    const char* csep = sep.c_str();
-    char* rest;
-    char* current = strtok_r(cstr, csep, &rest);
-    while (current != NULL) {
-        arr.emplace_back(current);
-        current = strtok_r(NULL, csep, &rest);
-    }
-    free(cstr);
-
-    return arr;
-}
-
 
 int main(int argc, char* const *argv) {
     if (argc < 3) {

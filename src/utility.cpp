@@ -6,7 +6,7 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: 2022-07-20 01:52:42
+ * Last Modified: 2022-09-20 11:51:28
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -103,6 +103,42 @@ std::vector<std::string> getFilesInDirectory(std::string dir) {
 
 std::string baseName(std::string const path) {
     return path.substr(path.find_last_of("/\\") + 1);
+}
+
+std::string getFileWithoutExt(std::string& file) {
+    size_t extStart = file.find_last_of('.');
+    return extStart == std::string::npos ? file : file.substr(0, extStart);
+}
+
+bool stringEndsWith(const std::string& suffix, const std::string& str) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+
+    return (!str.compare(str.length() - suffix.length(), suffix.length(), suffix));
+}
+
+bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset) {
+    if (str.length() < prefix.length()) {
+        return false;
+    }
+    return (!str.compare(offset, prefix.length(), prefix));
+}
+
+std::vector<std::string> stringSplit(const std::string& str, const std::string& sep) {
+    std::vector<std::string> arr;
+
+    char* cstr = strdup(str.c_str());
+    const char* csep = sep.c_str();
+    char* rest;
+    char* current = strtok_r(cstr, csep, &rest);
+    while (current != NULL) {
+        arr.emplace_back(current);
+        current = strtok_r(NULL, csep, &rest);
+    }
+    free(cstr);
+
+    return arr;
 }
 
 /*  FUNCTIONS FOR HANDLING AMINO ACID NAME  */
