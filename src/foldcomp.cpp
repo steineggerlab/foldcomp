@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-13 15:14:51
+ * Last Modified: 2022-09-21 20:05:09
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -905,13 +905,7 @@ int Foldcomp::read(std::istream & file) {
     // Check the file starts with magic number
     char mNum[MAGICNUMBER_LENGTH];
     file.read(mNum, MAGICNUMBER_LENGTH);
-    // compare mNum and this->magicNumber
-    for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
-        if (mNum[i] != MAGICNUMBER[i]) {
-            std::cout << "Error: File is not a valid compressed residue file" << std::endl;
-            return -1;
-        }
-    }
+    this->magicNumber = std::string(mNum, MAGICNUMBER_LENGTH);
     // Read the header
     file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
     this->read_header(this->header);
@@ -1025,13 +1019,19 @@ int Foldcomp::read(std::istream & file) {
 
     success = _restoreAtomCoordinate(prevAtomCoords);
     if (success != 0) {
-        std::cout << "Error: Could not restore prevAtoms" << std::endl;
+        std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
         return -1;
     }
     for (int i = 0; i < 6; i++) {
         success = _restoreDiscretizer(i);
     }
-
+    if (this->checkValidity) {
+        ValidityError ve = this->_checkValidity();
+        printValidityError(ve, this->strTitle);
+        if (ve != SUCCESS) {
+            success = -1;
+        }
+    }
     // Close file
     return success;
 }
@@ -1439,6 +1439,89 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
         }
     }
     outfile.close();
+}
+
+/**
+ * @brief Checks the input file read is valid or not.
+ *        This method is expected to be called after the input file is read.
+ * @return int Error code. 0 if no error.
+ */
+ValidityError Foldcomp::_checkValidity() {
+    // Check magic number
+    bool hasMagicNumber = (this->magicNumber == MAGICNUMBER);
+    // Check size
+    bool hasCorrectNumResidue = (this->header.nResidue == this->compressedBackBone.size());
+    bool hasCorrectNumSideChain = (this->header.nSideChainTorsion == this->sideChainAnglesDiscretized.size());
+    bool hasCorrectNumTempfactor = (this->header.nResidue == this->tempFactorsDiscretized.size());
+    // Check vectors are not empty
+    // For backbone, just check the torsion angles
+    bool emptyBackbone = std::all_of(
+        this->compressedBackBone.begin(),
+        this->compressedBackBone.end(),
+        [](BackboneChain bb) {
+            return bb.phi == 0 && bb.psi == 0 && bb.omega == 0;
+        }
+    );
+    bool emptySideChain = std::all_of(
+        this->sideChainAnglesDiscretized.begin(),
+        this->sideChainAnglesDiscretized.end(),
+        [](unsigned int i){return i == 0;}
+    );
+    bool emptyTempFactor = std::all_of(
+        this->tempFactorsDiscretized.begin(),
+        this->tempFactorsDiscretized.end(),
+        [](unsigned int i){return i == 0;}
+    );
+    // Return
+    if (!hasMagicNumber) {
+        return E_WRONG_MAGIC_NUMBER;
+    } else if (!hasCorrectNumResidue) {
+        return E_BACKBONE_COUNT_MISMATCH;
+    } else if (!hasCorrectNumSideChain) {
+        return E_SIDECHAIN_COUNT_MISMATCH;
+    } else if (!hasCorrectNumTempfactor) {
+        return E_TEMP_FACTOR_COUNT_MISMATCH;
+    } else if (emptyBackbone) {
+        return E_EMPTY_BACKBONE_ANGLE;
+    } else if (emptySideChain) {
+        return E_EMPTY_SIDECHAIN_ANGLE;
+    } else if (emptyTempFactor) {
+        return E_EMPTY_TEMP_FACTOR;
+    } else {
+        return SUCCESS;
+    }
+}
+
+void printValidityError(ValidityError err, std::string& filename) {
+    // Print error message to stderr with filename
+    switch (err) {
+        case E_WRONG_MAGIC_NUMBER:
+            std::cerr << "[Error] File has wrong magic number: " << filename << std::endl;
+            break;
+        case E_BACKBONE_COUNT_MISMATCH:
+            std::cerr << "[Error] Number of backbone angles does not match header: " << filename << std::endl;
+            break;
+        case E_SIDECHAIN_COUNT_MISMATCH:
+            std::cerr << "[Error] Number of sidechain angles does not match header: " << filename << std::endl;
+            break;
+        case E_TEMP_FACTOR_COUNT_MISMATCH:
+            std::cerr << "[Error] Number of temperature factors does not match header: " << filename << std::endl;
+            break;
+        case E_EMPTY_BACKBONE_ANGLE:
+            std::cerr << "[Error] All backbone angles are empty: " << filename << std::endl;
+            break;
+        case E_EMPTY_SIDECHAIN_ANGLE:
+            std::cerr << "[Error] All sidechain angles are empty: " << filename << std::endl;
+            break;
+        case E_EMPTY_TEMP_FACTOR:
+            std::cerr << "[Error] All temperature factors are empty: " << filename << std::endl;
+            break;
+        case SUCCESS:
+            break;
+        default:
+            std::cerr << "[Error] Unknown error: " << filename << std::endl;
+            break;
+    }
 }
 
 void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa) {

@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-13 15:16:16
+ * Last Modified: 2022-09-21 19:56:58
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -47,6 +47,17 @@
 #define CA_TO_C_DIST 1.5281
 #define C_TO_N_DIST 1.3311
 #define PRO_N_TO_CA_DIST 1.353
+
+enum ValidityError {
+    SUCCESS = 0,
+    E_WRONG_MAGIC_NUMBER,
+    E_BACKBONE_COUNT_MISMATCH,
+    E_SIDECHAIN_COUNT_MISMATCH,
+    E_TEMP_FACTOR_COUNT_MISMATCH,
+    E_EMPTY_BACKBONE_ANGLE,
+    E_EMPTY_SIDECHAIN_ANGLE,
+    E_EMPTY_TEMP_FACTOR
+};
 
 // NOTE: ORDER OF BOND ANGLE: CA_C_N, C_N_CA, N_CA_C
 // NOTE: THE ORDER OF TORSION ANGLE IS PSI->OMEGA->PHI
@@ -251,6 +262,7 @@ void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa);
 
 // Print
 void printCompressedResidue(BackboneChain& res);
+void printValidityError(ValidityError err, std::string& filename);
 
 struct FloatArrayWithDisc {
     unsigned short size;
@@ -262,6 +274,7 @@ struct FloatArrayWithDisc {
 class Foldcomp {
 private:
     /* data */
+    std::string magicNumber;
     /* private methods */
     std::vector< std::vector<float> > _calculateCoordinates();
     int _restoreDiscretizer(int angleType);
@@ -281,7 +294,8 @@ private:
     int _continuizeSideChainTorsionAngles(
         std::vector<unsigned int>& input, std::vector< std::vector<float> >& output
     );
-
+    // Check validity
+    ValidityError _checkValidity();
 public:
     Foldcomp(/* args */){};
     ~Foldcomp(){};
@@ -289,7 +303,7 @@ public:
     bool isCompressed = false;
     bool backwardReconstruction = true;
     bool useAltAtomOrder = false;
-
+    bool checkValidity = true;
     // Number of atoms & residues
     int nResidue = 0;
     int nAtom = 0;

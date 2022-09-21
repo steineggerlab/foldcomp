@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-20 11:53:26
+ * Last Modified: 2022-09-21 20:00:22
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -55,6 +55,8 @@ int print_usage(void) {
     std::cout << "       foldcomp decompress [-t number] <fcz_dir|tar> [<pdb_dir>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz_file> [<fasta_file>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
+    std::cout << "       foldcomp check <fcz_file> [<fasta_file>]" << std::endl;
+    std::cout << "       foldcomp check [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
@@ -196,6 +198,14 @@ int extract(std::istream& file, std::string output) {
     return 0;
 }
 
+int check(std::istream& file) {
+    int flag = 0;
+    Foldcomp compRes = Foldcomp();
+    compRes.checkValidity = true;
+    flag = compRes.read(file);
+    return flag;
+}
+
 int main(int argc, char* const *argv) {
     if (argc < 3) {
         return print_usage();
@@ -216,7 +226,10 @@ int main(int argc, char* const *argv) {
         DECOMPRESS_MULTIPLE_TAR,
         EXTRACT,
         EXTRACT_MULTIPLE,
-        EXTRACT_MULTIPLE_TAR
+        EXTRACT_MULTIPLE_TAR,
+        CHECK,
+        CHECK_MULTIPLE,
+        CHECK_MULTIPLE_TAR,
     } mode = COMPRESS;
 
     // Define command line options
@@ -315,6 +328,17 @@ int main(int argc, char* const *argv) {
         } else {
             mode = EXTRACT;
         }
+    } else if (strcmp(argv[optind], "check") == 0){
+        char* end = strrchr(argv[optind + 1], '.');
+        if (st.st_mode & S_ISDIR(st.st_mode)) {
+            mode = CHECK_MULTIPLE;
+        }
+        else if (strcmp(end, ".tar") == 0) {
+            mode = CHECK_MULTIPLE_TAR;
+        }
+        else {
+            mode = CHECK;
+        }
     } else {
         return print_usage();
     }
@@ -375,6 +399,15 @@ int main(int argc, char* const *argv) {
         extract(inputFile, output);
         inputFile.close();
         flag = 0;
+    } else if (mode == CHECK){
+        std::ifstream inputFile(input, std::ios::binary);
+        std::cerr << "Checking " << input << std::endl;
+        if (!inputFile.is_open()) {
+            std::cerr << "Error: Could not open file " << input << std::endl;
+            return -1;
+        }
+        flag = check(inputFile);
+        inputFile.close();
     } else if (mode == COMPRESS_MULTIPLE) {
         // compress multiple files
         if (input[input.length() - 1] != '/') {
@@ -818,10 +851,85 @@ int main(int argc, char* const *argv) {
                     defaultOutput.close();
                 }
             }
+    } else if (mode == CHECK_MULTIPLE) {
+        if (input[input.length() - 1] != '/') {
+            input += "/";
+        }
+        std::vector<std::string> files = getFilesInDirectory(input);
+        omp_set_num_threads(num_threads);
+        std::cerr << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+#pragma omp parallel
+        {
+#pragma omp for
+            for (int i = 0; i < files.size(); i++) {
+                std::string inputFile = input + files[i];
+                std::ifstream input(inputFile, std::ios::binary);
+                // Check if file is open
+                if (!input.is_open()) {
+                    std::cerr << "Error: Could not open file " << inputFile << std::endl;
+                    continue;
+                }
+                check(input);
+                input.close();
+            }
+        }
+        flag = 0;
+    } else if (mode == CHECK_MULTIPLE_TAR) {
+        omp_set_num_threads(num_threads);
+        mtar_t tar;
+        if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
+            std::cerr << "Error: open tar " << input << " failed." << std::endl;
+            return 1;
+        }
+        std::cerr << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        // TAR READING PART BY MARTIN STEINEGGER
+#pragma omp parallel shared(tar) num_threads(num_threads)
+        {
+            bool proceed = true;
+            mtar_header_t header;
+            size_t bufferSize = 1024 * 1024;
+            char* dataBuffer = (char*)malloc(bufferSize);
+            std::string name;
+            while (proceed) {
+                bool writeEntry = true;
+#pragma omp critical
+                {
+                    if (mtar_read_header(&tar, &header) != MTAR_ENULLRECORD) {
+                        //TODO GNU tar has special blocks for long filenames
+                        name = header.name;
+                        if (header.size > bufferSize) {
+                            bufferSize = header.size * 1.5;
+                            dataBuffer = (char*)realloc(dataBuffer, bufferSize);
+                        }
+                        if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                            std::cerr << "Error: reading tar entry " << name << " failed." << std::endl;
+                            writeEntry = false;
+                            proceed = false;
+                        }
+                        else {
+                            writeEntry = true;
+                            proceed = true;
+                        }
+                        mtar_next(&tar);
+                        writeEntry = (header.type == MTAR_TREG) ? writeEntry : false;
+                    }
+                    else {
+                        proceed = false;
+                        writeEntry = false;
+                    }
+                } // end read in
+                if (proceed && writeEntry) {
+                    std::istringstream input(std::string(dataBuffer, header.size));
+                    std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
+                    check(input);
+                }
+            } // end while loop
+        } // end openmp
+        flag = 0;
     } else {
-        std::cout << "Invalid mode." << std::endl;
+        std::cerr << "Invalid mode." << std::endl;
         return 1;
     }    // Print log
-    std::cout << "Done." << std::endl;
+    std::cerr << "Done." << std::endl;
     return flag;
 }
