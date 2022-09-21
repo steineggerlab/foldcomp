@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 22:01:39
+ * Last Modified: 2022-09-21 22:03:37
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1491,9 +1491,6 @@ ValidityError Foldcomp::checkValidity() {
 void printValidityError(ValidityError err, std::string& filename) {
     // Print error message to stderr with filename
     switch (err) {
-        case E_WRONG_MAGIC_NUMBER:
-            std::cerr << "[Error] File has wrong magic number: " << filename << std::endl;
-            break;
         case E_BACKBONE_COUNT_MISMATCH:
             std::cerr << "[Error] Number of backbone angles does not match header: " << filename << std::endl;
             break;
