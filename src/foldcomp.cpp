@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-22 02:18:34
+ * Last Modified: 2022-09-22 02:31:24
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -905,7 +905,12 @@ int Foldcomp::read(std::istream & file) {
     // Check the file starts with magic number
     char mNum[MAGICNUMBER_LENGTH];
     file.read(mNum, MAGICNUMBER_LENGTH);
-
+    for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
+        if (mNum[i] != MAGICNUMBER[i]) {
+            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+            return -1;
+        }
+    }
     // Read the header
     file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
     this->read_header(this->header);
@@ -918,12 +923,6 @@ int Foldcomp::read(std::istream & file) {
     file.read(title, sizeof(char) * this->header.lenTitle);
     this->strTitle = std::string(title, (int)this->header.lenTitle);
 
-    for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
-        if (mNum[i] != MAGICNUMBER[i]) {
-            std::clog << "[Error] File is not a valid fcz file: " << this->strTitle << std::endl;
-            return -1;
-        }
-    }
     // Read the prev atoms
     // In the file, only xyz coordinates are stored
     // So, we need to reconstruct the atomcoordinate from the xyz coordinates & the information from the header
