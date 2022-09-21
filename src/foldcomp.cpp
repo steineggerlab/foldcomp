@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 22:03:37
+ * Last Modified: 2022-09-22 02:18:34
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -920,7 +920,7 @@ int Foldcomp::read(std::istream & file) {
 
     for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
         if (mNum[i] != MAGICNUMBER[i]) {
-            std::cerr << "[Error] File is not a valid fcz file: " << this->strTitle << std::endl;
+            std::clog << "[Error] File is not a valid fcz file: " << this->strTitle << std::endl;
             return -1;
         }
     }
@@ -1492,27 +1492,27 @@ void printValidityError(ValidityError err, std::string& filename) {
     // Print error message to stderr with filename
     switch (err) {
         case E_BACKBONE_COUNT_MISMATCH:
-            std::cerr << "[Error] Number of backbone angles does not match header: " << filename << std::endl;
+            std::clog << "[Error] Number of backbone angles does not match header: " << filename << std::endl;
             break;
         case E_SIDECHAIN_COUNT_MISMATCH:
-            std::cerr << "[Error] Number of sidechain angles does not match header: " << filename << std::endl;
+            std::clog << "[Error] Number of sidechain angles does not match header: " << filename << std::endl;
             break;
         case E_TEMP_FACTOR_COUNT_MISMATCH:
-            std::cerr << "[Error] Number of temperature factors does not match header: " << filename << std::endl;
+            std::clog << "[Error] Number of temperature factors does not match header: " << filename << std::endl;
             break;
         case E_EMPTY_BACKBONE_ANGLE:
-            std::cerr << "[Error] All backbone angles are empty: " << filename << std::endl;
+            std::clog << "[Error] All backbone angles are empty: " << filename << std::endl;
             break;
         case E_EMPTY_SIDECHAIN_ANGLE:
-            std::cerr << "[Error] All sidechain angles are empty: " << filename << std::endl;
+            std::clog << "[Error] All sidechain angles are empty: " << filename << std::endl;
             break;
         case E_EMPTY_TEMP_FACTOR:
-            std::cerr << "[Error] All temperature factors are empty: " << filename << std::endl;
+            std::clog << "[Error] All temperature factors are empty: " << filename << std::endl;
             break;
         case SUCCESS:
             break;
         default:
-            std::cerr << "[Error] Unknown error: " << filename << std::endl;
+            std::clog << "[Error] Unknown error: " << filename << std::endl;
             break;
     }
 }
