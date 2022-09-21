@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-21 21:31:45
+ * Last Modified: 2022-09-22 02:17:15
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -403,7 +403,7 @@ int main(int argc, char* const *argv) {
         flag = 0;
     } else if (mode == CHECK){
         std::ifstream inputFile(input, std::ios::binary);
-        std::cerr << "Checking " << input << std::endl;
+        std::clog << "Checking " << input << std::endl;
         if (!inputFile.is_open()) {
             std::cerr << "Error: Could not open file " << input << std::endl;
             return -1;
@@ -859,7 +859,7 @@ int main(int argc, char* const *argv) {
         }
         std::vector<std::string> files = getFilesInDirectory(input);
         omp_set_num_threads(num_threads);
-        std::cerr << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        std::clog << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
 #pragma omp parallel
         {
 #pragma omp for
@@ -883,7 +883,7 @@ int main(int argc, char* const *argv) {
             std::cerr << "Error: open tar " << input << " failed." << std::endl;
             return 1;
         }
-        std::cerr << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        std::clog << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
         // TAR READING PART BY MARTIN STEINEGGER
 #pragma omp parallel shared(tar) num_threads(num_threads)
         {
@@ -932,6 +932,6 @@ int main(int argc, char* const *argv) {
         std::cerr << "Invalid mode." << std::endl;
         return 1;
     }    // Print log
-    std::cerr << "Done." << std::endl;
+    std::clog << "Done." << std::endl;
     return flag;
 }
