@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 21:26:03
+ * Last Modified: 2022-09-21 22:01:39
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -905,7 +905,7 @@ int Foldcomp::read(std::istream & file) {
     // Check the file starts with magic number
     char mNum[MAGICNUMBER_LENGTH];
     file.read(mNum, MAGICNUMBER_LENGTH);
-    this->magicNumber = std::string(mNum, MAGICNUMBER_LENGTH);
+
     // Read the header
     file.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
     this->read_header(this->header);
@@ -1447,8 +1447,6 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
  * @return int Error code. 0 if no error.
  */
 ValidityError Foldcomp::checkValidity() {
-    // Check magic number
-    bool hasMagicNumber = (this->magicNumber == MAGICNUMBER);
     // Check size
     bool hasCorrectNumResidue = (this->header.nResidue == this->compressedBackBone.size());
     bool hasCorrectNumSideChain = (this->header.nSideChainTorsion == this->sideChainAnglesDiscretized.size());
@@ -1473,9 +1471,7 @@ ValidityError Foldcomp::checkValidity() {
         [](unsigned int i){return i == 0;}
     );
     // Return
-    if (!hasMagicNumber) {
-        return E_WRONG_MAGIC_NUMBER;
-    } else if (!hasCorrectNumResidue) {
+    if (!hasCorrectNumResidue) {
         return E_BACKBONE_COUNT_MISMATCH;
     } else if (!hasCorrectNumSideChain) {
         return E_SIDECHAIN_COUNT_MISMATCH;

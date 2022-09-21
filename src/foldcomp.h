@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 21:30:02
+ * Last Modified: 2022-09-21 22:02:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -50,7 +50,6 @@
 
 enum ValidityError {
     SUCCESS = 0,
-    E_WRONG_MAGIC_NUMBER,
     E_BACKBONE_COUNT_MISMATCH,
     E_SIDECHAIN_COUNT_MISMATCH,
     E_TEMP_FACTOR_COUNT_MISMATCH,
