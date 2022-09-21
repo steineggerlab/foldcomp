@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-21 20:00:22
+ * Last Modified: 2022-09-21 21:31:45
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -198,11 +198,13 @@ int extract(std::istream& file, std::string output) {
     return 0;
 }
 
-int check(std::istream& file) {
+int check(std::istream& file, std::string& filename) {
     int flag = 0;
     Foldcomp compRes = Foldcomp();
-    compRes.checkValidity = true;
     flag = compRes.read(file);
+    ValidityError err;
+    err = compRes.checkValidity();
+    printValidityError(err, filename);
     return flag;
 }
 
@@ -406,7 +408,7 @@ int main(int argc, char* const *argv) {
             std::cerr << "Error: Could not open file " << input << std::endl;
             return -1;
         }
-        flag = check(inputFile);
+        flag = check(inputFile, input);
         inputFile.close();
     } else if (mode == COMPRESS_MULTIPLE) {
         // compress multiple files
@@ -869,7 +871,7 @@ int main(int argc, char* const *argv) {
                     std::cerr << "Error: Could not open file " << inputFile << std::endl;
                     continue;
                 }
-                check(input);
+                check(input, inputFile);
                 input.close();
             }
         }
@@ -921,7 +923,7 @@ int main(int argc, char* const *argv) {
                 if (proceed && writeEntry) {
                     std::istringstream input(std::string(dataBuffer, header.size));
                     std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
-                    check(input);
+                    check(input, name_clean);
                 }
             } // end while loop
         } // end openmp
