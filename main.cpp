@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-22 02:17:15
+ * Last Modified: 2022-09-22 02:33:40
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -202,6 +202,10 @@ int check(std::istream& file, std::string& filename) {
     int flag = 0;
     Foldcomp compRes = Foldcomp();
     flag = compRes.read(file);
+    if (flag != 0) {
+        std::cerr << "[Error] reading file: " << filename << std::endl;
+        return 1;
+    }
     ValidityError err;
     err = compRes.checkValidity();
     printValidityError(err, filename);
