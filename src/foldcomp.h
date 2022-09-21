@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 19:56:58
+ * Last Modified: 2022-09-21 21:30:02
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -294,8 +294,7 @@ private:
     int _continuizeSideChainTorsionAngles(
         std::vector<unsigned int>& input, std::vector< std::vector<float> >& output
     );
-    // Check validity
-    ValidityError _checkValidity();
+
 public:
     Foldcomp(/* args */){};
     ~Foldcomp(){};
@@ -303,7 +302,6 @@ public:
     bool isCompressed = false;
     bool backwardReconstruction = true;
     bool useAltAtomOrder = false;
-    bool checkValidity = true;
     // Number of atoms & residues
     int nResidue = 0;
     int nAtom = 0;
@@ -406,4 +404,6 @@ public:
     std::vector<float> checkTorsionReconstruction();
     void print(int length = 5);
     void printSideChainTorsion(std::string filename);
+    // Check validity
+    ValidityError checkValidity();
 };

@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 20:05:09
+ * Last Modified: 2022-09-21 21:26:03
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -917,6 +917,13 @@ int Foldcomp::read(std::istream & file) {
     char title[this->header.lenTitle];
     file.read(title, sizeof(char) * this->header.lenTitle);
     this->strTitle = std::string(title, (int)this->header.lenTitle);
+
+    for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
+        if (mNum[i] != MAGICNUMBER[i]) {
+            std::cerr << "[Error] File is not a valid fcz file: " << this->strTitle << std::endl;
+            return -1;
+        }
+    }
     // Read the prev atoms
     // In the file, only xyz coordinates are stored
     // So, we need to reconstruct the atomcoordinate from the xyz coordinates & the information from the header
@@ -1024,13 +1031,6 @@ int Foldcomp::read(std::istream & file) {
     }
     for (int i = 0; i < 6; i++) {
         success = _restoreDiscretizer(i);
-    }
-    if (this->checkValidity) {
-        ValidityError ve = this->_checkValidity();
-        printValidityError(ve, this->strTitle);
-        if (ve != SUCCESS) {
-            success = -1;
-        }
     }
     // Close file
     return success;
@@ -1446,7 +1446,7 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
  *        This method is expected to be called after the input file is read.
  * @return int Error code. 0 if no error.
  */
-ValidityError Foldcomp::_checkValidity() {
+ValidityError Foldcomp::checkValidity() {
     // Check magic number
     bool hasMagicNumber = (this->magicNumber == MAGICNUMBER);
     // Check size
