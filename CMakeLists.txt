@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(foldcomp C CXX)
 
 option(BUILD_LIBRARY "Build library" OFF)
+option(BUILD_PYTHON "Build python support" OFF)
 option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 
 include_directories(src)
@@ -22,12 +23,15 @@ if(BUILD_LIBRARY)
     add_library(foldcomp
         ${foldcomp_header_files}
         ${foldcomp_source_files})
-
-    add_library(cfoldcomp
-        api/C/cfoldcomp.h
-        api/C/cfoldcomp.cpp)
-    target_link_libraries(cfoldcomp PRIVATE foldcomp)
-else()   
+elseif(BUILD_PYTHON)
+        find_package(PythonExtensions REQUIRED)
+        add_library(foldcomp MODULE 
+            ${foldcomp_header_files}
+            ${foldcomp_source_files}
+            foldcomp/foldcomp.cxx)
+        python_extension_module(foldcomp)
+        install(TARGETS foldcomp LIBRARY DESTINATION foldcomp)
+else()
     include_directories(lib)
     
     add_executable(foldcomp

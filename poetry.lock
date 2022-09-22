@@ -1,0 +1,124 @@
+[[package]]
+name = "cmake"
+version = "3.24.1.1"
+description = "CMake is an open-source, cross-platform family of tools designed to build, test and package software"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.extras]
+test = ["codecov (>=2.0.5)", "coverage (>=4.2)", "flake8 (>=3.0.4)", "path.py (>=11.5.0)", "pytest (>=3.0.3)", "pytest-cov (>=2.4.0)", "pytest-runner (>=2.9)", "pytest-virtualenv (>=1.7.0)", "scikit-build (>=0.10.0)", "setuptools (>=28.0.0)", "virtualenv (>=15.0.3)", "wheel"]
+
+[[package]]
+name = "distro"
+version = "1.7.0"
+description = "Distro - an OS platform information API"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "ninja"
+version = "1.10.2.3"
+description = "Ninja is a small build system with a focus on speed"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.extras]
+test = ["codecov (>=2.0.5)", "coverage (>=4.2)", "flake8 (>=3.0.4)", "pytest (>=4.5.0)", "pytest-cov (>=2.7.1)", "pytest-runner (>=5.1)", "pytest-virtualenv (>=1.7.0)", "virtualenv (>=15.0.3)"]
+
+[[package]]
+name = "packaging"
+version = "21.3"
+description = "Core utilities for Python packages"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
+
+[[package]]
+name = "pyparsing"
+version = "3.0.9"
+description = "pyparsing module - Classes and methods to define and execute parsing grammars"
+category = "dev"
+optional = false
+python-versions = ">=3.6.8"
+
+[package.extras]
+diagrams = ["jinja2", "railroad-diagrams"]
+
+[[package]]
+name = "scikit-build"
+version = "0.15.0"
+description = "Improved build system generator for Python C/C++/Fortran/Cython extensions"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+distro = "*"
+packaging = "*"
+
+[package.extras]
+docs = ["pygments", "sphinx (>=4)", "sphinx-issues", "sphinx-rtd-theme (>=1.0)", "sphinxcontrib-moderncmakedomain (>=3.19)"]
+test = ["build (>=0.5)", "codecov (>=2.0.5)", "coverage (>=4.2)", "cython (>=0.25.1)", "flake8 (>=3.0.4)", "path.py (>=11.5.0)", "pathlib2", "pytest (>=4.5.0)", "pytest-cov (>=2.7.1)", "pytest-mock (>=1.10.4)", "pytest-runner (>=5.1)", "pytest-virtualenv (>=1.2.5)", "requests", "six (>=1.10.0)", "ubelt (>=0.8.2)", "virtualenv", "xdoctest (>=0.10.0)"]
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.7.0"
+content-hash = "6dca30fa4605633f4f550feea6fbfd4d761d65beddd68aff5c07a1bcba2f9083"
+
+[metadata.files]
+cmake = [
+    {file = "cmake-3.24.1.1-py2.py3-none-macosx_10_10_universal2.macosx_10_10_x86_64.macosx_11_0_arm64.macosx_11_0_universal2.whl", hash = "sha256:5db44d09123d721785165918d5220c18c2fb8a4784b126922a208085bded627c"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:d212e0945753420e02bdfaa3ba411b45af7bddb77e0db6335ee71b5cbbca6cea"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:f4ebb3b09b19d9e244929c17367b7c899b68f871285e07fd72edd59cc819bd28"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c9eca895c87c2d41d5766eacb1ece57e1ae51887bfa5501cb43b15f1b8d427ec"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:2811de77fe8be5c14b6be395a6b9f60cd921ad84ca2491f92f6f5cce8570d7fb"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:70fe2f46f66c265874b26fb43b3332d707a60d1e0151d8f76dfe6487f5119198"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:4085aeaf85b462fee4f2f5e1b72e08136bfbc4f5c6241a521a1221d5f0a7eece"},
+    {file = "cmake-3.24.1.1-py2.py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cdff2c7fecbc122af8d75f3a2fb977f2bd361c2db3bd753b8ff817ec6eb217f1"},
+    {file = "cmake-3.24.1.1-py2.py3-none-musllinux_1_1_aarch64.whl", hash = "sha256:1137407cb24c54c486184bde10aa74c50eb90604ee601c6c45e8c754112f236c"},
+    {file = "cmake-3.24.1.1-py2.py3-none-musllinux_1_1_i686.whl", hash = "sha256:36de1952e7ca22be42df591de192d0dbe1bf93f17e4a190dda9ecd4e6276e75d"},
+    {file = "cmake-3.24.1.1-py2.py3-none-musllinux_1_1_ppc64le.whl", hash = "sha256:fe0e398861aae4aee97f32ee0af02692b48f3685ac0d52fa463737090a667ce2"},
+    {file = "cmake-3.24.1.1-py2.py3-none-musllinux_1_1_s390x.whl", hash = "sha256:e7e9e737a14b9e6ac6ae5ad89c697aa9ba5e061564822f708a19dde3f9e382a4"},
+    {file = "cmake-3.24.1.1-py2.py3-none-musllinux_1_1_x86_64.whl", hash = "sha256:5f02962ef635429f7552a002701f2589c6ce061c2f0157722e03b9b3fefa7215"},
+    {file = "cmake-3.24.1.1-py2.py3-none-win32.whl", hash = "sha256:6dce0562d6a7707d10f5c41f1d3adca1f1f2971bfbb3d24a780252cb81101497"},
+    {file = "cmake-3.24.1.1-py2.py3-none-win_amd64.whl", hash = "sha256:04e1a874476ef03a433d49715295e2b9583ff9fdb5b6f34572281e1b61e55b5f"},
+    {file = "cmake-3.24.1.1.tar.gz", hash = "sha256:7cccfc0388bfe4cb6a465fb8f8a57861c83c60956653b314cfde47865d94f03e"},
+]
+distro = [
+    {file = "distro-1.7.0-py3-none-any.whl", hash = "sha256:d596311d707e692c2160c37807f83e3820c5d539d5a83e87cfb6babd8ba3a06b"},
+    {file = "distro-1.7.0.tar.gz", hash = "sha256:151aeccf60c216402932b52e40ee477a939f8d58898927378a02abbe852c1c39"},
+]
+ninja = [
+    {file = "ninja-1.10.2.3-py2.py3-none-macosx_10_9_universal2.macosx_10_9_x86_64.macosx_11_0_arm64.macosx_11_0_universal2.whl", hash = "sha256:d5e0275d28997a750a4f445c00bdd357b35cc334c13cdff13edf30e544704fbd"},
+    {file = "ninja-1.10.2.3-py2.py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5ea785bf6a15727040835256577239fa3cf5da0d60e618c307aa5efc31a1f0ce"},
+    {file = "ninja-1.10.2.3-py2.py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:29570a18d697fc84d361e7e6330f0021f34603ae0fcb0ef67ae781e9814aae8d"},
+    {file = "ninja-1.10.2.3-py2.py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:21a1d84d4c7df5881bfd86c25cce4cf7af44ba2b8b255c57bc1c434ec30a2dfc"},
+    {file = "ninja-1.10.2.3-py2.py3-none-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:9ca8dbece144366d5f575ffc657af03eb11c58251268405bc8519d11cf42f113"},
+    {file = "ninja-1.10.2.3-py2.py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:279836285975e3519392c93c26e75755e8a8a7fafec9f4ecbb0293119ee0f9c6"},
+    {file = "ninja-1.10.2.3-py2.py3-none-musllinux_1_1_aarch64.whl", hash = "sha256:cc8b31b5509a2129e4d12a35fc21238c157038022560aaf22e49ef0a77039086"},
+    {file = "ninja-1.10.2.3-py2.py3-none-musllinux_1_1_i686.whl", hash = "sha256:688167841b088b6802e006f911d911ffa925e078c73e8ef2f88286107d3204f8"},
+    {file = "ninja-1.10.2.3-py2.py3-none-musllinux_1_1_ppc64le.whl", hash = "sha256:840a0b042d43a8552c4004966e18271ec726e5996578f28345d9ce78e225b67e"},
+    {file = "ninja-1.10.2.3-py2.py3-none-musllinux_1_1_s390x.whl", hash = "sha256:84be6f9ec49f635dc40d4b871319a49fa49b8d55f1d9eae7cd50d8e57ddf7a85"},
+    {file = "ninja-1.10.2.3-py2.py3-none-musllinux_1_1_x86_64.whl", hash = "sha256:6bd76a025f26b9ae507cf8b2b01bb25bb0031df54ed685d85fc559c411c86cf4"},
+    {file = "ninja-1.10.2.3-py2.py3-none-win32.whl", hash = "sha256:740d61fefb4ca13573704ee8fe89b973d40b8dc2a51aaa4e9e68367233743bb6"},
+    {file = "ninja-1.10.2.3-py2.py3-none-win_amd64.whl", hash = "sha256:0560eea57199e41e86ac2c1af0108b63ae77c3ca4d05a9425a750e908135935a"},
+    {file = "ninja-1.10.2.3.tar.gz", hash = "sha256:e1b86ad50d4e681a7dbdff05fc23bb52cb773edb90bc428efba33fa027738408"},
+]
+packaging = [
+    {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
+    {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
+]
+pyparsing = [
+    {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
+    {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
+]
+scikit-build = [
+    {file = "scikit-build-0.15.0.tar.gz", hash = "sha256:e723cd0f3489a042370b9ea988bbb9cfd7725e8b25b20ca1c7981821fcf65fb9"},
+    {file = "scikit_build-0.15.0-py2.py3-none-any.whl", hash = "sha256:14ae341652ac42eabd1e830bccfec9b2551a4d9c34329a5580591fdeb86b23a4"},
+]
