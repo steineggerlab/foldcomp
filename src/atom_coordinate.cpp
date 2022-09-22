@@ -181,15 +181,9 @@ std::vector<AtomCoordinate> weightedAverage(
 
 // 2021-01-18 13:53:00 TESTED.
 
-int writeAtomCoordinatesToPDB(
-    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
+void writeAtomCoordinatesToPDB(
+    std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_stream
 ) {
-    std::ofstream pdb_file;
-    pdb_file.open(pdb_path);
-    if (!pdb_file.is_open()) {
-        std::cout << "Error: Cannot open file: " << pdb_path << std::endl;
-        return 1;
-    }
     // Write title
     // Check if title is too long and if so, write the title in multiple lines
     if (title != "") {
@@ -208,9 +202,9 @@ int writeAtomCoordinatesToPDB(
         }
         for (int i = 0; i < title_line_num; i++) {
             if (i == 0) {
-                pdb_file << "TITLE     " << title_per_line[i] << "\n";
+                pdb_stream << "TITLE     " << title_per_line[i] << "\n";
             } else {
-                pdb_file << "TITLE   " << title_per_line[i] << std::endl;
+                pdb_stream << "TITLE   " << title_per_line[i] << std::endl;
             }
         }
     }
@@ -219,30 +213,30 @@ int writeAtomCoordinatesToPDB(
     std::string residue;
     int residue_index;
     for (int i = 0; i < total; i++) {
-        pdb_file << "ATOM  "; // 1-4 ATOM
-        pdb_file << std::setw(5) << i + 1; // 7-11
-        pdb_file << " "; // 12
+        pdb_stream << "ATOM  "; // 1-4 ATOM
+        pdb_stream << std::setw(5) << i + 1; // 7-11
+        pdb_stream << " "; // 12
         if (atoms[i].atom.size() == 4) {
-            pdb_file << std::setw(4) << std::left << atoms[i].atom; // 13-16
+            pdb_stream << std::setw(4) << std::left << atoms[i].atom; // 13-16
         } else {
-            pdb_file << " ";
-            pdb_file << std::setw(3) << std::left << atoms[i].atom; // 13-16
+            pdb_stream << " ";
+            pdb_stream << std::setw(3) << std::left << atoms[i].atom; // 13-16
         }
-        pdb_file << " "; // 17
-        pdb_file << std::setw(3) << std::right << atoms[i].residue; // 18-20
-        pdb_file << " "; // 21
-        pdb_file << atoms[i].chain; // 22
-        pdb_file << std::setw(4) << atoms[i].residue_index; // 23-26
-        pdb_file << "    "; // 27-30
-        pdb_file << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[0]; // 31-38
-        pdb_file << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[1]; // 39-46
-        pdb_file << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[2]; // 47-54
-        pdb_file << "  1.00"; // 55-60
-        pdb_file << std::setw(6) << std::setprecision(2) << std::fixed << atoms[i].tempFactor; // 61-66
-        pdb_file << "          "; // 67-76
+        pdb_stream << " "; // 17
+        pdb_stream << std::setw(3) << std::right << atoms[i].residue; // 18-20
+        pdb_stream << " "; // 21
+        pdb_stream << atoms[i].chain; // 22
+        pdb_stream << std::setw(4) << atoms[i].residue_index; // 23-26
+        pdb_stream << "    "; // 27-30
+        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[0]; // 31-38
+        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[1]; // 39-46
+        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[2]; // 47-54
+        pdb_stream << "  1.00"; // 55-60
+        pdb_stream << std::setw(6) << std::setprecision(2) << std::fixed << atoms[i].tempFactor; // 61-66
+        pdb_stream << "          "; // 67-76
         // First one character from atom
-        pdb_file << std::setw(2) << atoms[i].atom[0]; // 77-78
-        pdb_file << "  \n"; // 79-80
+        pdb_stream << std::setw(2) << atoms[i].atom[0]; // 77-78
+        pdb_stream << "  \n"; // 79-80
         if (i == (total-1)) {
             // TER
             // 1-6 Record name "TER   "
@@ -250,12 +244,24 @@ int writeAtomCoordinatesToPDB(
             // 18-20 Residue name.
             // 22 Chain identifier.
             // 23-26 Residue sequence number.
-            pdb_file << "TER   " << std::setw(5) << total + 1 << "      ";
-            pdb_file << std::setw(3) << std::right << atoms[i].residue;
-            pdb_file << " " << atoms[i].chain;
-            pdb_file << std::setw(4) << atoms[i].residue_index << std::endl;
+            pdb_stream << "TER   " << std::setw(5) << total + 1 << "      ";
+            pdb_stream << std::setw(3) << std::right << atoms[i].residue;
+            pdb_stream << " " << atoms[i].chain;
+            pdb_stream << std::setw(4) << atoms[i].residue_index << std::endl;
         }
     }
+}
+
+int writeAtomCoordinatesToPDBFile(
+    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
+) {
+    std::ofstream pdb_file;
+    pdb_file.open(pdb_path);
+    if (!pdb_file.is_open()) {
+        std::cout << "Error: Cannot open file: " << pdb_path << std::endl;
+        return 1;
+    }
+    writeAtomCoordinatesToPDB(atoms, title, pdb_file);
     pdb_file.close();
     return 0;
 }
