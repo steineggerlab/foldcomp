@@ -179,7 +179,7 @@ int decompress(std::istream &file, std::string output) {
         return 1;
     }
     // Write decompressed data to file
-    flag = writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, output);
+    flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, output);
 
     return flag;
 }
