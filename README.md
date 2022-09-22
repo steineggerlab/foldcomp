@@ -1,7 +1,6 @@
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb.
 
-
 ## Usage
 ```
 [Compression]
@@ -15,6 +14,10 @@ foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
 [Extraction]
 foldcomp extract [--plddt|--fasta] <fcz_file> [<txt_file|fasta_file>]
 foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
+
+[Check]
+foldcomp check <fcz_file>
+foldcomp check [-t number] <fcz_dir|tar>
 
 [Options]
  -h, --help           print this help message
@@ -37,7 +40,6 @@ cd ..
 # Build
 cmake --build ./build --target foldcomp
 ```
-
 
 ## About
 

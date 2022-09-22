@@ -12,7 +12,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-22 02:33:40
+ * Last Modified: 2022-09-23 00:42:16
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -55,8 +55,8 @@ int print_usage(void) {
     std::cout << "       foldcomp decompress [-t number] <fcz_dir|tar> [<pdb_dir>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz_file> [<fasta_file>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
-    std::cout << "       foldcomp check <fcz_file> [<fasta_file>]" << std::endl;
-    std::cout << "       foldcomp check [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
+    std::cout << "       foldcomp check <fcz_file>" << std::endl;
+    std::cout << "       foldcomp check [-t number] <fcz_dir|tar>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
