@@ -4,14 +4,12 @@ import shutil
 import sys
 
 # set debug mode for scikit-build
-sys.argv[2:2] = ["--build-type", "Debug"]
+# sys.argv[2:2] = ["--build-type", "Debug"]
 
-setup(
-    cmake_args=['-DBUILD_PYTHON:BOOL=ON'],
-    script_args=["build"]
-)
+setup(cmake_args=["-DBUILD_PYTHON:BOOL=ON"], script_args=["build"])
 src_dir = Path(constants.CMAKE_INSTALL_DIR()) / "foldcomp"
 dest_dir = Path("foldcomp")
+
 
 def remove_files(target_dir: Path, pattern: str) -> None:
     """Delete files matched with a glob pattern in a directory tree."""
@@ -20,6 +18,7 @@ def remove_files(target_dir: Path, pattern: str) -> None:
             shutil.rmtree(path)
         else:
             path.unlink()
+
 
 def copy_files(src_dir: Path, dest_dir: Path, pattern: str) -> None:
     """Copy files matched with a glob pattern in a directory tree to another."""
@@ -31,6 +30,7 @@ def copy_files(src_dir: Path, dest_dir: Path, pattern: str) -> None:
         else:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
+
 
 # Delete C-extensions copied in previous runs, just in case.
 remove_files(dest_dir, "**/*.pyd")

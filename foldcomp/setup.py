@@ -1,3 +1,2 @@
 def setup():
     import requests
-    
