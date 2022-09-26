@@ -2,6 +2,7 @@ set(foldcomp_header_files
     src/amino_acid.h
     src/atom_coordinate.h
     src/bond_info.h
+    src/dbreader.h
     src/discretizer.h
     src/foldcomp.h
     src/nerf.h
@@ -15,6 +16,7 @@ set(foldcomp_header_files
 set(foldcomp_source_files
     src/amino_acid.cpp
     src/atom_coordinate.cpp
+    src/dbreader.cpp
     src/discretizer.cpp
     src/foldcomp.cpp
     src/nerf.cpp

@@ -1,6 +1,10 @@
 from skbuild import setup, constants
 from pathlib import Path
 import shutil
+import sys
+
+# set debug mode for scikit-build
+sys.argv[2:2] = ["--build-type", "Debug"]
 
 setup(
     cmake_args=['-DBUILD_PYTHON:BOOL=ON'],
