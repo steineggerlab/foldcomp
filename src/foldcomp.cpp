@@ -919,9 +919,8 @@ int Foldcomp::read(std::istream & file) {
     // Read int vector
     file.read(reinterpret_cast<char*>(&this->anchorIndices[0]), sizeof(int) * this->nAllAnchor);
     // Read the title
-    char title[this->header.lenTitle];
-    file.read(title, sizeof(char) * this->header.lenTitle);
-    this->strTitle = std::string(title, (int)this->header.lenTitle);
+    this->strTitle = std::string(this->header.lenTitle, '\0');
+    file.read(&this->strTitle[0], sizeof(char) * this->header.lenTitle);
 
     // Read the prev atoms
     // In the file, only xyz coordinates are stored
@@ -1055,10 +1054,7 @@ int Foldcomp::write(std::string filename) {
             outfile.write((char*)&this->anchorIndices[i], sizeof(int));
         }
         // Write title
-        char* title = new char[this->strTitle.length() + 1];
-        strcpy(title, this->strTitle.c_str());
-        outfile.write((char*)title, strlen(title));
-        delete[] title;
+        outfile.write(this->strTitle.c_str(), this->strTitle.length());
 
         // 2022-08-08 19:15:30 - Changed to write all anchor atoms
         // TODO: NEED TO BE CHECKED
@@ -1141,7 +1137,7 @@ int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
         mtar_write_data(&tar, &this->anchorIndices[i], sizeof(int));
     }
     // Write title
-    mtar_write_data(&tar, this->strTitle.c_str(), strlen(this->strTitle.c_str()));
+    mtar_write_data(&tar, this->strTitle.c_str(), this->strTitle.length());
     // Write anchor atoms
     for (auto anchors : this->anchorAtoms) {
         for (int i = 0; i < 3; i++) {
@@ -1207,7 +1203,7 @@ size_t Foldcomp::getSize() {
     // Anchor indices
     size += sizeof(int) * this->anchorIndices.size();
     // Title
-    size += strlen(this->strTitle.c_str());
+    size += this->strTitle.length();
     // Anchor atoms
     size += sizeof(float) * 3 * 3 * this->anchorAtoms.size();
     // OXT
