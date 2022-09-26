@@ -148,12 +148,13 @@ static PyTypeObject FoldcompDatabaseType = {
     0,                         /* tp_del */
     0,                         /* tp_version_tag */
     0,                         /* tp_finalize */
-    0,                        /* tp_vectorcall */
+    // Introduced in Python 3.8, not needed
+    //0,                        /* tp_vectorcall */
 };
 
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
-    if (!Py_IS_TYPE(self, &FoldcompDatabaseType)) {
+    if (!PyObject_TypeCheck(self, &FoldcompDatabaseType)) {
          return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
