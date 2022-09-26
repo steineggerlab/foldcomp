@@ -28,8 +28,10 @@
 #include "nerf.h"
 #include "utility.h"
 
+#ifdef FOLDCOMP_EXECUTABLE
 // TAR format handling
 #include "microtar/microtar.h"
+#endif
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
@@ -386,8 +388,10 @@ public:
     int read(std::istream & filename);
     int write(std::string filename);
     // Read & write for tar files
+#ifdef FOLDCOMP_EXECUTABLE
     // int readTar(mtar_t& tar, std::string filename, size_t size);
     int writeTar(mtar_t& tar, std::string filename, size_t size);
+#endif
 
     int reconstruct(std::vector<AtomCoordinate>& atoms, int mode);
     CompressedFileHeader get_header();
@@ -396,7 +400,9 @@ public:
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
     int writeFASTALike(std::string filename, std::vector<std::string>& data);
+#ifdef FOLDCOMP_EXECUTABLE
     int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
+#endif
     int extract(std::vector<std::string>& data, int type);
 
     // temporary method for testing

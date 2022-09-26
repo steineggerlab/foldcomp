@@ -1,7 +1,39 @@
-# Author: Hyunbin Kim (khb7840@gmail.com)
-set (CMAKE_CXX_STANDARD 17)
-# 01. Collect files
-file(GLOB_RECURSE SOURCE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/ *.cpp)
-file(GLOB_RECURSE SOURCE_H ${CMAKE_CURRENT_SOURCE_DIR}/ *.h)
-# 02. Add executable
-add_library(${PROJECT_NAME} OBJECT ${SOURCE_CPP} ${SOURCE_H})
+set(foldcomp_header_files
+    src/amino_acid.h
+    src/atom_coordinate.h
+    src/bond_info.h
+    src/dbreader.h
+    src/discretizer.h
+    src/foldcomp.h
+    src/nerf.h
+    src/pdb_reader.h
+    src/sidechain.h
+    src/torsion_angle.h
+    src/utility.h
+    PARENT_SCOPE
+    )
+
+set(foldcomp_source_files
+    src/amino_acid.cpp
+    src/atom_coordinate.cpp
+    src/dbreader.cpp
+    src/discretizer.cpp
+    src/foldcomp.cpp
+    src/nerf.cpp
+    src/pdb_reader.cpp
+    src/sidechain.cpp
+    src/torsion_angle.cpp
+    src/utility.cpp
+    PARENT_SCOPE
+    )
+
+set(foldcomp_exe_header_files
+    src/structure_reader.h
+    PARENT_SCOPE
+    )
+
+set(foldcomp_exe_source_files
+    src/structure_reader.cpp
+    src/main.cpp
+    PARENT_SCOPE
+    )

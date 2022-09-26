@@ -68,7 +68,10 @@ std::vector<AtomCoordinate> weightedAverage(
     std::vector<AtomCoordinate>& origAtoms, std::vector<AtomCoordinate>& revAtoms
 );
 
-int writeAtomCoordinatesToPDB(
+void writeAtomCoordinatesToPDB(
+    std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_path
+);
+int writeAtomCoordinatesToPDBFile(
     std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
 );
 
