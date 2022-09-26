@@ -1127,6 +1127,7 @@ int Foldcomp::write(std::string filename) {
     return flag;
 }
 
+#ifdef FOLDCOMP_EXECUTABLE
 // 2022-08-29 15:42:29 TAR format support
 int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     int flag = 0;
@@ -1194,6 +1195,7 @@ int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     delete[] charTempFactors;
     return flag;
 }
+#endif
 
 size_t Foldcomp::getSize() {
     // Calculate the size of the compressed format
@@ -1248,6 +1250,7 @@ int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& dat
     return flag;
 }
 
+#ifdef FOLDCOMP_EXECUTABLE
 int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
     int flag = 0;
     // Output format
@@ -1264,6 +1267,7 @@ int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<s
     mtar_write_data(&tar, str.c_str(), str.size());
     return flag;
 }
+#endif
 
 /**
  * @brief Extract information from the compressed file and write to a FASTA-like file
