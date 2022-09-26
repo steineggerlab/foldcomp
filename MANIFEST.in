@@ -1,0 +1,5 @@
+prune util
+prune lib
+prune .github
+exclude build.sh
+exclude *.pdb *.cif.gz *.fcz

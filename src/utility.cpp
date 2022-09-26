@@ -80,6 +80,8 @@ float angle(
     return theta;
 }
 
+#ifdef FOLDCOMP_EXECUTABLE
+#include <dirent.h>
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir) {
     std::vector<std::string> files;
@@ -100,6 +102,7 @@ std::vector<std::string> getFilesInDirectory(std::string dir) {
     closedir(dp);
     return files;
 };
+#endif
 
 std::string baseName(std::string const path) {
     return path.substr(path.find_last_of("/\\") + 1);

@@ -1,27 +1,8 @@
-[tool.poetry]
-name = "foldcomp"
-version = "0.0.1"
-description = "Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb."
-license = "MIT"
-authors = ["Milot Mirdita <milot@mirdita.de>"]
-readme = "README.md"
-repository = "https://github.com/steineggerlab/foldcomp"
-
-[tool.poetry.dependencies]
-python = "^3.7.0"
-requests = "^2.28.1"
-
-[tool.poetry.dev-dependencies]
-setuptools = ">42"
-scikit-build = ">0.13"
-cmake = ">3.18"
-ninja = { version = "*", markers = "sys_platform != 'win32'" }
-black = "^22.8.0"
-
-[tool.poetry.build]
-generate-setup-file = false
-script = "build.py"
-
 [build-system]
-requires = ["poetry-core>=1.0.0", "scikit-build", "cmake", "ninja"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "setuptools>=42",
+    "cmake>=3.22",
+    "scikit-build>=0.15.0",
+    "ninja; platform_system!='Windows'"
+]
+build-backend = "setuptools.build_meta"

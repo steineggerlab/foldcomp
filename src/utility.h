@@ -20,7 +20,6 @@
 #include <iostream>
 #include <chrono>
 #include <sstream>
-#include <dirent.h>
 #include <cstring>
 
 const float PI = 3.14159265;
@@ -166,8 +165,10 @@ public:
 
 }; // ExecutionTimer
 
+#ifdef FOLDCOMP_EXECUTABLE
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir);
+#endif
 std::string baseName(std::string const& path);
 
 std::string getFileWithoutExt(std::string& file);

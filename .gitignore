@@ -3,6 +3,7 @@ build/
 human/
 human_cif/
 _skbuild/
+foldcomp.egg-info/
 dist/
 
 compressed.fcz
