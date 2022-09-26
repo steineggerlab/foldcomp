@@ -2,6 +2,8 @@
 Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb.
 
 ## Usage
+
+### Executable
 ```
 [Compression]
 foldcomp compress <pdb_file|cif_file> [<fcz_file>]
@@ -30,7 +32,26 @@ foldcomp check [-t number] <fcz_dir|tar>
  --no-merge           do not merge output files (only for extraction mode)
 ```
 
+### Python API
+```py
+# Open a fcz file
+import foldcomp
+fcz = open("compressed.fcz", "rb")
+fcz_binary = fcz.read()
+fcz.close()
+
+# Decompress
+pdb_out = foldcomp.decompress(fcz_binary) # pdb_out[0]: file name, pdb_out[1]: pdb binary string
+
+# Save to a pdb file
+out_file = open(pdb_out[0], "wb")
+out_file.write(pdb_out[1])
+out_file.close()
+```
+
 ## Build
+
+### foldcomp executable
 ```sh
 # Configure
 mkdir build
@@ -39,6 +60,11 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 cd ..
 # Build
 cmake --build ./build --target foldcomp
+```
+
+### foldcomp python module
+```sh
+poetry install
 ```
 
 ## About

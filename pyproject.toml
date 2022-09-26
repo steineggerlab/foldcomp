@@ -2,8 +2,8 @@
 name = "foldcomp"
 version = "0.0.1"
 description = "Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb."
-license = "MIT"
-authors = ["Milot Mirdita <milot@mirdita.de>"]
+license = "gpl-3.0-or-later"
+authors = ["Hyunbin Kim <khb7840@snu.ac.kr>", "Milot Mirdita <milot@mirdita.de>", "Martin Steinegger <martin.steinegger@snu.ac.kr>"]
 readme = "README.md"
 repository = "https://github.com/steineggerlab/foldcomp"
 

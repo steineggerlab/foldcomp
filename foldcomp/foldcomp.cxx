@@ -153,7 +153,7 @@ static PyTypeObject FoldcompDatabaseType = {
 
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
-    if (!Py_IS_TYPE(self, &FoldcompDatabaseType)) {
+    if (!PyObject_TypeCheck(self, &FoldcompDatabaseType)) {
          return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
