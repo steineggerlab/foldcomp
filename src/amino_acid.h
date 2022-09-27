@@ -37,8 +37,9 @@ public:
     std::map<std::string, float> bondAngles;
     std::map<std::string, float> torsionAngles;
 
+    AminoAcid() = default;
+
     // constructors & destructor
-    AminoAcid(/* args */){};
     AminoAcid(char ab1, std::string ab3, std::string name):
         abb1(ab1), abb3(ab3), fullName(name) {}
     AminoAcid(
@@ -64,21 +65,17 @@ public:
             }
         }
     };
-    ~AminoAcid(){};
 
     std::map<std::string, AminoAcid> AminoAcids() {
         std::map<std::string, AminoAcid> output;
-        // Alanine (A/ALA)
-        output["ALA"] = AminoAcid(
-            'A', "ALA", "Alanine", // name
+        output.emplace("ALA", AminoAcid('A', "ALA", "Alanine", // name
             {"N", "CA", "C", "O", "CB",}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}}}, // sidechain
-            {"N", "CA", "C", "CB", "O"}
-        );
+            {"N", "CA", "C", "CB", "O"}));
         output["ALA"].bondLengths = {{"CA_CB", 1.52}, {"C_O", 1.23}};
         output["ALA"].bondAngles = {{"CA_C_O", 120.31}, {"C_CA_CB", 110.852}};
         // Arginine (R/ARG)
-        output["ARG"] = AminoAcid(
+        output.emplace("ARG", AminoAcid(
             'R', "ARG", "Arginine", // name
             { "N", "CA", "C", "O", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2" }, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
@@ -86,7 +83,7 @@ public:
              {"NE", {"CB", "CG", "CD"}},{"CZ", {"CG", "CD", "NE"}},
              {"NH1", {"CD", "NE", "CZ"}},{"NH2", {"CD", "NE", "CZ"}}}, // sidechain
             { "N", "CA", "C", "CB", "O", "CG", "CD", "NE", "NH1", "NH2", "CZ"}
-        );
+        ));
         output["ARG"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.53},
             {"CG_CD", 1.52}, {"CD_NE", 1.46}, {"NE_CZ", 1.32},
@@ -98,14 +95,14 @@ public:
             {"NE_CZ_NH1", 120.077}, {"NE_CZ_NH2", 120.077}
         };
         // Asparagine (N/ASN)
-        output["ASN"] = AminoAcid(
+        output.emplace("ASN", AminoAcid(
             'N', "ASN", "Asparagine", // name
             { "N", "CA", "C", "O", "CB", "CG", "OD1", "ND2"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"OD1", {"CA", "CB", "CG"}},
              {"ND2", {"CA", "CB", "CG"}}}, // sidechain
             { "N", "CA", "C", "CB", "O", "CG", "ND2", "OD1"}
-        );
+        ));
         output["ASN"].bondLengths = {
             {"CA_CB", 1.52}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_OD1", 1.23}, {"CG_ND2", 1.325}
         };
@@ -114,14 +111,14 @@ public:
             {"CB_CG_OD1", 120.85}, {"CB_CG_ND2", 116.48}
         };
         // Aspartic Acid (D/ASP)
-        output["ASP"] = AminoAcid(
+        output.emplace("ASP", AminoAcid(
             'D', "ASP", "Aspartic acid", // name
             { "N", "CA", "C", "O", "CB", "CG", "OD1", "OD2" }, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"OD1", {"CA", "CB", "CG"}},
              {"OD2", {"CA", "CB", "CG"}}}, // sidechain
             { "N", "CA", "C", "CB", "O", "CG", "OD1", "OD2"}
-        );
+        ));
         output["ASP"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_OD1", 1.248}, {"CG_OD2", 1.248}
         };
@@ -130,13 +127,13 @@ public:
             {"CB_CG_OD1", 118.344}, {"CB_CG_OD2", 118.344}
         };
         // Cysteine (C/CYS)
-        output["CYS"] = AminoAcid(
+        output.emplace("CYS", AminoAcid(
             'C', "CYS", "Cysteine", // name
             {"N", "CA", "C", "O", "CB", "SG"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"SG", {"N", "CA", "CB"}}}, // sidechain
             { "N", "CA", "C", "CB", "O", "SG"}
-        );
+        ));
         output["CYS"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_SG", 1.8}
         };
@@ -144,14 +141,14 @@ public:
             {"CA_C_O", 120.063}, {"C_CA_CB", 111.078}, {"CA_CB_SG", 113.817}
         };
         // Glutamine (Q/GLN)
-        output["GLN"] = AminoAcid(
+        output.emplace("GLN", AminoAcid(
             'Q', "GLN", "Glutamine", // name
             {"N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "NE2"}, // atoms
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"CD", {"CA", "CB", "CG"}},
              {"OE1", {"CB", "CG", "CD"}},{"NE2", {"CB", "CG", "CD"}}}, // sidechain
             { "N", "CA", "C", "CB", "O", "CG", "CD", "NE2", "OE1"}
-        );
+        ));
         output["GLN"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
             {"CD_OE1", 1.23}, {"CD_NE2", 1.32}
@@ -161,14 +158,14 @@ public:
             {"CB_CG_CD", 112.811}, {"CG_CD_OE1", 121.844}, {"CG_CD_NE2", 116.50}
         };
         // Glutamic Acid (E/GLU)
-        output["GLU"] = AminoAcid(
+        output.emplace("GLU", AminoAcid(
             'E', "GLU", "Glutamic acid",
             {"N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2"},
             {{"O", {"N", "CA", "C"}},{"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}},{"CD", {"CA", "CB", "CG"}},
              {"OE1", {"CB", "CG", "CD"}},{"OE2", {"CB", "CG", "CD"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD", "OE1", "OE2"}
-        );
+        ));
         output["GLU"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
             {"CD_OE1", 1.25}, {"CD_OE2", 1.25}
@@ -178,16 +175,16 @@ public:
             {"CB_CG_CD", 112.912}, {"CG_CD_OE1", 118.479}, {"CG_CD_OE2", 118.479}
         };
         // Glycine (G/GLY)
-        output["GLY"] = AminoAcid(
+        output.emplace("GLY", AminoAcid(
             'G', "GLY", "Glycine", // name
             {"N", "CA", "C", "O"}, // atoms
             {{"O", {"N", "CA", "C"}}}, // sidechain
             { "N", "CA", "C", "O"}
-        );
+        ));
         output["GLY"].bondLengths = {{"C_O", 1.23}};
         output["GLY"].bondAngles = {{"CA_C_O", 120.522}};
         // Histidine (H/HIS)
-        output["HIS"] = AminoAcid(
+        output.emplace("HIS", AminoAcid(
             'H', "HIS", "Histidine",
             { "N", "CA", "C", "O", "CB", "CG", "ND1", "CD2", "CE1", "NE2" }, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
@@ -195,7 +192,7 @@ public:
              {"CD2", {"CA", "CB", "CG"}}, {"CE1", {"CB", "CG", "ND1"}},
              {"NE2", {"CB", "CG", "CD2"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD2", "ND1", "CE1", "NE2" }
-        );
+        ));
         output["HIS"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.5}, {"CG_ND1", 1.38},
             {"CG_CD2", 1.36}, {"ND1_CE1", 1.33}, {"CD2_NE2", 1.38}
@@ -206,14 +203,14 @@ public:
             {"CG_ND1_CE1", 108.589}
         };
         // Isoleucine (I/ILE)
-        output["ILE"] = AminoAcid(
+        output.emplace("ILE", AminoAcid(
             'I', "ILE", "Isoleucine", // name
             {"N", "CA", "C", "O", "CB", "CG1", "CG2", "CD1"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}},
              {"CD1", {"CA", "CB", "CG1"}}},
              { "N", "CA", "C", "CB", "O", "CG1", "CG2", "CD1" }
-        );
+        ));
         output["ILE"].bondLengths = {
             {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.53}, {"CB_CG2", 1.52},
             {"CG1_CD1", 1.51}
@@ -223,14 +220,14 @@ public:
             {"CA_CB_CG2", 110.5}, {"CB_CG1_CD1", 113.97}
         };
         // Leucine (L/LEU)
-        output["LEU"] = AminoAcid(
+        output.emplace("LEU", AminoAcid(
             'L', "LEU", "Leucine",
             { "N", "CA", "C", "O", "CB", "CG", "CD1", "CD2" }, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD1", {"CA", "CB", "CG"}},
              {"CD2", {"CA", "CB", "CG"}} },
             { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2" }
-        );
+        ));
         output["LEU"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.235}, {"CB_CG", 1.53}, {"CG_CD1", 1.52},
             {"CG_CD2", 1.52}
@@ -241,14 +238,14 @@ public:
         };
         // Lysine (K/LYS)
         // 2022-06-10 21:56:59 - TODO: RECALCULATE GEOMETRY FOR LYSINE
-        output["LYS"] = AminoAcid(
+        output.emplace("LYS", AminoAcid(
             'K', "LYS", "Lysine",
             { "N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ" }, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD", {"CA", "CB", "CG"}},
              {"CE", {"CB", "CG", "CD"}}, {"NZ", {"CG", "CD", "CE"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD", "CE", "NZ" }
-        );
+        ));
         output["LYS"].bondLengths = {
             {"C_O", 1.23}, {"CA_CB", 1.53}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
             {"CD_CE", 1.52}, {"CE_NZ", 1.49} // sidechain
@@ -258,14 +255,14 @@ public:
             {"CB_CG_CD", 111.79}, {"CG_CD_CE", 111.79}, {"CD_CE_NZ", 112.25}
         };
         // Methionine (M/MET)
-        output["MET"] = AminoAcid(
+        output.emplace("MET", AminoAcid(
             'M', "MET", "Methionine",
             { "N", "CA", "C", "O", "CB", "CG", "SD", "CE"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"SD", {"CA", "CB", "CG"}},
              {"CE", {"CB", "CG", "SD"}}},
             { "N", "CA", "C", "CB", "O", "CG", "SD", "CE" }
-        );
+        ));
         output["MET"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_SD", 1.8},
             {"SD_CE", 1.79}
@@ -275,7 +272,7 @@ public:
             {"CB_CG_SD", 112.773}, {"CG_SD_CE", 100.61}
         };
         // Phenylalanine (F/PHE)
-        output["PHE"] = AminoAcid(
+        output.emplace("PHE", AminoAcid(
             'F', "PHE", "Phenylalanine",
             { "N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
@@ -283,7 +280,7 @@ public:
              {"CD2", {"CA", "CB", "CG"}}, {"CE1", {"CB", "CG", "CD1"}},
              {"CE2", {"CB", "CG", "CD2"}}, {"CZ", {"CG", "CD1", "CE1"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2", "CE1", "CE2", "CZ" }
-        );
+        ));
         output["PHE"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.51}, {"CG_CD1", 1.385},
             {"CG_CD2", 1.385}, {"CD1_CE1", 1.385}, {"CD2_CE2", 1.385},
@@ -295,13 +292,13 @@ public:
             {"CG_CD2_CE2", 120.0}, {"CD1_CE1_CZ", 120.0}
         };
         // Proline (P/PRO)
-        output["PRO"] = AminoAcid(
+        output.emplace("PRO", AminoAcid(
             'P', "PRO", "Proline", // name
             { "N", "CA", "C", "O", "CB", "CG", "CD"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG", {"N", "CA", "CB"}}, {"CD", {"CA", "CB", "CG"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD" } // atoms
-        );
+        ));
         output["PRO"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.49}, {"CG_CD", 1.50}
         };
@@ -310,13 +307,13 @@ public:
             {"CB_CG_CD", 105.0}
         };
         // Serine (S/SER)
-        output["SER"] = AminoAcid(
+        output.emplace("SER", AminoAcid(
             'S', "SER", "Serine",
             { "N", "CA", "C", "O", "CB", "OG"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"OG", {"N", "CA", "CB"}}},
             { "N", "CA", "C", "CB", "O", "OG" }
-        );
+        ));
         output["SER"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG", 1.417}
         };
@@ -324,13 +321,13 @@ public:
             {"CA_C_O", 120.475}, {"C_CA_CB", 110.248}, {"CA_CB_OG", 111.132}
         };
         // Threonine (T/THR)
-        output["THR"] = AminoAcid(
+        output.emplace("THR", AminoAcid(
             'T', "THR", "Threonine",
             {"N", "CA", "C", "O", "CB", "OG1", "CG2"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"OG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}},
             { "N", "CA", "C", "CB", "O", "CG2", "OG1" }
-        );
+        ));
         output["THR"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG1", 1.43}, {"CB_CG2", 1.52}
         };
@@ -339,7 +336,7 @@ public:
             {"CA_CB_CG2", 111.457}
         };
         // Tryptophan (W/TRP)
-        output["TRP"] = AminoAcid(
+        output.emplace("TRP", AminoAcid(
             'W', "TRP", "Tryptophan",
             {"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2",
              "NE1", "CE2", "CE3", "CZ2", "CZ3", "CH2"}, // atoms
@@ -351,7 +348,7 @@ public:
              {"CH2", {"CD2", "CE2", "CZ2"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2",
               "CE2", "CE3", "NE1", "CH2", "CZ2", "CZ3" }
-        );
+        ));
         output["TRP"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.50},
             {"CG_CD1", 1.36}, {"CG_CD2", 1.44}, {"CD1_NE1", 1.38},
@@ -365,7 +362,7 @@ public:
             {"CD2_CE3_CZ3", 120.0}, {"CE2_CZ2_CH2", 120.0}
         };
         // Tyrosine (Y/TYR)
-        output["TYR"] = AminoAcid(
+        output.emplace("TYR", AminoAcid(
             'Y', "TYR", "Tyrosine", // name
             {"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2",
              "CE1", "CE2", "CZ", "OH"}, // atoms
@@ -376,7 +373,7 @@ public:
              {"OH", {"CD1", "CE1", "CZ"}}},
             { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2",
               "CE1", "CE2", "OH", "CZ" }
-        );
+        ));
         output["TYR"].bondLengths = {
             {"CA_CB", 1.53}, {"C_O", 1.235}, {"CB_CG", 1.51},
             {"CG_CD1", 1.39}, {"CG_CD2", 1.39}, {"CD1_CE1", 1.38},
@@ -388,13 +385,13 @@ public:
             {"CG_CD2_CE2", 120.0}, {"CD1_CE1_CZ", 120.0}, {"CE1_CZ_OH", 120.0}
         };
         // Valine (V/VAL)
-        output["VAL"] = AminoAcid(
+        output.emplace("VAL", AminoAcid(
             'V', "VAL", "Valine", // name
             { "N", "CA", "C", "O", "CB", "CG1", "CG2"}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}},
              {"CG1", {"N", "CA", "CB"}}, {"CG2", {"N", "CA", "CB"}}},
             { "N", "CA", "C", "CB", "O", "CG1", "CG2" }
-        );
+        ));
         output["VAL"].bondLengths = {
             {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.52}, {"CB_CG2", 1.52}
         };
@@ -402,8 +399,8 @@ public:
             {"CA_C_O", 120.472}, {"C_CA_CB", 111.381},
             {"CA_CB_CG1", 110.7}, {"CA_CB_CG2", 110.4}
         };
-        // output["ASX"] = AminoAcid('B', "ASX", "Asparagine/aspartic acid");
-        // output["GLX"] = AminoAcid('Z', "GLX", "Glutamine/glutamic acid");
+        // output.emplace("ASX", AminoAcid('B', "ASX", "Asparagine/aspartic acid"));
+        // output.emplace("GLX", AminoAcid('Z', "GLX", "Glutamine/glutamic acid"));
         return output;
     }
 

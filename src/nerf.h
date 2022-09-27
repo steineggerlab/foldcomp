@@ -39,14 +39,14 @@ public:
     std::map<std::string, float> bond_lengths {
         // TODO: if residue is proline, apply different bond length
         // 2021-01-19 15:20:42 NOTE: TEST FORE SERINE
-        {"N_TO_CA", 1.4581}, {"PRO_N_TO_CA", 1.353}, // proline has different lengths
-        {"CA_TO_C", 1.5281}, {"C_TO_N", 1.3311},
-        {"C_TO_O", 1.23}
+        {"N_TO_CA", 1.4581f}, {"PRO_N_TO_CA", 1.353f}, // proline has different lengths
+        {"CA_TO_C", 1.5281f}, {"C_TO_N", 1.3311f},
+        {"C_TO_O", 1.23f}
     };
     // bond angles are in radian
     std::map<std::string, float> bond_angles {
-        {"N_TO_CA", 121.3822}, {"CA_TO_C", 111.2812}, {"C_TO_N", 116.6429},
-        {"C_TO_O", 120.5117}
+        {"N_TO_CA", 121.3822f}, {"CA_TO_C", 111.2812f}, {"C_TO_N", 116.6429f},
+        {"C_TO_O", 120.5117f}
     };
     //NOTE: bond_order??
     // PDB file is ordered from N terminal to C terminal

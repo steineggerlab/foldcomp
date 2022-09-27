@@ -92,13 +92,6 @@ int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
 }
 
 template <typename T>
-void swap(T* a, T* b) {
-    T temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-template <typename T>
 void printVector(std::vector<T> v) {
     // Open brackets
     std::cout << "[";

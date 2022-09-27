@@ -36,7 +36,12 @@ class Discretizer {
 private:
     /* data */
 public:
-    Discretizer(/* args */){};
+    Discretizer() = default;
+    Discretizer(const Discretizer&) = default;
+    Discretizer(Discretizer&&) = default;
+    Discretizer& operator=(const Discretizer&) = default;
+    Discretizer& operator=(Discretizer&&) = default;
+
     /**
      * @brief Construct a new Discretizer object (start with values)
      *
@@ -55,7 +60,7 @@ public:
      */
     Discretizer(float min_, float max_, unsigned int nb, float df, float cf):
         min(min_), max(max_), n_bin(nb), disc_f(df), cont_f(cf){};
-    ~Discretizer(){};
+
     float min;
     float max;
     unsigned int n_bin;

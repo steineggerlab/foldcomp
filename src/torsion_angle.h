@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <iosfwd>
+#include <string>
 
 class AtomCoordinate;
 
