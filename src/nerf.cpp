@@ -17,6 +17,12 @@
 
 #include "nerf.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <cmath>
+#include "amino_acid.h"
+#include "atom_coordinate.h"
+#include "utility.h"
 
 Nerf::Nerf(/* args */) {}
 

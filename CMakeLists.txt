@@ -8,6 +8,7 @@ project(foldcomp C CXX)
 option(BUILD_LIBRARY "Build library" OFF)
 option(BUILD_PYTHON "Build python support" OFF)
 option(BUILD_WERROR "Build with warnings as errors" OFF)
+option(BUILD_IWYU "Build with include-what-you-use" OFF)
 option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 
 include_directories(src)
@@ -78,5 +79,11 @@ if(BUILD_WERROR)
         target_compile_options(foldcomp PRIVATE -Werror)
     endif()
 endif()
+
+if(BUILD_IWYU)
+    find_program(iwyu_path NAMES include-what-you-use iwyu REQUIRED)
+    set_property(TARGET foldcomp PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path} -Xiwyu --mapping_file=${CMAKE_CURRENT_LIST_DIR}/include-what-you-use.imp)
+endif()
+
 enable_testing()
 

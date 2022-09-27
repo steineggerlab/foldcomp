@@ -19,7 +19,13 @@
 
 #include "torsion_angle.h"
 
+#include <cmath>
+#include <iostream>
+#include <cstddef>
+#include <string>
 
+#include "utility.h"
+#include "atom_coordinate.h"
 
  // Temp function
 void print3DFloatVec(std::string name, std::vector<float> input) {

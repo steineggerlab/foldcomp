@@ -1,9 +1,15 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <stdio.h>
-#include <iosfwd>
-#include <cstddef>
 
+#include <cstdint>
+#include <cstddef>
+#include <algorithm>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream> // IWYU pragma: keep
+
+#include "atom_coordinate.h"
 #include "foldcomp.h"
 #include "dbreader.h"
 

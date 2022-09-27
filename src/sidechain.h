@@ -13,14 +13,13 @@
  */
 
 #pragma once
-#include <string>
-#include <vector>
+
+#include <iosfwd>
 #include <map>
-#include "amino_acid.h"
-#include "atom_coordinate.h"
-#include "nerf.h"
-#include "torsion_angle.h"
-#include "utility.h"
+#include <vector>
+
+class AminoAcid;
+class AtomCoordinate;
 
 /**
  * @brief Reconstruct side chain

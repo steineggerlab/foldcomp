@@ -15,12 +15,9 @@
 #pragma once
 
 #include <vector>
-#include <string>
-#include <cmath>
-#include <iostream>
-#include <fstream>
-#include "utility.h"
-#include "atom_coordinate.h"
+#include <iosfwd>
+
+class AtomCoordinate;
 
 std::vector<float> getTorsionFromXYZ(
     std::vector< std::vector<float> > coordinates, int atm_inc

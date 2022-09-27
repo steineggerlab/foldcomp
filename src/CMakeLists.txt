@@ -2,6 +2,7 @@ set(foldcomp_header_files
     src/amino_acid.h
     src/atom_coordinate.h
     src/bond_info.h
+    src/execution_timer.h
     src/dbreader.h
     src/discretizer.h
     src/foldcomp.h
