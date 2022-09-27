@@ -17,6 +17,7 @@
 #include <iosfwd>
 #include <map>
 #include <vector>
+#include <string>
 
 class AminoAcid;
 class AtomCoordinate;

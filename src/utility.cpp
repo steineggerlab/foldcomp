@@ -133,6 +133,9 @@ bool stringStartsWith(const std::string& prefix, const std::string& str, const s
     return (!str.compare(offset, prefix.length(), prefix));
 }
 
+#if defined(_WIN32) || defined(_WIN64)
+#define strtok_r strtok_s
+#endif
 std::vector<std::string> stringSplit(const std::string& str, const std::string& sep) {
     std::vector<std::string> arr;
 
