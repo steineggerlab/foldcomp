@@ -1,10 +1,7 @@
 #ifndef DBREADER_H
 #define DBREADER_H
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdbool.h>
+#include <cstdint>
 
 static const int DB_READER_USE_DATA   = 1u << 0;
 static const int DB_READER_NO_CACHE   = 1u << 1;

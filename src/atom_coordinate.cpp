@@ -14,6 +14,13 @@
 
 #include "atom_coordinate.h"
 
+#include <cstddef>
+#include <stdexcept>
+
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
 // constructor
 AtomCoordinate::AtomCoordinate(){}
 

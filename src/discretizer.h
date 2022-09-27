@@ -13,8 +13,6 @@
  */
 #pragma once
 #include <vector>
-#include <algorithm>
-#include <iostream>
 #include <fstream>
 
 #define MIN_ANGLE -180.0

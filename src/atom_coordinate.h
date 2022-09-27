@@ -13,12 +13,9 @@
  */
 
 #pragma once
-#include <vector>
-#include <string>
-#include <iostream>
 #include <fstream>
-#include <iomanip>
-#include <cmath>
+#include <string>
+#include <vector>
 
 class AtomCoordinate {
 private:

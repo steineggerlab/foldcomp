@@ -15,8 +15,8 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <utility>
 #include <map>
-#include <iostream>
 #include <fstream>
 
 class AminoAcid {

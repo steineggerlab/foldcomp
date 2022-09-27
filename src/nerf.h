@@ -20,16 +20,14 @@
 // # TODO - A_TO_C angle differs by + / -5 degrees
 
 #pragma once
-#include <map>
-#include <vector>
-#include <string>
-#include <cmath>
+
 #include <fstream>
-#include <iostream>
-#include <algorithm>
-#include "utility.h"
-#include "atom_coordinate.h"
-#include "amino_acid.h"
+#include <map>
+#include <string>
+#include <vector>
+
+class AminoAcid;
+class AtomCoordinate;
 
 class Nerf {
 private:

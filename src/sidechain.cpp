@@ -13,6 +13,16 @@
  */
 
 #include "sidechain.h"
+#include <utility>
+#include <map>
+#include <stddef.h>
+#include <iostream>
+#include <string>
+#include "amino_acid.h"
+#include "atom_coordinate.h"
+#include "nerf.h"
+#include "torsion_angle.h"
+#include "utility.h"
 
 std::vector<AtomCoordinate> reconstructSideChain(
     std::vector<AtomCoordinate> backbone, AtomCoordinate /* c0 */

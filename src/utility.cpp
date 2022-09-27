@@ -16,6 +16,11 @@
 
 #include "utility.h"
 
+#include <cstdlib>
+#include <cmath>
+#include <fstream>
+#include <string>
+
 /**
  * @brief Return the cross product of two vectors
  *

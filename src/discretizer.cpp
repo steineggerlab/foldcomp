@@ -13,6 +13,10 @@
  */
 #include "discretizer.h"
 
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
+
 Discretizer::Discretizer(std::vector<float>& values, unsigned int nb):
     n_bin(nb) {
     // Get min & max

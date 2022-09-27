@@ -14,6 +14,13 @@
  */
 
 #include "foldcomp.h"
+#include <algorithm>
+#include <bitset>
+#include <cmath>
+#include <utility>
+#include "sidechain.h"
+#include "torsion_angle.h"
+#include "utility.h"
 
 // Changed at 2022-04-14 16:02:30
 /**
