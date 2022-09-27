@@ -37,7 +37,7 @@ std::vector<float> getTorsionFromXYZForDebugging(
     std::vector< std::vector<float> > coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
-    std::vector<int> atm_inds{ 0,1,2,3 };
+    std::vector<size_t> atm_inds{ 0, 1, 2, 3 };
     while (atm_inds[3] < coordinates.size()) {
         // 00. Get 4 atom coordinates
         std::vector<float> atm_1 = coordinates[atm_inds[0]];
@@ -130,7 +130,7 @@ std::vector<float> getTorsionFromXYZ(
     std::vector< std::vector<float> > coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
-    for (int i = 0; i < (coordinates.size() - 3); i += atm_inc) {
+    for (size_t i = 0; i < (coordinates.size() - 3); i += atm_inc) {
         // 00. Get 4 atom coordinates
         std::vector<float> atm_1 = coordinates[i + 0];
         std::vector<float> atm_2 = coordinates[i + 1];

@@ -15,7 +15,7 @@
 #include "sidechain.h"
 
 std::vector<AtomCoordinate> reconstructSideChain(
-    std::vector<AtomCoordinate> backbone, AtomCoordinate c0
+    std::vector<AtomCoordinate> backbone, AtomCoordinate /* c0 */
 ) {
     std::vector<AtomCoordinate> output;
     AminoAcid AA;
@@ -198,8 +198,8 @@ void compareMap(
 }
 
 std::vector<AtomCoordinate> reconstructSideChain(
-    std::vector< std::vector<float> > backboneCoordinates,
-    std::string residueName
+    std::vector<std::vector<float>> /* backboneCoordinates */,
+    std::string /* residueName */
 ) {
     std::vector<AtomCoordinate> output;
     return output;
@@ -212,7 +212,6 @@ int calculateSideChainInfo(
     // Calculate side chain information of all amino acid in the peptide
     std::vector<AtomCoordinate> currResidue;
     size_t total = peptideCoordinates.size();
-    int resCount = 0;
     AtomCoordinate* currAtom;
     int currResInd = peptideCoordinates[0].residue_index;
     std::string currRes = peptideCoordinates[0].residue;
@@ -227,6 +226,8 @@ int calculateSideChainInfo(
     std::map<std::string, float> currTorsionAngles;
 
     int success;
+    // TODO: do something with success, remove next line
+    (void)(success);
     for (size_t i = 0; i < total; i++) {
         currAtom = &(peptideCoordinates[i]);
         if ((currAtom->residue_index == currResInd) && (i != (total - 1))) {
@@ -282,7 +283,6 @@ int reconstructSideChainFromPeptide(
     std::vector<AtomCoordinate> tempResidue;
 
     size_t total = peptideCoordinates.size();
-    AtomCoordinate* currAtom;
     int currResInd = peptideCoordinates[0].residue_index;
     std::string currRes = peptideCoordinates[0].residue;
     int success = 0;
@@ -359,7 +359,6 @@ std::vector<AtomCoordinate> residueReconstruction(
     AminoAcid& currAA,
     std::map<std::string, float>& currResTorsionAngles
 ) {
-    int success = 0;
     // Get bond angles and bond lengths from currAA
     std::map<std::string, float> bondAngles = currAA.bondAngles;
     std::map<std::string, float> bondLengths = currAA.bondLengths;
@@ -381,7 +380,7 @@ std::vector<AtomCoordinate> residueReconstruction(
 // }
 
 int saveTorsionAngles(
-    std::vector<AtomCoordinate>& peptideCoordinates,
+    std::vector<AtomCoordinate>& /* peptideCoordinates */,
     std::map<std::string, AminoAcid>& AAS
 ) {
     // TODO: This is not a valid code. Need to fix it
@@ -447,7 +446,7 @@ std::map<std::string, std::vector< std::vector<float> > > groupSideChainTorsionB
     }
     //
     std::string currResidue;
-    for (int i = 0; i < sideChainTorsionAngles.size(); i++) {
+    for (size_t i = 0; i < sideChainTorsionAngles.size(); i++) {
         currResidue = residueNames[i];
         output[currResidue].push_back(sideChainTorsionAngles[i]);
     }
@@ -459,8 +458,8 @@ std::vector<float> getSpecificTorsionAngle(
     std::string& residueName, int index
 ) {
     std::vector<float> output;
-    std::vector< std::vector<float> > temp = sideChainTorsionMap[residueName];
-    for (int i = 0; i < temp.size(); i++) {
+    const std::vector<std::vector<float>>& temp = sideChainTorsionMap[residueName];
+    for (size_t i = 0; i < temp.size(); i++) {
         output.push_back(temp[i][index]);
     }
     if (output.size() == 0) {

@@ -31,7 +31,7 @@ std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
 
     std::vector<T> vec(first, last);
     return vec;
-};
+}
 
 std::vector<float> crossProduct(std::vector<float> v1, std::vector<float> v2);
 float norm(std::vector<float> v);
@@ -72,7 +72,7 @@ int addMap(std::map<std::string, T>* m1, std::map<std::string, T>* m2) {
         }
     }
     return 0;
-};
+}
 
 //
 template <typename T>
@@ -81,7 +81,7 @@ int divideMapWithConst(std::map<std::string, T>* m, T c) {
         (*m)[x.first] = (x.second / c);
     }
     return 0;
-};
+}
 
 template <typename T>
 int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
@@ -93,14 +93,14 @@ int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
     }
     outFile.close();
     return 0;
-};
+}
 
 template <typename T>
 void swap(T* a, T* b) {
     T temp = *a;
     *a = *b;
     *b = temp;
-};
+}
 
 template <typename T>
 void printVector(std::vector<T> v) {
@@ -112,7 +112,7 @@ void printVector(std::vector<T> v) {
     }
     // Close brackets
     std::cout << "]" << std::endl;
-};
+}
 
 
 /**

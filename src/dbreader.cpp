@@ -42,7 +42,7 @@ struct compare_by_id {
         return a.id < b.id;
     }
 };
-bool read_index(DBReader *reader, char *data, ssize_t size);
+bool read_index(DBReader *reader, char *data);
 bool read_lookup(lookup_entry &lookup, char *data, ssize_t size);
 DBReader* load_cache(const char *name);
 bool save_cache(DBReader *reader, const char *name);
@@ -89,7 +89,7 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
 	reader->data_size = data_size;
 	reader->dataMode = data_mode;
 	reader->cache = false;
-	if (!read_index(reader, index_data, index_size)) {
+	if (!read_index(reader, index_data)) {
         free_reader(reader);
         return NULL;
     }
@@ -156,9 +156,9 @@ int64_t reader_get_id(void *r, uint32_t key) {
 
     reader_index val;
     val.id = key;
-    size_t id = std::lower_bound(reader->index, reader->index + reader->size, val, compare_by_id()) - reader->index;
+    int64_t id = std::lower_bound(reader->index, reader->index + reader->size, val, compare_by_id()) - reader->index;
     if (id < reader->size && reader->index[id].id == key) {
-        return (int64_t) id;
+        return id;
     } else {
         return -1;
     }
@@ -170,7 +170,7 @@ const char* reader_get_data(void *r, int64_t id) {
         return NULL;
     }
 
-    if ((size_t) (reader->index[id].offset) >= reader->data_size) {
+    if (reader->index[id].offset >= reader->data_size) {
         return NULL;
     }
 
@@ -271,10 +271,9 @@ size_t getWordsOfLine(char * data, char ** words, size_t maxElement ){
     return elementCounter;
 }
 
-bool read_index(DBReader *reader, char *data, ssize_t size) {
+bool read_index(DBReader *reader, char *data) {
     bool status = true;
-    char *save;
-    size_t i = 0;
+    int64_t i = 0;
     char *entry[255];
     while (i < reader->size) {
         const size_t columns = getWordsOfLine(data, entry, 255);
