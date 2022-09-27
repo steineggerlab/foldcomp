@@ -46,7 +46,7 @@ public:
         std::vector<std::string> atms,
         std::map< std::string, std::vector<std::string> > sc,
         std::vector<std::string> alt
-     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), sideChain(sc), altAtoms(alt) {
+     ): abb1(ab1), abb3(ab3), fullName(name), atoms(atms), altAtoms(alt), sideChain(sc) {
         for (std::string atm : atms) {
             if (atm != "N" && atm != "CA" && atm != "C") {
                 this->sideChainAtoms.push_back(atm);

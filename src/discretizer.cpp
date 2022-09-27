@@ -96,7 +96,7 @@ float Discretizer::average_error(std::vector<float>& continuous_values) {
     std::vector<unsigned int> discretized_values = this->discretize(continuous_values);
     std::vector<float> restored = this->continuize(discretized_values);
     float sum = 0;
-    for (int i = 0; i < continuous_values.size(); i++) {
+    for (size_t i = 0; i < continuous_values.size(); i++) {
         sum += std::abs(continuous_values[i] - restored[i]);
     }
     return sum / continuous_values.size();
@@ -106,7 +106,7 @@ float Discretizer::max_error(std::vector<float>& continuous_values) {
     std::vector<unsigned int> discretized_values = this->discretize(continuous_values);
     std::vector<float> restored = this->continuize(discretized_values);
     float max = 0;
-    for (int i = 0; i < continuous_values.size(); i++) {
+    for (size_t i = 0; i < continuous_values.size(); i++) {
         if (std::abs(continuous_values[i] - restored[i]) > max) {
             max = std::abs(continuous_values[i] - restored[i]);
         }

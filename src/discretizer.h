@@ -92,7 +92,7 @@ public:
         this->disc_f = this->n_bin / (this->max - this->min);
         this->cont_f = (this->max - this->min) / this->n_bin;
     };
-    FixedAngleDiscretizer(std::vector<float>& values, unsigned int nb) {
+    FixedAngleDiscretizer(std::vector<float>& /* values */, unsigned int nb) {
         this->n_bin = nb;
         this->min = MIN_ANGLE;
         this->max = MAX_ANLGE;

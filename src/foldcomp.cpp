@@ -73,7 +73,7 @@ BackboneChain newBackboneChain(
     char residue, unsigned int phi, unsigned int psi, unsigned int omega,
     unsigned int n_ca_c_angle, unsigned int ca_c_n_angle, unsigned int c_n_ca_angle
 ) {
-    unsigned int r = convertOneLetterCodeToInt(residue);
+    // unsigned int r = convertOneLetterCodeToInt(residue);
     BackboneChain res;
     res.residue = convertOneLetterCodeToInt(residue);
     res.ca_c_n_angle = ca_c_n_angle;
@@ -174,11 +174,9 @@ std::vector<AtomCoordinate> reconstructBackboneAtoms(
     deBackbone = decompressBackboneChain(backbone, header);
     AtomCoordinate currN, currCA, currC;
     std::vector<float> currNCoord, currCACoord, currCCoord;
-    float currBondLength, currBondAngle, currTorsionAngle;
     int currAtomIndex = prevAtoms[2].atom_index + 1;
     int currResidueIndex = prevAtoms[2].residue_index + 1;
     std::string currResidue;
-    char currResidueChar;
 
     // Iterate through backbone
     // Should put N, CA, C in this loop
@@ -312,7 +310,7 @@ int discretizeSideChainTorsionAngles(
     Discretizer torsionDisc;
     unsigned int torsionDiscretized;
     // Discretize the torsion angles and make the result into a flattend vector
-    for (int i = 0; i < torsionPerResidue.size(); i++) {
+    for (size_t i = 0; i < torsionPerResidue.size(); i++) {
         currResidue = residueNames[i];
         currResidueTorsionNum = getSideChainTorsionNum(currResidue);
         for (int j = 0; j < currResidueTorsionNum; j++) {
@@ -346,7 +344,7 @@ int continuizeSideChainTorsionAngles(
     std::vector<float> currTorsionVector;
     FixedAngleDiscretizer currDiscretizer = FixedAngleDiscretizer(pow(2, NUM_BITS_TEMP) - 1);
     // Iterate
-    for (int i = 0; i < residueNames.size(); i++) {
+    for (size_t i = 0; i < residueNames.size(); i++) {
         currResidue = residueNames[i];
         currResidueTorsionNum = getSideChainTorsionNum(currResidue);
         currTorsionVector.clear();
@@ -434,8 +432,7 @@ void printCompressedResidue(BackboneChain& res) {
     std::cout << "CONVERTED BYTE ARRAY: ";
     std::bitset<8> bits;
     char* byteArray = new char[8];
-    int flag = 0;
-    flag = convertBackboneChainToBytes(res, byteArray);
+    // int flag = convertBackboneChainToBytes(res, byteArray);
     for (int i = 0; i < 8; i++) {
         bits = byteArray[i];
         std::cout << bits << " ";
@@ -487,7 +484,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
     // Split backbone into phi, psi, omega
     // Calculate phi, psi, omega
-    for (int i = 0; i < backboneTorsion.size(); i += 3) {
+    for (size_t i = 0; i < backboneTorsion.size(); i += 3) {
         this->psi.push_back(backboneTorsion[i]);
         this->omega.push_back(backboneTorsion[i + 1]);
         this->phi.push_back(backboneTorsion[i + 2]);
@@ -495,7 +492,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
 
     std::vector<float> backboneBondAngles = this->nerf.getBondAngles(backbone);
     // Split bond angles into three parts
-    for (int i = 1; i < backboneBondAngles.size(); i++) {
+    for (size_t i = 1; i < backboneBondAngles.size(); i++) {
         if (i % 3 == 0) {
             this->n_ca_c_angle.push_back(backboneBondAngles[i]);
         } else if (i % 3 == 1) {
@@ -531,8 +528,8 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     // Discretize side chain
     //this->_discretizeSideChainTorsionAngles(this->sideChainAnglesPerResidue, this->sideChainAnglesDiscretized);
     FixedAngleDiscretizer sideChainDiscretizer = FixedAngleDiscretizer(pow(2, NUM_BITS_TEMP) - 1);
-    for (int i = 0; i < this->sideChainAnglesPerResidue.size(); i++) {
-        for (int j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
+    for (size_t i = 0; i < this->sideChainAnglesPerResidue.size(); i++) {
+        for (size_t j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             unsigned int temp = sideChainDiscretizer.discretize(this->sideChainAnglesPerResidue[i][j]);
             this->sideChainAnglesDiscretized.push_back(temp);
         }
@@ -541,7 +538,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
 
     // Get tempFactors
     // 2022-08-31 16:28:30 - Changed to save one tempFactor per residue
-    for (int i = 0; i < atoms.size(); i++) {
+    for (size_t i = 0; i < atoms.size(); i++) {
         if (atoms[i].atom == "CA") {
             this->tempFactors.push_back(atoms[i].tempFactor);
         }
@@ -613,7 +610,7 @@ std::vector< std::vector<float> > Foldcomp::_calculateCoordinates() {
 
     // Iterate through the compressed backbone vector
     std::vector< std::vector<float> > output;
-    int total = this->compressedBackBone.size();
+    // int total = this->compressedBackBone.size();
 
     // NOT COMPLETED
     //
@@ -622,13 +619,13 @@ std::vector< std::vector<float> > Foldcomp::_calculateCoordinates() {
 
 int _restoreResidueNames(
     std::vector<BackboneChain>& compressedBackbone,
-    CompressedFileHeader& header,
+    CompressedFileHeader& /* header */,
     std::vector<std::string>& residueThreeLetter
 ) {
     int success = 0;
     std::string threeLetterCode;
     residueThreeLetter.clear();
-    for (int i = 0; i < compressedBackbone.size(); i++) {
+    for (size_t i = 0; i < compressedBackbone.size(); i++) {
         threeLetterCode = convertIntToThreeLetterCode(compressedBackbone[i].residue);
         residueThreeLetter.push_back(threeLetterCode);
     }
@@ -763,7 +760,7 @@ void Foldcomp::_setAnchor() {
     this->anchorIndices.push_back(this->nResidue - 1);
     //
     std::vector<int> anchorResidueIndices;
-    for (int i = 0; i < this->anchorIndices.size(); i++) {
+    for (size_t i = 0; i < this->anchorIndices.size(); i++) {
         anchorResidueIndices.push_back(this->anchorIndices[i] + this->idxResidue);
     }
     this->anchorAtoms = getAtomsWithResidueIndex(this->rawAtoms, anchorResidueIndices);
@@ -776,7 +773,7 @@ std::vector<float> Foldcomp::checkTorsionReconstruction() {
     this->psi = this->psiDisc.continuize(this->psiDiscretized);
     this->omega = this->omegaDisc.continuize(this->omegaDiscretized);
     // Append psi, omega, phi to torsion angles
-    for (int i = 0; i < this->phi.size(); i++) {
+    for (size_t i = 0; i < this->phi.size(); i++) {
         output.push_back(this->psi[i]);
         output.push_back(this->omega[i]);
         output.push_back(this->phi[i]);
@@ -797,7 +794,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     this->omega = this->omegaDisc.continuize(this->omegaDiscretized);
 
     // Append psi, omega, phi to torsion angles
-    for (int i = 0; i < (this->phi.size() - 1); i++) {
+    for (size_t i = 0; i < (this->phi.size() - 1); i++) {
         torsion_angles.push_back(this->psi[i]);
         torsion_angles.push_back(this->omega[i]);
         torsion_angles.push_back(this->phi[i]);
@@ -807,7 +804,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     this->ca_c_n_angle = this->ca_c_n_angleDisc.continuize(this->ca_c_n_angleDiscretized);
     this->c_n_ca_angle = this->c_n_ca_angleDisc.continuize(this->c_n_ca_angleDiscretized);
     // Append n_ca_c_angle, ca_c_n_angle, c_n_ca_angle to bond angles
-    for (int i = 0; i < this->n_ca_c_angle.size(); i++) {
+    for (size_t i = 0; i < this->n_ca_c_angle.size(); i++) {
         bond_angles.push_back(this->ca_c_n_angle[i]);
         bond_angles.push_back(this->c_n_ca_angle[i]);
         bond_angles.push_back(this->n_ca_c_angle[i]);
@@ -864,7 +861,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         this->sideChainAnglesDiscretized, this->sideChainAnglesPerResidue
     );
 
-    for (int i = 0; i < backBonePerResidue.size(); i++) {
+    for (size_t i = 0; i < backBonePerResidue.size(); i++) {
         if (i != 0){
             currResidue = backBonePerResidue[i][0].residue;
         }
@@ -881,8 +878,8 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     // Prepare tempFactor
     std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
     // Iterate over each residue
-    for (int i = 0; i < backBonePerResidue.size(); i++) {
-        for (int j = 0; j < backBonePerResidue[i].size(); j++) {
+    for (size_t i = 0; i < backBonePerResidue.size(); i++) {
+        for (size_t j = 0; j < backBonePerResidue[i].size(); j++) {
             backBonePerResidue[i][j].tempFactor = tempFactors[i];
             atom.push_back(backBonePerResidue[i][j]);
         }
@@ -930,15 +927,15 @@ int Foldcomp::read(std::istream & file) {
 
     // ANCHOR ATOMS
     if (this->header.nAnchor > 2) {
-        float innerAnchorCoords[9 * (this->header.nAnchor - 2)];
-        file.read(reinterpret_cast<char*>(innerAnchorCoords), sizeof(innerAnchorCoords));
+        float innerAnchorCoords[3];
         for (int i = 0; i < (this->header.nAnchor - 2); i++) {
-            std::vector< std::vector<float> > innerAnchorCoord;
+            std::vector<std::vector<float>> innerAnchorCoord;
             for (int j = 0; j < 3; j++) {
+                file.read(reinterpret_cast<char*>(innerAnchorCoords), sizeof(innerAnchorCoords));
                 innerAnchorCoord.push_back({
-                    innerAnchorCoords[i * 9 + j * 3],
-                    innerAnchorCoords[i * 9 + j * 3 + 1],
-                    innerAnchorCoords[i * 9 + j * 3 + 2]
+                    innerAnchorCoords[0],
+                    innerAnchorCoords[1],
+                    innerAnchorCoords[2]
                 });
             }
             this->anchorCoordinates.push_back(innerAnchorCoord);
@@ -1000,7 +997,7 @@ int Foldcomp::read(std::istream & file) {
     file.read(reinterpret_cast<char*>(encodedSideChain), this->header.nSideChainTorsion);
     // Read char array to unsigned int vector sideChainAnglesDiscretized
     unsigned int temp;
-    for (int i = 0; i < this->header.nSideChainTorsion; i++) {
+    for (size_t i = 0; i < this->header.nSideChainTorsion; i++) {
         // Convert char to unsigned int
         temp = encodedSideChain[i];
         this->sideChainAnglesDiscretized.push_back(temp);
@@ -1050,7 +1047,7 @@ int Foldcomp::write(std::string filename) {
         // Write header
         outfile.write((char*)&this->header, sizeof(CompressedFileHeader));
         // Write anchorIndices
-        for (int i = 0; i < this->anchorIndices.size(); i++) {
+        for (size_t i = 0; i < this->anchorIndices.size(); i++) {
             outfile.write((char*)&this->anchorIndices[i], sizeof(int));
         }
         // Write title
@@ -1077,7 +1074,7 @@ int Foldcomp::write(std::string filename) {
 
         // Write the compressed backbone
         char* buffer = new char[8];
-        for (int i = 0; i < this->compressedBackBone.size(); i++) {
+        for (size_t i = 0; i < this->compressedBackBone.size(); i++) {
             flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
             outfile.write(buffer, 8);
         }
@@ -1133,7 +1130,7 @@ int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     // Write header
     mtar_write_data(&tar, &this->header, sizeof(CompressedFileHeader));
     // Write anchorIndices
-    for (int i = 0; i < this->anchorIndices.size(); i++) {
+    for (size_t i = 0; i < this->anchorIndices.size(); i++) {
         mtar_write_data(&tar, &this->anchorIndices[i], sizeof(int));
     }
     // Write title
@@ -1156,7 +1153,7 @@ int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     // mtar_write_data(&tar, &this->sideChainDisc, sizeof(SideChainDiscretizers));
     // Write the compressed backbone
     char* buffer = new char[8];
-    for (int i = 0; i < this->compressedBackBone.size(); i++) {
+    for (size_t i = 0; i < this->compressedBackBone.size(); i++) {
         flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
         mtar_write_data(&tar, buffer, 8);
     }
@@ -1278,7 +1275,7 @@ int Foldcomp::extract(std::vector<std::string>& data, int type) {
         // Extract temperature factors
         this->continuizeTempFactors();
         int tempFactorInt;
-        for (int i = 0; i < this->tempFactors.size(); i++) {
+        for (size_t i = 0; i < this->tempFactors.size(); i++) {
             tempFactorInt = (int)(this->tempFactors[i] / 10);
             data.push_back(std::to_string(tempFactorInt));
         }
@@ -1426,7 +1423,7 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
             outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << ",";
             outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << "\n";
         }
-        for (int j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
+        for (size_t j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             outfile << i << "," << this->residueThreeLetter[i] << ",TorsionAngle,";
             outfile << j << "," << this->sideChainAnglesPerResidue[i][j] << ",";
             outfile << this->sideChainAnglesDiscretized[movingIndex] << ",";
@@ -1518,11 +1515,11 @@ void printValidityError(ValidityError err, std::string& filename) {
 
 void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa) {
     std::vector<AtomCoordinate> newAtoms = atoms;
-    for (int i = 0; i < atoms.size(); i++) {
+    for (size_t i = 0; i < atoms.size(); i++) {
         if (atoms[i].atom == aa.altAtoms[i]) {
             continue;
         } else {
-            for (int j = 0; j < aa.altAtoms.size(); j++) {
+            for (size_t j = 0; j < aa.altAtoms.size(); j++) {
                 if (atoms[i].atom == aa.altAtoms[j]) {
                     newAtoms[j] = atoms[i];
                 }
@@ -1545,7 +1542,7 @@ char* encodeSideChainTorsionVector(std::vector<unsigned int> vector) {
     newSize /= 2;
     char* output = new char[size];
     char temp;
-    for (int i = 0; i < newSize; i++) {
+    for (size_t i = 0; i < newSize; i++) {
         // First 4 bits
         temp = vector[i * 2] & 0x0F;
         temp = temp << 4;
@@ -1583,7 +1580,7 @@ int decodeSideChainTorsionVector(char* input, int nTorsion, std::vector<unsigned
 
 unsigned char* encodeDiscretizedTempFactors(std::vector<unsigned int> vector) {
     unsigned char* output = new unsigned char[vector.size()];
-    for (int i = 0; i < vector.size(); i++) {
+    for (size_t i = 0; i < vector.size(); i++) {
         output[i] = (unsigned char)vector[i];
     }
     return output;
@@ -1611,14 +1608,9 @@ std::map<std::string, std::vector<Discretizer> > initializeSideChainDiscMap() {
     int numTorsion = 0;
     // We can access to the specific angle discretizer with AA name and torsion index
     // ex) discmap["ALA"][0]
-    for (int i = 0; i < aaNames.size(); i++) {
-        std::vector<Discretizer> disc;
+    for (size_t i = 0; i < aaNames.size(); i++) {
         numTorsion = getSideChainTorsionNum(aaNames[i]);
-        for (int j = 0; j < numTorsion; j++) {
-            Discretizer currDisc = Discretizer();
-            disc.push_back(currDisc);
-        }
-        discMap[aaNames[i]] = disc;
+        discMap[aaNames[i]] = std::vector<Discretizer>(numTorsion);
     }
     return discMap;
 }

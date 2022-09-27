@@ -24,14 +24,18 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
 static PyObject* FoldcompDatabase_close(PyObject* self);
 static PyObject* FoldcompDatabase_enter(PyObject* self);
 static PyObject* FoldcompDatabase_exit(PyObject* self, PyObject* args);
-static PyObject* FoldcompDatabase_length(PyObject* self);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef FoldcompDatabase_methods[] = {
     {"close", (PyCFunction)FoldcompDatabase_close, METH_NOARGS, "Close the database."},
     {"__enter__", (PyCFunction)FoldcompDatabase_enter, METH_NOARGS, "Enter the runtime context related to this object."},
     {"__exit__", (PyCFunction)FoldcompDatabase_exit, METH_VARARGS, "Exit the runtime context related to this object."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
+#pragma GCC diagnostic pop
 
 // FoldcompDatabase_sq_length
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
@@ -99,6 +103,9 @@ static PySequenceMethods FoldcompDatabase_as_sequence = {
     0, // sq_inplace_repeat
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static PyTypeObject FoldcompDatabaseType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "foldcomp.FoldcompDatabase",    /* tp_name */
@@ -148,9 +155,9 @@ static PyTypeObject FoldcompDatabaseType = {
     0,                         /* tp_del */
     0,                         /* tp_version_tag */
     0,                         /* tp_finalize */
-    // Introduced in Python 3.8, not needed
-    //0,                        /* tp_vectorcall */
+    //0,                         /* tp_vectorcall */
 };
+#pragma GCC diagnostic pop
 
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
@@ -173,7 +180,7 @@ static PyObject* FoldcompDatabase_enter(PyObject* self) {
 }
 
 // FoldcompDatabase_exit
-static PyObject *FoldcompDatabase_exit(PyObject *self, PyObject *args) {
+static PyObject *FoldcompDatabase_exit(PyObject *self, PyObject* /* args */) {
     return FoldcompDatabase_close(self);
 }
 
@@ -212,7 +219,7 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
 }
 
 
-static PyObject *foldcomp_decompress(PyObject *self, PyObject *args) {
+static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
     // Unpack a string from the arguments
     const char *strArg;
     Py_ssize_t strSize;
@@ -233,7 +240,7 @@ static PyObject *foldcomp_decompress(PyObject *self, PyObject *args) {
 
 PyTypeObject* pathType = NULL;
 
-static PyObject *foldcomp_open(PyObject* self, PyObject* args, PyObject* kwargs) {
+static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* kwargs) {
     PyObject* path;
     PyObject* uniprot_ids = NULL;
     PyObject* decompress = NULL;
@@ -288,6 +295,10 @@ static PyObject *foldcomp_open(PyObject* self, PyObject* args, PyObject* kwargs)
     return (PyObject*)obj;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef foldcomp_methods[] = {
     // {"compress", foldcomp_compress, METH_VARARGS, "Compress a PDB file."},
     {"decompress", foldcomp_decompress, METH_VARARGS, "Decompress a PDB file."},
@@ -295,13 +306,18 @@ static PyMethodDef foldcomp_methods[] = {
 
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
+#pragma GCC diagnostic pop
 
 static struct PyModuleDef foldcomp_module_def = {
     PyModuleDef_HEAD_INIT,
-    "foldcomp",
-    NULL,
-    -1,
-    foldcomp_methods
+    "foldcomp", /* m_name */
+    NULL, /* m_doc */
+    -1, /* m_size */
+    foldcomp_methods, /* m_methods */
+    0, /* m_slots */
+    0, /* m_traverse */
+    0, /* m_clear */
+    0, /* m_free */
 };
 
 PyMODINIT_FUNC PyInit_foldcomp(void) {
@@ -334,7 +350,6 @@ clean_err:
     Py_XDECREF(FoldcompError);
     Py_CLEAR(FoldcompError);
 
-clean_m:
     Py_DECREF(m);
 
     return NULL;

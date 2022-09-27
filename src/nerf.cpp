@@ -427,7 +427,7 @@ std::vector<AtomCoordinate> Nerf::reconstructWithBreaks(
     std::vector<float> curr_coord;
 
     // save three first atoms
-    for (int k = 0; k < break_indices.size(); k++) {
+    for (size_t k = 0; k < break_indices.size(); k++) {
         breakpoint = break_indices[k];
         if (k != (break_indices.size() - 1)) {
             next_breakpoint = break_indices[k + 1];
@@ -465,8 +465,8 @@ std::vector<AtomCoordinate> Nerf::reconstructWithBreaks(
  * @return std::vector<AtomCoordinate>
  */
 std::vector<AtomCoordinate> reconstrutWithRelativePositions(
-    std::vector<AtomCoordinate> original_atoms,
-    std::vector<AtomCoordinate> relative_position
+    std::vector<AtomCoordinate> /* original_atoms */,
+    std::vector<AtomCoordinate> /* relative_position */
 ){
     std::vector<AtomCoordinate> reconstructed_atoms;
     // Reconstruct with relative postion
@@ -725,7 +725,7 @@ std::vector<int> Nerf::identifyBreaks(std::vector<AtomCoordinate> original_atoms
     std::vector<float> bondLengths = this->getBondLengths(original_atoms);
 
     // No need to start with 0
-    for (int i = 1; i < bondLengths.size(); i++) {
+    for (size_t i = 1; i < bondLengths.size(); i++) {
         // If length is bigger than the cutoff, add breakpoint
         if (bondLengths[i] > cutoff) {
             // bondLenght[i] = dist between original_atoms[i], [i+1]

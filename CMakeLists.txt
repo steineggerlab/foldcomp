@@ -7,6 +7,7 @@ project(foldcomp C CXX)
 
 option(BUILD_LIBRARY "Build library" OFF)
 option(BUILD_PYTHON "Build python support" OFF)
+option(BUILD_WERROR "Build with warnings as errors" OFF)
 option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 
 include_directories(src)
@@ -64,5 +65,18 @@ else()
     endif()
 endif()
 
+if(MSVC)
+    target_compile_options(foldcomp PRIVATE /W4)
+else()
+    target_compile_options(foldcomp PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(BUILD_WERROR)
+    if(MSVC)
+        target_compile_options(foldcomp PRIVATE /WX)
+    else()
+        target_compile_options(foldcomp PRIVATE -Werror)
+    endif()
+endif()
 enable_testing()
 

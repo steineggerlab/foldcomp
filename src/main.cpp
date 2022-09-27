@@ -290,7 +290,7 @@ int main(int argc, char* const *argv) {
         return print_usage();
     }
 
-    struct stat st = {0};
+    struct stat st;
     int fileExists = stat(argv[optind + 1], &st);
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
@@ -458,7 +458,7 @@ int main(int argc, char* const *argv) {
 #pragma omp parallel
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string file = files[i];
                     std::string inputFile = input + file;
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
@@ -472,7 +472,7 @@ int main(int argc, char* const *argv) {
 #pragma omp parallel
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string file = files[i];
                     std::string inputFile = input + file;
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
@@ -602,7 +602,7 @@ int main(int argc, char* const *argv) {
 #pragma omp parallel
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string inputFile = input + files[i];
                     std::ifstream input(inputFile, std::ios::binary);
                     // Check if file is open
@@ -711,7 +711,7 @@ int main(int argc, char* const *argv) {
 #pragma omp parallel
                 {
 #pragma omp for
-                    for (int i = 0; i < files.size(); i++) {
+                    for (size_t i = 0; i < files.size(); i++) {
                         std::string inputFile = input + files[i];
                         std::ifstream input(inputFile, std::ios::binary);
                         // Check if file is open
@@ -728,7 +728,7 @@ int main(int argc, char* const *argv) {
                             #pragma omp critical
                             {
                                 defaultOutput << ">" << compRes.strTitle << "\n";
-                                for (int j = 0; j < data.size(); j++) {
+                                for (size_t j = 0; j < data.size(); j++) {
                                     defaultOutput << data[j];
                                 }
                                 defaultOutput << "\n";
@@ -833,7 +833,7 @@ int main(int argc, char* const *argv) {
                             #pragma omp critical
                                 {
                                     defaultOutput << ">" << compRes.strTitle << "\n";
-                                    for (int j = 0; j < data.size(); j++) {
+                                    for (size_t j = 0; j < data.size(); j++) {
                                         defaultOutput << data[j];
                                     }
                                     defaultOutput << "\n";
@@ -867,7 +867,7 @@ int main(int argc, char* const *argv) {
 #pragma omp parallel
         {
 #pragma omp for
-            for (int i = 0; i < files.size(); i++) {
+            for (size_t i = 0; i < files.size(); i++) {
                 std::string inputFile = input + files[i];
                 std::ifstream input(inputFile, std::ios::binary);
                 // Check if file is open

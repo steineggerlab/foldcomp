@@ -76,8 +76,7 @@ bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, std:
         case gemmi::CoorFormat::Mmcif:
             st = gemmi::make_structure(gemmi::cif::read_memory(buffer, bufferSize, name.c_str()));
             break;
-        case gemmi::CoorFormat::Unknown:
-        case gemmi::CoorFormat::Detect:
+        default:
             return false;
         }
         updateStructure((void*)&st, name);
