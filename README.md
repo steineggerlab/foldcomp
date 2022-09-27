@@ -64,7 +64,7 @@ cmake --build ./build --target foldcomp
 
 ### foldcomp python module
 ```sh
-poetry install
+
 ```
 
 ## About

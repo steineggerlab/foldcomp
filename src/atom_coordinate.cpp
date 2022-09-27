@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-13 15:14:37
+ * Last Modified: 2022-09-27 11:50:10
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -361,4 +361,30 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
         output.push_back(curr_atoms);
     }
     return output;
+}
+
+float distance(AtomCoordinate& a, AtomCoordinate& b) {
+    float x = a.coordinate[0] - b.coordinate[0];
+    float y = a.coordinate[1] - b.coordinate[1];
+    float z = a.coordinate[2] - b.coordinate[2];
+    return sqrt(x*x + y*y + z*z);
+}
+std::vector<float> distance(std::vector<AtomCoordinate>& a, std::vector<AtomCoordinate>& b) {
+    std::vector<float> output;
+    for (int i = 0; i < a.size(); i++) {
+        output.push_back(distance(a[i], b[i]));
+    }
+    return output;
+}
+
+float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2) {
+    // RMSD: Root Mean Square Deviation
+    float sum = 0;
+    // Sum of square of distance
+    for (int i = 0; i < atoms1.size(); i++) {
+        for (int j = 0; j < atoms2.size(); j++) {
+            sum += pow(atoms1[i].coordinate[j] - atoms2[i].coordinate[j], 2);
+        }
+    }
+    return sqrt(sum / atoms1.size());
 }

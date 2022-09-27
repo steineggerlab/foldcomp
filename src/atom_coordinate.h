@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-13 15:14:41
+ * Last Modified: 2022-09-27 11:50:15
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -96,3 +96,7 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
     std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
+
+float distance(AtomCoordinate& a, AtomCoordinate& b);
+std::vector<float> distance(std::vector<AtomCoordinate>& a, std::vector<AtomCoordinate>& b);
+float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2);
