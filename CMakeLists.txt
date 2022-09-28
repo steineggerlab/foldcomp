@@ -47,6 +47,7 @@ else()
     find_package(OpenMP REQUIRED)
     if(OPENMP_CXX_FOUND)
         target_link_libraries(foldcomp PUBLIC OpenMP::OpenMP_CXX)
+        target_compile_definitions(foldcomp PUBLIC OPENMP)
     endif()
 
     find_package(ZLIB REQUIRED)
