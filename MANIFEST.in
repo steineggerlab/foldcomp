@@ -1,5 +1,6 @@
 prune util
 prune lib
 prune .github
+include tests
 exclude build.sh
 exclude *.pdb *.cif.gz *.fcz

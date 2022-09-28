@@ -10,3 +10,6 @@ build-backend = "setuptools.build_meta"
 [tool.cibuildwheel]
 build = "*"
 skip = "pp*-win*"
+test-command = "pytest {project}/test"
+test-extras = ["test"]
+test-skip = ["*universal2:arm64"]

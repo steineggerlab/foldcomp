@@ -13,4 +13,5 @@ setup(
     install_requires=[
         "aiohttp >= 3.8.3",
     ],
+    extras_require={"test": ["pytest"]},
 )
