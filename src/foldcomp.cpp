@@ -1038,6 +1038,79 @@ int Foldcomp::read(std::istream & file) {
     return success;
 }
 
+int Foldcomp::writeStream(std::ostream& os) {
+    int flag = 0;
+    // Write magic number
+    os.write(MAGICNUMBER, MAGICNUMBER_LENGTH);
+    // Write header
+    os.write((char*)&this->header, sizeof(CompressedFileHeader));
+    // Write anchorIndices
+    for (size_t i = 0; i < this->anchorIndices.size(); i++) {
+        os.write((char*)&this->anchorIndices[i], sizeof(int));
+    }
+    // Write title
+    os.write(this->strTitle.c_str(), this->strTitle.length());
+
+    // 2022-08-08 19:15:30 - Changed to write all anchor atoms
+    // TODO: NEED TO BE CHECKED
+    for (auto anchors : this->anchorAtoms) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                os.write((char*)&anchors[i].coordinate[j], sizeof(float));
+            }
+        }
+    }
+
+    os.write(&this->hasOXT, sizeof(char));
+    for (int i = 0; i < 3; i++) {
+        os.write((char*)&this->OXT_coords[i], sizeof(float));
+    }
+
+    // END OF BACKBONE METADATA
+    // // Write sidechain discretizers
+    // os.write((char*)&this->sideChainDisc, sizeof(SideChainDiscretizers));
+
+    // Write the compressed backbone
+    char* buffer = new char[8];
+    for (size_t i = 0; i < this->compressedBackBone.size(); i++) {
+        flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
+        os.write(buffer, 8);
+    }
+    delete[] buffer;
+    // 2022-06-07 18:44:09 - Check memory leak
+    // Write side chain torsion angles
+    int encodedSideChainSize = this->nSideChainTorsion;
+    if (encodedSideChainSize % 2 == 1) {
+        encodedSideChainSize++;
+    }
+    encodedSideChainSize /= 2;
+    // char* charSideChainTorsion = encodeSideChainTorsionVector(this->sideChainAnglesDiscretized);
+    // os.write(charSideChainTorsion, encodedSideChainSize);
+    // TODO: TESTING
+    // Convert unsigned int to char array
+    unsigned char* charSideChainTorsion = new unsigned char[this->nSideChainTorsion];
+    // Get array of unsigned int from sideChainAnglesDiscretized and convert to char array
+    for (int i = 0; i < this->nSideChainTorsion; i++) {
+        // convert unsigned int to char
+        charSideChainTorsion[i] = (unsigned char)this->sideChainAnglesDiscretized[i];
+    }
+    os.write((char*)charSideChainTorsion, this->sideChainAnglesDiscretized.size());
+    delete[] charSideChainTorsion;
+
+    // Write temperature factors
+    // Disc
+    os.write((char*)&this->tempFactorsDisc.min, sizeof(float));
+    os.write((char*)&this->tempFactorsDisc.cont_f, sizeof(float));
+
+    unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
+    for (int i = 0; i < this->header.nResidue; i++) {
+        charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
+    }
+    os.write((char*)charTempFactors, this->tempFactorsDiscretized.size());
+    delete[] charTempFactors;
+    return flag;
+}
+
 int Foldcomp::write(std::string filename) {
     int flag = 0;
     std::ofstream outfile;
@@ -1049,75 +1122,7 @@ int Foldcomp::write(std::string filename) {
         return flag;
     }
     if (outfile.good()) {
-        // Write magic number
-        outfile.write(MAGICNUMBER, MAGICNUMBER_LENGTH);
-        // Write header
-        outfile.write((char*)&this->header, sizeof(CompressedFileHeader));
-        // Write anchorIndices
-        for (size_t i = 0; i < this->anchorIndices.size(); i++) {
-            outfile.write((char*)&this->anchorIndices[i], sizeof(int));
-        }
-        // Write title
-        outfile.write(this->strTitle.c_str(), this->strTitle.length());
-
-        // 2022-08-08 19:15:30 - Changed to write all anchor atoms
-        // TODO: NEED TO BE CHECKED
-        for (auto anchors : this->anchorAtoms) {
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    outfile.write((char*)&anchors[i].coordinate[j], sizeof(float));
-                }
-            }
-        }
-
-        outfile.write(&this->hasOXT, sizeof(char));
-        for (int i = 0; i < 3; i++) {
-            outfile.write((char*)&this->OXT_coords[i], sizeof(float));
-        }
-
-        // END OF BACKBONE METADATA
-        // // Write sidechain discretizers
-        // outfile.write((char*)&this->sideChainDisc, sizeof(SideChainDiscretizers));
-
-        // Write the compressed backbone
-        char* buffer = new char[8];
-        for (size_t i = 0; i < this->compressedBackBone.size(); i++) {
-            flag = convertBackboneChainToBytes(this->compressedBackBone[i], buffer);
-            outfile.write(buffer, 8);
-        }
-        delete[] buffer;
-        // 2022-06-07 18:44:09 - Check memory leak
-        // Write side chain torsion angles
-        int encodedSideChainSize = this->nSideChainTorsion;
-        if (encodedSideChainSize % 2 == 1) {
-            encodedSideChainSize++;
-        }
-        encodedSideChainSize /= 2;
-        // char* charSideChainTorsion = encodeSideChainTorsionVector(this->sideChainAnglesDiscretized);
-        // outfile.write(charSideChainTorsion, encodedSideChainSize);
-        // TODO: TESTING
-        // Convert unsigned int to char array
-        unsigned char* charSideChainTorsion = new unsigned char[this->nSideChainTorsion];
-        // Get array of unsigned int from sideChainAnglesDiscretized and convert to char array
-        for (int i = 0; i < this->nSideChainTorsion; i++) {
-            // convert unsigned int to char
-            charSideChainTorsion[i] = (unsigned char)this->sideChainAnglesDiscretized[i];
-        }
-        outfile.write((char*)charSideChainTorsion, this->sideChainAnglesDiscretized.size());
-        delete[] charSideChainTorsion;
-
-        // Write temperature factors
-        // Disc
-        outfile.write((char*)&this->tempFactorsDisc.min, sizeof(float));
-        outfile.write((char*)&this->tempFactorsDisc.cont_f, sizeof(float));
-
-        unsigned char* charTempFactors = new unsigned char[this->header.nResidue];
-        for (int i = 0; i < this->header.nResidue; i++) {
-            charTempFactors[i] = (unsigned char)this->tempFactorsDiscretized[i];
-        }
-        outfile.write((char*)charTempFactors, this->tempFactorsDiscretized.size());
-        delete[] charTempFactors;
-
+        flag = writeStream(outfile);
         // Close file
         outfile.close();
     } else {

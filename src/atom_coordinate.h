@@ -21,16 +21,17 @@ class AtomCoordinate {
 private:
     void check3dCoordinate();
 public:
-    AtomCoordinate();
+    AtomCoordinate() = default;
     AtomCoordinate(
         std::string a, std::string r, std::string c,
-        int ai, int ri, float x, float y, float z
+        int ai, int ri, float x, float y, float z,
+        float occupancy = 0.0f, float tempFactor = 0.0f
     );
     AtomCoordinate(
         std::string a, std::string r, std::string c,
-        int ai, int ri, std::vector<float> coord
+        int ai, int ri, std::vector<float> coord,
+        float occupancy = 0.0f, float tempFactor = 0.0f
     );
-    ~AtomCoordinate();
     // data
     std::string atom;
     std::string residue;
