@@ -82,7 +82,7 @@ endif()
 
 if(BUILD_IWYU)
     find_program(iwyu_path NAMES include-what-you-use iwyu REQUIRED)
-    set_property(TARGET foldcomp PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path} -Xiwyu --mapping_file=${CMAKE_CURRENT_LIST_DIR}/include-what-you-use.imp)
+    set_property(TARGET foldcomp PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path} -Xiwyu --mapping_file=${CMAKE_CURRENT_LIST_DIR}/cmake/include-what-you-use.imp)
 endif()
 
 enable_testing()

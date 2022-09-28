@@ -17,7 +17,7 @@
 #include <iosfwd>
 #include <map>
 #include <vector>
-#include <string>
+#include <string> // IWYU pragma: keep
 
 class AminoAcid;
 class AtomCoordinate;

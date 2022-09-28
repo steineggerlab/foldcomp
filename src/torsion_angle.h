@@ -16,7 +16,7 @@
 
 #include <vector>
 #include <iosfwd>
-#include <string>
+#include <string> // IWYU pragma: keep
 
 class AtomCoordinate;
 
