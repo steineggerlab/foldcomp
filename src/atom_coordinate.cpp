@@ -21,9 +21,6 @@
 #include <iomanip>
 #include <cmath>
 
-// constructor
-AtomCoordinate::AtomCoordinate(){}
-
 /**
  * @brief Construct a new Atom Coordinate:: Atom Coordinate object
  *
@@ -37,8 +34,9 @@ AtomCoordinate::AtomCoordinate(){}
  */
 AtomCoordinate::AtomCoordinate(
     std::string a, std::string r, std::string c,
-    int ai, int ri, float x, float y, float z
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri) {
+    int ai, int ri, float x, float y, float z,
+    float occupancy, float tempFactor
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor) {
     this->coordinate = {x, y, z};
     this->check3dCoordinate();
 }
@@ -54,13 +52,11 @@ AtomCoordinate::AtomCoordinate(
  */
 AtomCoordinate::AtomCoordinate(
     std::string a, std::string r, std::string c,
-    int ai, int ri, std::vector<float> coord
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord) {
+    int ai, int ri, std::vector<float> coord,
+    float occupancy, float tempFactor
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor) {
     this->check3dCoordinate();
 }
-
-
-AtomCoordinate::~AtomCoordinate(){}
 
 /**
  * @brief Check if 3 coordinates given.

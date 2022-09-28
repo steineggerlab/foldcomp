@@ -382,6 +382,7 @@ public:
     std::vector<BackboneChain> compress(std::vector<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
     int read(std::istream & filename);
+    int writeStream(std::ostream& os);
     int write(std::string filename);
     // Read & write for tar files
 #ifdef FOLDCOMP_EXECUTABLE
