@@ -11,6 +11,6 @@ setup(
     packages=["foldcomp"],
     include_package_data=False,
     install_requires=[
-        "requests >= 2.28.1",
+        "aiohttp >= 3.8.3",
     ],
 )
