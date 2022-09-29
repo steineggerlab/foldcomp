@@ -4,6 +4,7 @@ setup(
     name="foldcomp",
     version="0.0.1",
     description="Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, an averaged-sized protein of 350 residues requires ~4.2kb. Foldcomp is a C++ library with Python bindings.",
+    long_description_content_type="text/markdown",
     author="Milot Mirdita <milot@mirdita.de>",
     license="MIT",
     cmake_args=["-DBUILD_PYTHON:BOOL=ON"],
