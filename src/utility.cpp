@@ -16,6 +16,11 @@
 
 #include "utility.h"
 
+#include <cstdlib>
+#include <cmath>
+#include <fstream>
+#include <string>
+
 /**
  * @brief Return the cross product of two vectors
  *
@@ -80,6 +85,8 @@ float angle(
     return theta;
 }
 
+#ifdef FOLDCOMP_EXECUTABLE
+#include <dirent.h>
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir) {
     std::vector<std::string> files;
@@ -100,6 +107,7 @@ std::vector<std::string> getFilesInDirectory(std::string dir) {
     closedir(dp);
     return files;
 };
+#endif
 
 std::string baseName(std::string const path) {
     return path.substr(path.find_last_of("/\\") + 1);
@@ -125,6 +133,9 @@ bool stringStartsWith(const std::string& prefix, const std::string& str, const s
     return (!str.compare(offset, prefix.length(), prefix));
 }
 
+#if defined(_WIN32) || defined(_WIN64)
+#define strtok_r strtok_s
+#endif
 std::vector<std::string> stringSplit(const std::string& str, const std::string& sep) {
     std::vector<std::string> arr;
 

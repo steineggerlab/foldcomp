@@ -19,10 +19,16 @@
 
 #include "torsion_angle.h"
 
+#include <cmath>
+#include <iostream>
+#include <cstddef>
+#include <string>
 
+#include "utility.h"
+#include "atom_coordinate.h"
 
  // Temp function
-void print3DFloatVec(std::string name, std::vector<float> input) {
+void print3DFloatVec(std::string name, const std::vector<float>& input) {
     std::cout << name << ": " << input[0] << ", " << input[1] << ", " << input[2] << std::endl;
 }
 
@@ -34,10 +40,10 @@ void print3DFloatVec(std::string name, std::vector<float> input) {
  * @return std::vector<std::vector<float>>
  */
 std::vector<float> getTorsionFromXYZForDebugging(
-    std::vector< std::vector<float> > coordinates, int atm_inc = 1
+    const std::vector<std::vector<float>>& coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
-    std::vector<int> atm_inds{ 0,1,2,3 };
+    std::vector<size_t> atm_inds{ 0, 1, 2, 3 };
     while (atm_inds[3] < coordinates.size()) {
         // 00. Get 4 atom coordinates
         std::vector<float> atm_1 = coordinates[atm_inds[0]];
@@ -110,9 +116,9 @@ std::vector<float> getTorsionFromXYZForDebugging(
 
 
 std::vector<float> getTorsionFromXYZ(
-    std::vector<AtomCoordinate> coordinates, int atm_inc
+    const std::vector<AtomCoordinate>& coordinates, int atm_inc
 ) {
-    std::vector< std::vector<float> > coordinate_vector;
+    std::vector< std::vector<float>> coordinate_vector;
     coordinate_vector = extractCoordinates(coordinates);
     std::vector<float> output;
     output = getTorsionFromXYZ(coordinate_vector, atm_inc);
@@ -127,10 +133,10 @@ std::vector<float> getTorsionFromXYZ(
  * @return std::vector<std::vector<float>>
  */
 std::vector<float> getTorsionFromXYZ(
-    std::vector< std::vector<float> > coordinates, int atm_inc = 1
+    const std::vector<std::vector<float>>& coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
-    for (int i = 0; i < (coordinates.size() - 3); i += atm_inc) {
+    for (size_t i = 0; i < (coordinates.size() - 3); i += atm_inc) {
         // 00. Get 4 atom coordinates
         std::vector<float> atm_1 = coordinates[i + 0];
         std::vector<float> atm_2 = coordinates[i + 1];
@@ -189,7 +195,7 @@ std::vector<float> getTorsionFromXYZ(
  * @param fv
  * @param output
  */
-void float3dVectorToDoubleArray(std::vector<float> fv, double output[3]) {
+void float3dVectorToDoubleArray(const std::vector<float>& fv, double output[3]) {
     for (int i = 0; i < 3; i++) {
         output[i] = static_cast<double>(fv[i]);
     }
@@ -202,7 +208,7 @@ void float3dVectorToDoubleArray(std::vector<float> fv, double output[3]) {
  * @param output_path
  * @param torsion
  */
-void writeTorsionAngles(std::string file_path, std::vector<float> torsion) {
+void writeTorsionAngles(const std::string& file_path, const std::vector<float>& torsion) {
     std::ofstream output;
     output.open(file_path, std::ios_base::out);
     for (float angle : torsion) {
@@ -211,7 +217,7 @@ void writeTorsionAngles(std::string file_path, std::vector<float> torsion) {
     output.close();
 }
 
-std::vector<float> readTorsionAngles(std::string file_path) {
+std::vector<float> readTorsionAngles(const std::string& file_path) {
     std::ifstream input_file;
     std::string line;
     std::vector<float> output;
@@ -236,7 +242,7 @@ std::vector<float> readTorsionAngles(std::string file_path) {
  * @return std::vector<short>
  */
 std::vector<short> encodeTorsionAnglesToShort(
-    std::vector<float> torsions, unsigned int n_bits
+    const std::vector<float>& torsions, unsigned int n_bits
 ) {
     std::vector<short> output;
     short s_angle;
@@ -255,7 +261,7 @@ std::vector<short> encodeTorsionAnglesToShort(
  * @return std::vector<float>
  */
 std::vector<float> decodeEncodedTorsionAngles(
-    std::vector<short> encoded_torsions, unsigned int n_bits
+    const std::vector<short>& encoded_torsions, unsigned int n_bits
 ) {
     std::vector<float> output;
     float f_angle;
