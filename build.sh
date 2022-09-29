@@ -22,8 +22,8 @@ cd ..
 cmake --build ./build --target foldcomp
 
 # Test - PDB
-./build/foldcomp compress test.pdb compressed.fcz
-./build/foldcomp decompress compressed.fcz decompressed.pdb
+./build/foldcomp compress ./test/test.pdb ./test/compressed.fcz
+./build/foldcomp decompress ./test/compressed.fcz ./test/decompressed.pdb
 # Test - Gzipped CIF
-./build/foldcomp compress test.cif.gz compressed_cif.fcz
-./build/foldcomp decompress compressed_cif.fcz decompressed_cif.pdb
+./build/foldcomp compress ./test/test.cif.gz ./test/compressed_cif.fcz
+./build/foldcomp decompress ./test/compressed_cif.fcz ./test/decompressed_cif.pdb

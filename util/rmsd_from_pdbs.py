@@ -20,32 +20,81 @@ from Bio.PDB import QCPSuperimposer
 import numpy as np
 import sys
 
-def calculate_rmsd(pdb_path1, pdb_path2, mode = "CA"):
 
-    with open(pdb_path1, 'r') as f:
-        with open(pdb_path2, 'r') as f2:
+def calculate_rmsd(pdb_path1, pdb_path2, mode="CA"):
+
+    with open(pdb_path1, "r") as f:
+        with open(pdb_path2, "r") as f2:
             atom1_list = []
             atom2_list = []
             for line in f:
-                if line[0:4] == 'ATOM':
+                if line[0:4] == "ATOM":
                     if mode == "CA":
-                        if line[13:15] == 'CA':
-                            atom1_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        if line[13:15] == "CA":
+                            atom1_list.append(
+                                np.array(
+                                    [
+                                        float(line[30:38]),
+                                        float(line[38:46]),
+                                        float(line[46:54]),
+                                    ]
+                                )
+                            )
                     elif mode == "Backbone":
-                        if line[13:15] in ['N', 'CA', 'C']:
-                            atom1_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        if line[13:15] in ["N", "CA", "C"]:
+                            atom1_list.append(
+                                np.array(
+                                    [
+                                        float(line[30:38]),
+                                        float(line[38:46]),
+                                        float(line[46:54]),
+                                    ]
+                                )
+                            )
                     elif mode == "All":
-                        atom1_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        atom1_list.append(
+                            np.array(
+                                [
+                                    float(line[30:38]),
+                                    float(line[38:46]),
+                                    float(line[46:54]),
+                                ]
+                            )
+                        )
             for line in f2:
-                if line[0:4] == 'ATOM':
+                if line[0:4] == "ATOM":
                     if mode == "CA":
-                        if line[13:15] == 'CA':
-                            atom2_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        if line[13:15] == "CA":
+                            atom2_list.append(
+                                np.array(
+                                    [
+                                        float(line[30:38]),
+                                        float(line[38:46]),
+                                        float(line[46:54]),
+                                    ]
+                                )
+                            )
                     elif mode == "Backbone":
-                        if line[13:15] in ['N', 'CA', 'C']:
-                            atom2_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        if line[13:15] in ["N", "CA", "C"]:
+                            atom2_list.append(
+                                np.array(
+                                    [
+                                        float(line[30:38]),
+                                        float(line[38:46]),
+                                        float(line[46:54]),
+                                    ]
+                                )
+                            )
                     elif mode == "All":
-                        atom2_list.append(np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+                        atom2_list.append(
+                            np.array(
+                                [
+                                    float(line[30:38]),
+                                    float(line[38:46]),
+                                    float(line[46:54]),
+                                ]
+                            )
+                        )
 
     sup = QCPSuperimposer.QCPSuperimposer()
 
@@ -57,6 +106,7 @@ def calculate_rmsd(pdb_path1, pdb_path2, mode = "CA"):
     rmsd = sup.get_rms()
     return rmsd
 
+
 def main():
     path1 = sys.argv[1]
     path2 = sys.argv[2]
@@ -66,5 +116,7 @@ def main():
     print("C-alpha RMSD: %.3f" % ca_rmsd)
     print("Backbone RMSD: %.3f" % backbone_rmsd)
     print("All RMSD: %.3f" % all_rmsd)
+
+
 if __name__ == "__main__":
     main()

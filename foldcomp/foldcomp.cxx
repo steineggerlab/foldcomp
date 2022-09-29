@@ -1,17 +1,19 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <stdio.h>
-#include <iosfwd>
-#include <cstddef>
 
+#include <cstdint>
+#include <cstddef>
+#include <algorithm>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream> // IWYU pragma: keep
+
+#include "atom_coordinate.h"
 #include "foldcomp.h"
 #include "dbreader.h"
 
 static PyObject *FoldcompError;
-
-// int compress(const char* buffer, char* output, int* output_size) {
-//     return 0;
-// }
 
 typedef struct {
     PyObject_HEAD
@@ -24,14 +26,18 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
 static PyObject* FoldcompDatabase_close(PyObject* self);
 static PyObject* FoldcompDatabase_enter(PyObject* self);
 static PyObject* FoldcompDatabase_exit(PyObject* self, PyObject* args);
-static PyObject* FoldcompDatabase_length(PyObject* self);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef FoldcompDatabase_methods[] = {
     {"close", (PyCFunction)FoldcompDatabase_close, METH_NOARGS, "Close the database."},
     {"__enter__", (PyCFunction)FoldcompDatabase_enter, METH_NOARGS, "Enter the runtime context related to this object."},
     {"__exit__", (PyCFunction)FoldcompDatabase_exit, METH_VARARGS, "Exit the runtime context related to this object."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
+#pragma GCC diagnostic pop
 
 // FoldcompDatabase_sq_length
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
@@ -99,6 +105,9 @@ static PySequenceMethods FoldcompDatabase_as_sequence = {
     0, // sq_inplace_repeat
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static PyTypeObject FoldcompDatabaseType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "foldcomp.FoldcompDatabase",    /* tp_name */
@@ -148,8 +157,9 @@ static PyTypeObject FoldcompDatabaseType = {
     0,                         /* tp_del */
     0,                         /* tp_version_tag */
     0,                         /* tp_finalize */
-    0,                        /* tp_vectorcall */
+    //0,                         /* tp_vectorcall */
 };
+#pragma GCC diagnostic pop
 
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
@@ -172,7 +182,7 @@ static PyObject* FoldcompDatabase_enter(PyObject* self) {
 }
 
 // FoldcompDatabase_exit
-static PyObject *FoldcompDatabase_exit(PyObject *self, PyObject *args) {
+static PyObject *FoldcompDatabase_exit(PyObject *self, PyObject* /* args */) {
     return FoldcompDatabase_close(self);
 }
 
@@ -210,8 +220,7 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
     return 0;
 }
 
-
-static PyObject *foldcomp_decompress(PyObject *self, PyObject *args) {
+static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
     // Unpack a string from the arguments
     const char *strArg;
     Py_ssize_t strSize;
@@ -230,9 +239,82 @@ static PyObject *foldcomp_decompress(PyObject *self, PyObject *args) {
     return Py_BuildValue("(s,O)", name.c_str(), PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().size()));
 }
 
+std::string trim(const std::string& str, const std::string& whitespace = " \t") {
+    const std::string::size_type strBegin = str.find_first_not_of(whitespace);
+    if (strBegin == std::string::npos)
+        return ""; // no content
+
+    const std::string::size_type strEnd = str.find_last_not_of(whitespace);
+    const std::string::size_type strRange = strEnd - strBegin + 1;
+
+    return str.substr(strBegin, strRange);
+}
+
+int compress(const std::string& name, const std::string& pdb_input, std::ostream& oss, int anchor_residue_threshold) {
+    std::vector<AtomCoordinate> atomCoordinates;
+    // parse ATOM lines from PDB file into atomCoordinates
+    std::istringstream iss(pdb_input);
+    std::string line;
+    while (std::getline(iss, line)) {
+        if (line.substr(0, 4) == "ATOM") {
+            atomCoordinates.emplace_back(
+                trim(line.substr(12, 4)), // atom
+                trim(line.substr(17, 3)), // residue
+                line.substr(21, 1), // chain
+                std::stoi(line.substr(6,  5)), // atom_index
+                std::stoi(line.substr(22, 4)), // residue_index
+                std::stof(line.substr(30, 8)), std::stof(line.substr(38, 8)), std::stof(line.substr(46, 8)), // coordinates
+                std::stof(line.substr(54, 6)), // occupancy
+                std::stof(line.substr(60, 6)) // tempFactor
+            );
+        }
+    }
+    if (atomCoordinates.size() == 0) {
+        return 1;
+    }
+
+    // compress
+    Foldcomp compRes;
+    compRes.strTitle = name;
+    compRes.anchorThreshold = anchor_residue_threshold;
+    compRes.compress(atomCoordinates);
+    compRes.writeStream(oss);
+
+    return 0;
+}
+
+static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObject* kwargs) {
+    const char* name;
+    const char* pdb_input;
+    PyObject* anchor_residue_threshold = NULL;
+    static const char *kwlist[] = {"name", "pdb_content", "anchor_residue_threshold", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|$O", const_cast<char**>(kwlist), &name, &pdb_input, &anchor_residue_threshold)) {
+        return NULL;
+    }
+
+    if (anchor_residue_threshold != NULL && !PyLong_Check(anchor_residue_threshold)) {
+        PyErr_SetString(PyExc_TypeError, "anchor_residue_threshold must be an integer");
+        return NULL;
+    }
+
+    int threshold = 200;
+    if (anchor_residue_threshold != NULL) {
+        threshold = PyLong_AsLong(anchor_residue_threshold);
+    }
+
+    std::ostringstream oss;
+    int flag = compress(name, pdb_input, oss, threshold);
+    if (flag != 0) {
+        return NULL;
+    }
+
+    return PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().length());
+}
+
+
 PyTypeObject* pathType = NULL;
 
-static PyObject *foldcomp_open(PyObject* self, PyObject* args, PyObject* kwargs) {
+static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* kwargs) {
     PyObject* path;
     PyObject* uniprot_ids = NULL;
     PyObject* decompress = NULL;
@@ -287,20 +369,30 @@ static PyObject *foldcomp_open(PyObject* self, PyObject* args, PyObject* kwargs)
     return (PyObject*)obj;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef foldcomp_methods[] = {
     // {"compress", foldcomp_compress, METH_VARARGS, "Compress a PDB file."},
-    {"decompress", foldcomp_decompress, METH_VARARGS, "Decompress a PDB file."},
+    {"decompress", foldcomp_decompress, METH_VARARGS, "Decompress FCZ content to PDB."},
+    {"compress", (PyCFunction)foldcomp_compress, METH_VARARGS | METH_KEYWORDS, "Compress PDB content to FCZ."},
     {"open", (PyCFunction)foldcomp_open, METH_VARARGS | METH_KEYWORDS, "Open a Foldcomp database."},
 
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
+#pragma GCC diagnostic pop
 
 static struct PyModuleDef foldcomp_module_def = {
     PyModuleDef_HEAD_INIT,
-    "foldcomp",
-    NULL,
-    -1,
-    foldcomp_methods
+    "foldcomp", /* m_name */
+    NULL, /* m_doc */
+    -1, /* m_size */
+    foldcomp_methods, /* m_methods */
+    0, /* m_slots */
+    0, /* m_traverse */
+    0, /* m_clear */
+    0, /* m_free */
 };
 
 PyMODINIT_FUNC PyInit_foldcomp(void) {
@@ -333,7 +425,6 @@ clean_err:
     Py_XDECREF(FoldcompError);
     Py_CLEAR(FoldcompError);
 
-clean_m:
     Py_DECREF(m);
 
     return NULL;
