@@ -12,7 +12,7 @@ setup(
     packages=["foldcomp"],
     include_package_data=False,
     install_requires=[
-        "aiohttp >= 3.8.3",
+        "httpx >= 0.23.0",
     ],
     extras_require={"test": ["pytest"]},
 )

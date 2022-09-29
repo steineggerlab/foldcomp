@@ -1,51 +1,52 @@
 import asyncio
-import aiohttp
+import httpx
 import os
 
 
-async def get_size(session, url):
-    async with session.head(url=url) as response:
-        return int(response.headers["Content-Length"])
+async def get_size(client, url):
+    response = await client.head(url=url)
+    return int(response.headers["Content-Length"])
 
 
-async def download_range(session, url, range):
-    (start, end, output) = range
-    async with session.get(
-        url=url, headers={"Range": f"bytes={start}-{end}"}
+async def download_range(client, url, start, end, output):
+    async with client.stream(
+        "GET", url, headers={"Range": f"bytes={start}-{end}"}
     ) as response:
         with open(output, "wb") as f:
-            # write StreamReader response.content to file f
-            while True:
-                chunk = await response.content.read(1024)
-                if not chunk:
-                    break
+            async for chunk in response.aiter_raw():
                 f.write(chunk)
 
 
 async def download(url, output, chunks=16):
-    async with aiohttp.ClientSession(auto_decompress=False) as session:
-        file_size = await get_size(session, url)
+    async with httpx.AsyncClient() as client:
+        file_size = await get_size(client, url)
 
-        # create N ranges based on file_size
+        # create chunks amount of ranges based on file_size
         ranges = []
-        for i in range(chunks):
-            start = i * file_size // chunks
-            end = min((i + 1) * file_size // chunks, file_size) - 1
-            ranges.append((start, end, f"{output}.{i}"))
+        if file_size > 10 * 1024 * 1024:
+            for i in range(chunks):
+                start = i * file_size // chunks
+                end = min((i + 1) * file_size // chunks, file_size) - 1
+                ranges.append((start, end, f"{output}.{i}"))
+        else:
+            ranges.append((0, file_size, output))
 
-        await asyncio.gather(*[download_range(session, url, range) for range in ranges])
+        await asyncio.gather(*[download_range(client, url, *range) for range in ranges])
+
+        if len(ranges) == 1:
+            return
 
         with open(output, "wb") as o:
-            for _, _, _, chunk_path in ranges:
+            for _, _, chunk_path in ranges:
                 with open(chunk_path, "rb") as s:
                     o.write(s.read())
                 os.remove(chunk_path)
 
 
 async def download_json(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
 
 
 # def list():
@@ -60,4 +61,13 @@ def setup(db="afdb_foldcomp", download_chunks=16):
                 f"{db}{i}",
                 chunks=download_chunks,
             )
+        )
+
+
+async def setup_async(db="afdb_foldcomp", download_chunks=16):
+    for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
+        await download(
+            f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
+            f"{db}{i}",
+            chunks=download_chunks,
         )
