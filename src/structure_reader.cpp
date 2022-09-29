@@ -14,6 +14,13 @@
 
 #include "structure_reader.h"
 
+#include <stdexcept>
+
+// Gemmi
+#include "gemmi/mmread.hpp"
+#include "gemmi/input.hpp"
+#include "gemmi/gz.hpp"
+
 /**
  * @brief StructureReader::updateStructure
  * Reads a structure and updates the AtomCoordinate vector.
@@ -21,7 +28,7 @@
  * @param void_st
  * @param filename
  */
-void StructureReader::updateStructure(void* void_st, std::string& filename) {
+void StructureReader::updateStructure(void* void_st, const std::string& filename) {
     gemmi::Structure* st = (gemmi::Structure* ) void_st;
 
     this->title.clear();
@@ -64,7 +71,7 @@ void StructureReader::updateStructure(void* void_st, std::string& filename) {
  * @return true
  * @return false
  */
-bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, std::string& name) {
+bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, const std::string& name) {
     try {
         gemmi::MaybeGzipped infile(name);
         gemmi::CoorFormat format = gemmi::coor_format_from_ext(infile.basepath());
@@ -76,8 +83,7 @@ bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, std:
         case gemmi::CoorFormat::Mmcif:
             st = gemmi::make_structure(gemmi::cif::read_memory(buffer, bufferSize, name.c_str()));
             break;
-        case gemmi::CoorFormat::Unknown:
-        case gemmi::CoorFormat::Detect:
+        default:
             return false;
         }
         updateStructure((void*)&st, name);
@@ -114,7 +120,7 @@ gemmi::Structure openStructure(const std::string& filename) {
  * @return true
  * @return false
  */
-bool StructureReader::load(std::string& filename){
+bool StructureReader::load(const std::string& filename){
     try {
         gemmi::Structure st = openStructure(filename);
         updateStructure((void*)&st, filename);

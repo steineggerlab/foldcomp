@@ -2,11 +2,11 @@ set(foldcomp_header_files
     src/amino_acid.h
     src/atom_coordinate.h
     src/bond_info.h
+    src/execution_timer.h
     src/dbreader.h
     src/discretizer.h
     src/foldcomp.h
     src/nerf.h
-    src/pdb_reader.h
     src/sidechain.h
     src/torsion_angle.h
     src/utility.h
@@ -20,7 +20,6 @@ set(foldcomp_source_files
     src/discretizer.cpp
     src/foldcomp.cpp
     src/nerf.cpp
-    src/pdb_reader.cpp
     src/sidechain.cpp
     src/torsion_angle.cpp
     src/utility.cpp
