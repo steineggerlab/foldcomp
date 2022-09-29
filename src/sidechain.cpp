@@ -13,9 +13,19 @@
  */
 
 #include "sidechain.h"
+#include <utility>
+#include <map>
+#include <stddef.h>
+#include <iostream>
+#include <string>
+#include "amino_acid.h"
+#include "atom_coordinate.h"
+#include "nerf.h"
+#include "torsion_angle.h"
+#include "utility.h"
 
 std::vector<AtomCoordinate> reconstructSideChain(
-    std::vector<AtomCoordinate> backbone, AtomCoordinate c0
+    std::vector<AtomCoordinate> backbone, AtomCoordinate /* c0 */
 ) {
     std::vector<AtomCoordinate> output;
     AminoAcid AA;
@@ -198,8 +208,8 @@ void compareMap(
 }
 
 std::vector<AtomCoordinate> reconstructSideChain(
-    std::vector< std::vector<float> > backboneCoordinates,
-    std::string residueName
+    std::vector<std::vector<float>> /* backboneCoordinates */,
+    std::string /* residueName */
 ) {
     std::vector<AtomCoordinate> output;
     return output;
@@ -212,21 +222,22 @@ int calculateSideChainInfo(
     // Calculate side chain information of all amino acid in the peptide
     std::vector<AtomCoordinate> currResidue;
     size_t total = peptideCoordinates.size();
-    int resCount = 0;
     AtomCoordinate* currAtom;
     int currResInd = peptideCoordinates[0].residue_index;
     std::string currRes = peptideCoordinates[0].residue;
     std::map<std::string, float> resCountMap = {
-        {"ALA", 0},{"ARG", 0},{"ASN", 0},{"ASP", 0},{"CYS", 0},
-        {"GLN", 0},{"GLU", 0},{"GLY", 0},{"HIS", 0},{"ILE", 0},
-        {"LEU", 0},{"LYS", 0},{"MET", 0},{"PHE", 0},{"PRO", 0},
-        {"SER", 0},{"THR", 0},{"TRP", 0},{"TYR", 0},{"VAL", 0}
+        {"ALA", 0.0f},{"ARG", 0.0f},{"ASN", 0.0f},{"ASP", 0.0f},{"CYS", 0.0f},
+        {"GLN", 0.0f},{"GLU", 0.0f},{"GLY", 0.0f},{"HIS", 0.0f},{"ILE", 0.0f},
+        {"LEU", 0.0f},{"LYS", 0.0f},{"MET", 0.0f},{"PHE", 0.0f},{"PRO", 0.0f},
+        {"SER", 0.0f},{"THR", 0.0f},{"TRP", 0.0f},{"TYR", 0.0f},{"VAL", 0.0f}
     };
     std::map<std::string, float> currBondLengths;
     std::map<std::string, float> currBondAngles;
     std::map<std::string, float> currTorsionAngles;
 
     int success;
+    // TODO: do something with success, remove next line
+    (void)(success);
     for (size_t i = 0; i < total; i++) {
         currAtom = &(peptideCoordinates[i]);
         if ((currAtom->residue_index == currResInd) && (i != (total - 1))) {
@@ -282,7 +293,6 @@ int reconstructSideChainFromPeptide(
     std::vector<AtomCoordinate> tempResidue;
 
     size_t total = peptideCoordinates.size();
-    AtomCoordinate* currAtom;
     int currResInd = peptideCoordinates[0].residue_index;
     std::string currRes = peptideCoordinates[0].residue;
     int success = 0;
@@ -359,7 +369,6 @@ std::vector<AtomCoordinate> residueReconstruction(
     AminoAcid& currAA,
     std::map<std::string, float>& currResTorsionAngles
 ) {
-    int success = 0;
     // Get bond angles and bond lengths from currAA
     std::map<std::string, float> bondAngles = currAA.bondAngles;
     std::map<std::string, float> bondLengths = currAA.bondLengths;
@@ -381,7 +390,7 @@ std::vector<AtomCoordinate> residueReconstruction(
 // }
 
 int saveTorsionAngles(
-    std::vector<AtomCoordinate>& peptideCoordinates,
+    std::vector<AtomCoordinate>& /* peptideCoordinates */,
     std::map<std::string, AminoAcid>& AAS
 ) {
     // TODO: This is not a valid code. Need to fix it
@@ -447,7 +456,7 @@ std::map<std::string, std::vector< std::vector<float> > > groupSideChainTorsionB
     }
     //
     std::string currResidue;
-    for (int i = 0; i < sideChainTorsionAngles.size(); i++) {
+    for (size_t i = 0; i < sideChainTorsionAngles.size(); i++) {
         currResidue = residueNames[i];
         output[currResidue].push_back(sideChainTorsionAngles[i]);
     }
@@ -459,8 +468,8 @@ std::vector<float> getSpecificTorsionAngle(
     std::string& residueName, int index
 ) {
     std::vector<float> output;
-    std::vector< std::vector<float> > temp = sideChainTorsionMap[residueName];
-    for (int i = 0; i < temp.size(); i++) {
+    const std::vector<std::vector<float>>& temp = sideChainTorsionMap[residueName];
+    for (size_t i = 0; i < temp.size(); i++) {
         output.push_back(temp[i][index]);
     }
     if (output.size() == 0) {

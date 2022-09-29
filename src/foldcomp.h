@@ -16,17 +16,13 @@
 #include <map>
 #include <vector>
 #include <string>
-#include <cmath>
 #include <iostream>
-#include <bitset>
-#include <string.h>
+#include <cstdint>
+#include <cstring>
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
-#include "sidechain.h"
-#include "torsion_angle.h"
 #include "nerf.h"
-#include "utility.h"
 
 #ifdef FOLDCOMP_EXECUTABLE
 // TAR format handling
@@ -386,6 +382,7 @@ public:
     std::vector<BackboneChain> compress(std::vector<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
     int read(std::istream & filename);
+    int writeStream(std::ostream& os);
     int write(std::string filename);
     // Read & write for tar files
 #ifdef FOLDCOMP_EXECUTABLE

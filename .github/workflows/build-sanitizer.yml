@@ -36,7 +36,7 @@ jobs:
     - name: ASan
       working-directory: ${{github.workspace}}/build
       run: |
-        ./foldcomp compress ../test.pdb
-        ./foldcomp decompress ../test.fcz
-        ./foldcomp compress ../test.cif.gz
-        ./foldcomp decompress ../test.cif.fcz
+        ./foldcomp compress ../test/test.pdb
+        ./foldcomp decompress ../test/test.fcz
+        ./foldcomp compress ../test/test.cif.gz
+        ./foldcomp decompress ../test/test.cif.fcz

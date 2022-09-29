@@ -12,16 +12,11 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
-#include <string>
-#include <vector>
-#include <cmath>
-#include <map>
-#include <fstream>
-#include <iostream>
-#include <chrono>
-#include <sstream>
-#include <dirent.h>
 #include <cstring>
+#include <iostream>
+#include <fstream> // IWYU pragma: keep
+#include <map>
+#include <vector>
 
 const float PI = 3.14159265;
 
@@ -32,7 +27,7 @@ std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
 
     std::vector<T> vec(first, last);
     return vec;
-};
+}
 
 std::vector<float> crossProduct(std::vector<float> v1, std::vector<float> v2);
 float norm(std::vector<float> v);
@@ -73,7 +68,7 @@ int addMap(std::map<std::string, T>* m1, std::map<std::string, T>* m2) {
         }
     }
     return 0;
-};
+}
 
 //
 template <typename T>
@@ -82,7 +77,7 @@ int divideMapWithConst(std::map<std::string, T>* m, T c) {
         (*m)[x.first] = (x.second / c);
     }
     return 0;
-};
+}
 
 template <typename T>
 int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
@@ -94,14 +89,7 @@ int printMapToFile(std::map<std::string, T>* m, std::string fileName) {
     }
     outFile.close();
     return 0;
-};
-
-template <typename T>
-void swap(T* a, T* b) {
-    T temp = *a;
-    *a = *b;
-    *b = temp;
-};
+}
 
 template <typename T>
 void printVector(std::vector<T> v) {
@@ -113,61 +101,12 @@ void printVector(std::vector<T> v) {
     }
     // Close brackets
     std::cout << "]" << std::endl;
-};
+}
 
-
-/**
- * @brief General function to measure the running time of a function
- * https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
- * @param func
- * @return double
- */
-auto static measureRunningTime = [](int n, auto && func, auto&&... params) {
-    // get time before function invocation
-    const auto& start = std::chrono::high_resolution_clock::now();
-    // function invocation using perfect forwarding
-    // n is the number of times to run the function; default is 100000
-    for (auto i = 0; i < n; ++i) {
-        std::forward<decltype(func)>(func)(std::forward<decltype(params)>(params)...);
-    }
-    // get time after function invocation
-    const auto& stop = std::chrono::high_resolution_clock::now();
-    return (stop - start) / n;
-};
-
-template<class Resolution = std::chrono::milliseconds>
-class ExecutionTimer {
-public:
-    using Clock = std::conditional_t<std::chrono::high_resolution_clock::is_steady,
-        std::chrono::high_resolution_clock,
-        std::chrono::steady_clock>;
-private:
-    const Clock::time_point mStart = Clock::now();
-
-public:
-    ExecutionTimer() = default;
-    ~ExecutionTimer() {
-        const auto end = Clock::now();
-        std::ostringstream strStream;
-        strStream << "Destructor Elapsed: "
-            << std::chrono::duration_cast<Resolution>(end - mStart).count()
-            << std::endl;
-        std::cout << strStream.str() << std::endl;
-    }
-
-    inline void stop() {
-        const auto end = Clock::now();
-        std::ostringstream strStream;
-        strStream << "Stop Elapsed: "
-            << std::chrono::duration_cast<Resolution>(end - mStart).count()
-            << std::endl;
-        std::cout << strStream.str() << std::endl;
-    }
-
-}; // ExecutionTimer
-
+#ifdef FOLDCOMP_EXECUTABLE
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir);
+#endif
 std::string baseName(std::string const& path);
 
 std::string getFileWithoutExt(std::string& file);

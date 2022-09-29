@@ -14,8 +14,12 @@
 
 #include "atom_coordinate.h"
 
-// constructor
-AtomCoordinate::AtomCoordinate(){}
+#include <cstddef>
+#include <stdexcept>
+
+#include <iostream>
+#include <iomanip>
+#include <cmath>
 
 /**
  * @brief Construct a new Atom Coordinate:: Atom Coordinate object
@@ -30,8 +34,9 @@ AtomCoordinate::AtomCoordinate(){}
  */
 AtomCoordinate::AtomCoordinate(
     std::string a, std::string r, std::string c,
-    int ai, int ri, float x, float y, float z
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri) {
+    int ai, int ri, float x, float y, float z,
+    float occupancy, float tempFactor
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor) {
     this->coordinate = {x, y, z};
     this->check3dCoordinate();
 }
@@ -47,13 +52,11 @@ AtomCoordinate::AtomCoordinate(
  */
 AtomCoordinate::AtomCoordinate(
     std::string a, std::string r, std::string c,
-    int ai, int ri, std::vector<float> coord
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord) {
+    int ai, int ri, std::vector<float> coord,
+    float occupancy, float tempFactor
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor) {
     this->check3dCoordinate();
-};
-
-
-AtomCoordinate::~AtomCoordinate(){}
+}
 
 /**
  * @brief Check if 3 coordinates given.
@@ -94,7 +97,7 @@ void AtomCoordinate::print(int option) {
         std::cout << "Residue Index: " << this->residue_index << std::endl;
         if (option == 2) {
             std::cout << "Coordinate: ";
-            for (int i = 0; i < this->coordinate.size(); i++) {
+            for (size_t i = 0; i < this->coordinate.size(); i++) {
                 std::cout << this->coordinate[i] << " ";
             }
             std::cout << std::endl;
@@ -109,7 +112,7 @@ void AtomCoordinate::print(int option) {
  * @return std::vector< std::vector<float> >
  */
 std::vector< std::vector<float> > extractCoordinates(
-    std::vector<AtomCoordinate>& atoms
+    const std::vector<AtomCoordinate>& atoms
 ) {
     std::vector<std::vector<float>> output;
     for (AtomCoordinate curr_atm : atoms) {
@@ -211,7 +214,6 @@ void writeAtomCoordinatesToPDB(
 
     int total = atoms.size();
     std::string residue;
-    int residue_index;
     for (int i = 0; i < total; i++) {
         pdb_stream << "ATOM  "; // 1-4 ATOM
         pdb_stream << std::setw(5) << i + 1; // 7-11
@@ -272,7 +274,7 @@ std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(
     std::vector< std::vector<AtomCoordinate> > output;
     std::vector<AtomCoordinate> currentResidue;
 
-    for (int i = 0; i < atomCoordinates.size(); i++) {
+    for (size_t i = 0; i < atomCoordinates.size(); i++) {
         if (i == 0) {
             currentResidue.push_back(atomCoordinates[i]);
         } else if (i != (atomCoordinates.size() - 1)) {
@@ -297,7 +299,7 @@ std::vector<std::string> getResidueNameVector(
 ) {
     std::vector<std::string> output;
     // Unique residue names
-    for (int i = 0; i < atomCoordinates.size(); i++) {
+    for (size_t i = 0; i < atomCoordinates.size(); i++) {
         if (i == 0) {
             output.push_back(atomCoordinates[i].residue);
         } else {
@@ -319,14 +321,14 @@ AtomCoordinate findFirstAtom(std::vector<AtomCoordinate>& atoms, std::string ato
 }
 
 void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start) {
-    for (int i = 0; i < atoms.size(); i++) {
+    for (size_t i = 0; i < atoms.size(); i++) {
         atoms[i].atom_index = start + i;
     }
 }
 
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms) {
     // If there is an alternative position, remove it
-    for (int i = 1; i < atoms.size(); i++) {
+    for (size_t i = 1; i < atoms.size(); i++) {
         if (atoms[i].atom == atoms[i-1].atom) {
             atoms.erase(atoms.begin() + i);
             i--;

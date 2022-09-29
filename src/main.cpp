@@ -32,11 +32,15 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <sys/stat.h>
 #include <cstring>
 #include <getopt.h>
 // OpenMP for parallelization
+
+#ifdef OPENMP
 #include <omp.h>
+#endif
 
 #ifdef HAVE_GCS
 #include "google/cloud/storage/client.h"
@@ -248,11 +252,12 @@ int main(int argc, char* const *argv) {
             {"no-merge",      no_argument, &ext_merge,  0 },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
+            {"cpu",     required_argument,          0, 'c'},
             {0,                         0,          0,  0 }
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hazt:b:c:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
@@ -270,6 +275,9 @@ int main(int argc, char* const *argv) {
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
+            case 'c':
+                num_threads = atoi(optarg);
+                break;
             case '?':
                 return print_usage();
             default:
@@ -277,8 +285,6 @@ int main(int argc, char* const *argv) {
         }
         flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
     }
-    // // Set number of threads
-    // omp_set_num_threads(num_threads);
 
     // Parse non-option arguments
     // argv[optind]: MODE
@@ -290,7 +296,7 @@ int main(int argc, char* const *argv) {
         return print_usage();
     }
 
-    struct stat st = {0};
+    struct stat st;
     int fileExists = stat(argv[optind + 1], &st);
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
@@ -453,12 +459,11 @@ int main(int argc, char* const *argv) {
         }
         std::vector<std::string> files = getFilesInDirectory(input);
         // Parallelize
-        omp_set_num_threads(num_threads);
         if (!save_as_tar) {
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string file = files[i];
                     std::string inputFile = input + file;
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
@@ -469,10 +474,10 @@ int main(int argc, char* const *argv) {
             mtar_t tar;
             std::string tarFile = output.substr(0, output.length() - 1) + ".tar";
             mtar_open(&tar, tarFile.c_str(), "w");
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string file = files[i];
                     std::string inputFile = input + file;
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
@@ -530,8 +535,7 @@ int main(int argc, char* const *argv) {
             mtar_open(&tarArray[i], tarFile.c_str(), "w");
         }
 
-        omp_set_num_threads(num_threads);
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
         {
 #pragma omp single
             // Get object list from gcs bucket
@@ -555,7 +559,11 @@ int main(int argc, char* const *argv) {
                             std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
-                            int tar_id = omp_get_thread_num();
+                            int tar_id = 0;
+#ifdef OPENMP
+                            tar_id = omp_get_thread_num();
+#endif
+
                             compRes.writeTar(tarArray[tar_id], outputFile, compRes.getSize());
                         }
                     }
@@ -598,11 +606,10 @@ int main(int argc, char* const *argv) {
             std::cout << " using " << num_threads << " threads" << std::endl;
             std::cout << "Output directory: " << output << std::endl;
             std::vector<std::string> files = getFilesInDirectory(input);
-            omp_set_num_threads(num_threads);
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
             {
 #pragma omp for
-                for (int i = 0; i < files.size(); i++) {
+                for (size_t i = 0; i < files.size(); i++) {
                     std::string inputFile = input + files[i];
                     std::ifstream input(inputFile, std::ios::binary);
                     // Check if file is open
@@ -617,7 +624,6 @@ int main(int argc, char* const *argv) {
             }
             flag = 0;
         } else if (mode == DECOMPRESS_MULTIPLE_TAR) {
-            omp_set_num_threads(num_threads);
             mtar_t tar;
             if (mtar_open(&tar, argv[optind + 1], "r") != MTAR_ESUCCESS) {
                 std::cerr << "Error: open tar " << argv[optind + 1] << " failed." << std::endl;
@@ -707,11 +713,10 @@ int main(int argc, char* const *argv) {
                 std::cout << " using " << num_threads << " threads" << std::endl;
                 std::cout << "Output directory: " << output << std::endl;
                 std::vector<std::string> files = getFilesInDirectory(input);
-                omp_set_num_threads(num_threads);
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
                 {
 #pragma omp for
-                    for (int i = 0; i < files.size(); i++) {
+                    for (size_t i = 0; i < files.size(); i++) {
                         std::string inputFile = input + files[i];
                         std::ifstream input(inputFile, std::ios::binary);
                         // Check if file is open
@@ -728,7 +733,7 @@ int main(int argc, char* const *argv) {
                             #pragma omp critical
                             {
                                 defaultOutput << ">" << compRes.strTitle << "\n";
-                                for (int j = 0; j < data.size(); j++) {
+                                for (size_t j = 0; j < data.size(); j++) {
                                     defaultOutput << data[j];
                                 }
                                 defaultOutput << "\n";
@@ -752,7 +757,6 @@ int main(int argc, char* const *argv) {
                     defaultOutput.close();
                 }
             } else if (mode == EXTRACT_MULTIPLE_TAR) {
-                omp_set_num_threads(num_threads);
                 mtar_t tar;
                 if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
                     std::cerr << "Error: open tar " << input << " failed." << std::endl;
@@ -833,7 +837,7 @@ int main(int argc, char* const *argv) {
                             #pragma omp critical
                                 {
                                     defaultOutput << ">" << compRes.strTitle << "\n";
-                                    for (int j = 0; j < data.size(); j++) {
+                                    for (size_t j = 0; j < data.size(); j++) {
                                         defaultOutput << data[j];
                                     }
                                     defaultOutput << "\n";
@@ -862,12 +866,11 @@ int main(int argc, char* const *argv) {
             input += "/";
         }
         std::vector<std::string> files = getFilesInDirectory(input);
-        omp_set_num_threads(num_threads);
         std::clog << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
-#pragma omp parallel
+#pragma omp parallel num_threads(num_threads)
         {
 #pragma omp for
-            for (int i = 0; i < files.size(); i++) {
+            for (size_t i = 0; i < files.size(); i++) {
                 std::string inputFile = input + files[i];
                 std::ifstream input(inputFile, std::ios::binary);
                 // Check if file is open
@@ -881,7 +884,6 @@ int main(int argc, char* const *argv) {
         }
         flag = 0;
     } else if (mode == CHECK_MULTIPLE_TAR) {
-        omp_set_num_threads(num_threads);
         mtar_t tar;
         if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
             std::cerr << "Error: open tar " << input << " failed." << std::endl;

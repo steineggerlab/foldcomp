@@ -1,0 +1,7 @@
+include .gitignore
+include CMakeLists.txt
+exclude build.sh
+recursive-include cmake src foldcomp test
+prune lib
+prune util
+prune .github
