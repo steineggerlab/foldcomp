@@ -112,7 +112,7 @@ void AtomCoordinate::print(int option) {
  * @return std::vector< std::vector<float> >
  */
 std::vector< std::vector<float> > extractCoordinates(
-    std::vector<AtomCoordinate>& atoms
+    const std::vector<AtomCoordinate>& atoms
 ) {
     std::vector<std::vector<float>> output;
     for (AtomCoordinate curr_atm : atoms) {

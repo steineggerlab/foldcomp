@@ -17,7 +17,7 @@
 #include <iostream>
 #include <algorithm>
 
-Discretizer::Discretizer(std::vector<float>& values, unsigned int nb):
+Discretizer::Discretizer(const std::vector<float>& values, unsigned int nb):
     n_bin(nb) {
     // Get min & max
     this->min = *std::min_element(values.begin(), values.end());
@@ -27,7 +27,7 @@ Discretizer::Discretizer(std::vector<float>& values, unsigned int nb):
     this->cont_f = (this->max - this->min) / this->n_bin;
 }
 
-void Discretizer::set_continuous_values(std::vector<float>& values) {
+void Discretizer::set_continuous_values(const std::vector<float>& values) {
     this->min = *std::min_element(values.begin(), values.end());
     this->max = *std::max_element(values.begin(), values.end());
     // Calculate factors
@@ -35,11 +35,11 @@ void Discretizer::set_continuous_values(std::vector<float>& values) {
     this->cont_f = (this->max - this->min) / this->n_bin;
 }
 
-std::vector<unsigned int> Discretizer::discretize(std::vector<float>& continuous_values) {
-    std::vector<float>::iterator it;
+std::vector<unsigned int> Discretizer::discretize(const std::vector<float>& continuous_values) {
+    std::vector<float>::const_iterator it;
     unsigned int tmp_disc_value;
     std::vector<unsigned int> discretizedValues;
-    for (it = continuous_values.begin(); it != continuous_values.end(); it++) {
+    for (it = continuous_values.cbegin(); it != continuous_values.cend(); it++) {
         tmp_disc_value = (*it - min) * (this->disc_f);
         discretizedValues.push_back(tmp_disc_value);
     }
@@ -50,11 +50,11 @@ unsigned int Discretizer::discretize(float continuous_value) {
     return (continuous_value - this->min) * (this->disc_f);
 }
 
-std::vector<float> Discretizer::continuize(std::vector<unsigned int>& discrete_values) {
+std::vector<float> Discretizer::continuize(const std::vector<unsigned int>& discrete_values) {
     std::vector<float> output;
-    std::vector<unsigned int>::iterator it;
+    std::vector<unsigned int>::const_iterator it;
     float tmp_cont_value;
-    for (it = discrete_values.begin(); it != discrete_values.end(); it++) {
+    for (it = discrete_values.cbegin(); it != discrete_values.cend(); it++) {
         tmp_cont_value = (*it * this->cont_f) + this->min;
         output.push_back(tmp_cont_value);
     }
@@ -96,7 +96,7 @@ void Discretizer::write_to_file(std::string filename) {
     fout.close();
 }
 
-float Discretizer::average_error(std::vector<float>& continuous_values) {
+float Discretizer::average_error(const std::vector<float>& continuous_values) {
     std::vector<unsigned int> discretized_values = this->discretize(continuous_values);
     std::vector<float> restored = this->continuize(discretized_values);
     float sum = 0;
@@ -106,7 +106,7 @@ float Discretizer::average_error(std::vector<float>& continuous_values) {
     return sum / continuous_values.size();
 }
 
-float Discretizer::max_error(std::vector<float>& continuous_values) {
+float Discretizer::max_error(const std::vector<float>& continuous_values) {
     std::vector<unsigned int> discretized_values = this->discretize(continuous_values);
     std::vector<float> restored = this->continuize(discretized_values);
     float max = 0;
