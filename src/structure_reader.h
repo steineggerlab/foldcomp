@@ -16,23 +16,16 @@
 
 #pragma once
 #include "atom_coordinate.h"
-#include <stdexcept>
-// Gemmi
-#include "gemmi/mmread.hpp"
-#include "gemmi/input.hpp"
-#include "gemmi/gz.hpp"
 
 class StructureReader {
 private:
-    void updateStructure(void* void_st, std::string& filename);
+    void updateStructure(void* void_st, const std::string& filename);
 public:
-    StructureReader(/* args */){};
-    ~StructureReader(){};
     std::string filepath;
     std::string title;
     std::vector<AtomCoordinate> atoms;
-    bool loadFromBuffer(const char* buffer, size_t bufferSize, std::string& name);
-    bool load(std::string& filename);
+    bool loadFromBuffer(const char* buffer, size_t bufferSize, const std::string& name);
+    bool load(const std::string& filename);
     bool readBackboneAtoms(std::vector<AtomCoordinate>& backboneAtoms);
     bool readAllAtoms(std::vector<AtomCoordinate>& allAtoms);
 };

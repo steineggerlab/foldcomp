@@ -21,27 +21,27 @@
 class AtomCoordinate;
 
 std::vector<float> getTorsionFromXYZ(
-    std::vector< std::vector<float> > coordinates, int atm_inc
+    const std::vector<std::vector<float>>& coordinates, int atm_inc
 );
 std::vector<float> getTorsionFromXYZForDebugging(
-    std::vector< std::vector<float> > coordinates, int atm_inc
+    const std::vector<std::vector<float>>& coordinates, int atm_inc
 );
 
 std::vector<float> getTorsionFromXYZ(
-    std::vector<AtomCoordinate> coordinates, int atm_inc
+    const std::vector<AtomCoordinate>& coordinates, int atm_inc
 );
 
-void float3dVectorToDoubleArray(std::vector<float> fv, double output[3]);
+void float3dVectorToDoubleArray(const std::vector<float>& fv, double output[3]);
 
-void writeTorsionAngles(std::string file_path, std::vector<float> torsion);
-std::vector<float> readTorsionAngles(std::string file_path);
+void writeTorsionAngles(const std::string& file_path, const std::vector<float>& torsion);
+std::vector<float> readTorsionAngles(const std::string& file_path);
 
 
 // 2021-02-02 13:02:02 - encode and decode torsion angles to short
 
 std::vector<short> encodeTorsionAnglesToShort(
-    std::vector<float> torsions, unsigned int n_bits = 16
+    const std::vector<float>& torsions, unsigned int n_bits = 16
 );
 std::vector<float> decodeEncodedTorsionAngles(
-    std::vector<short> encoded_torsions, unsigned int n_bits = 16
+    const std::vector<short>& encoded_torsions, unsigned int n_bits = 16
 );

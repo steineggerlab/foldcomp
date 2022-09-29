@@ -53,7 +53,7 @@ public:
     void setTempFactor(float tf) { this->tempFactor = tf; };
 };
 
-std::vector< std::vector<float> > extractCoordinates(std::vector<AtomCoordinate>& atoms);
+std::vector< std::vector<float>> extractCoordinates(const std::vector<AtomCoordinate>& atoms);
 std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 );

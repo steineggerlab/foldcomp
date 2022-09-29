@@ -32,6 +32,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <sys/stat.h>
 #include <cstring>
 #include <getopt.h>

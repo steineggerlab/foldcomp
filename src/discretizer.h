@@ -48,7 +48,7 @@ public:
      * @param values a float vector to discretize
      * @param nb an int representing the number of bins
      */
-    Discretizer(std::vector<float>& values, unsigned int nb);
+    Discretizer(const std::vector<float>& values, unsigned int nb);
     /**
      * @brief Construct a new Discretizer object (without values)
      *
@@ -68,13 +68,13 @@ public:
     float cont_f; // continous factor:
 
     // methods
-    void set_continuous_values(std::vector<float>& values);
+    void set_continuous_values(const std::vector<float>& values);
 
 
-    std::vector<unsigned int> discretize(std::vector<float>& continuous_values);
+    std::vector<unsigned int> discretize(const std::vector<float>& continuous_values);
     unsigned int discretize(float continuous_value);
 
-    std::vector<float> continuize(std::vector<unsigned int>& discrete_values);
+    std::vector<float> continuize(const std::vector<unsigned int>& discrete_values);
     float continuize(unsigned int discrete_value);
 
     DiscParams get_param();
@@ -82,8 +82,8 @@ public:
     // Methods for tests
     void print();
     void write_to_file(std::string filename);
-    float average_error(std::vector<float>& continuous_values);
-    float max_error(std::vector<float>& continuous_values);
+    float average_error(const std::vector<float>& continuous_values);
+    float max_error(const std::vector<float>& continuous_values);
 };
 
 class FixedAngleDiscretizer: public Discretizer {
@@ -95,7 +95,7 @@ public:
         this->disc_f = this->n_bin / (this->max - this->min);
         this->cont_f = (this->max - this->min) / this->n_bin;
     };
-    FixedAngleDiscretizer(std::vector<float>& /* values */, unsigned int nb) {
+    FixedAngleDiscretizer(const std::vector<float>& /* values */, unsigned int nb) {
         this->n_bin = nb;
         this->min = MIN_ANGLE;
         this->max = MAX_ANLGE;
