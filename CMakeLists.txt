@@ -44,7 +44,8 @@ else()
 
     target_compile_definitions(foldcomp PUBLIC FOLDCOMP_EXECUTABLE)
     # For debugging
-    target_compile_definitions(foldcomp PUBLIC _GLIBCXX_DEBUG=1 _LIBCPP_DEBUG=1)
+    # target_compile_definitions(foldcomp PUBLIC _GLIBCXX_DEBUG=1 _LIBCPP_DEBUG=1)
+
     find_package(OpenMP REQUIRED)
     if(OPENMP_CXX_FOUND)
         target_link_libraries(foldcomp PUBLIC OpenMP::OpenMP_CXX)

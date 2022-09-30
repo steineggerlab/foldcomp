@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-30 13:10:50
+ * Last Modified: 2022-09-30 17:02:50
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -48,7 +48,7 @@
 #endif
 
 static int use_alt_order = 0;
-static int anchor_residue_threshold = 200;
+static int anchor_residue_threshold = 25;
 static int save_as_tar = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
@@ -65,7 +65,7 @@ int print_usage(void) {
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
-    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=200]" << std::endl;
+    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=25]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
@@ -303,6 +303,7 @@ int main(int argc, char* const *argv) {
     if (strcmp(argv[optind], "compress") == 0) {
         // Check argv[2] is file, directory, or gcs URI
         // TODO: stdin support
+        // TODO: COMPRESS_MULTIPLE_TAR
         // If gcs URI, mode = COMPRESS_MULTIPLE_GCS
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS

@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-22 02:31:24
+ * Last Modified: 2022-09-30 16:45:17
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -806,6 +806,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         torsion_angles.push_back(this->omega[i]);
         torsion_angles.push_back(this->phi[i]);
     }
+
     // Continuize bond angles
     this->n_ca_c_angle = this->n_ca_c_angleDisc.continuize(this->n_ca_c_angleDiscretized);
     this->ca_c_n_angle = this->ca_c_n_angleDisc.continuize(this->ca_c_n_angleDiscretized);
@@ -835,11 +836,13 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
             &this->compressedBackBone[this->anchorIndices[i + 1]] + 1
         );
         atomByAnchor = reconstructBackboneAtoms(prevForAnchor, subBackbone, this->header);
+
         // Subset torsion_angles
         std::vector<float> subTorsionAngles(
-            &torsion_angles[this->anchorIndices[i] * 3],
-            &torsion_angles[this->anchorIndices[i + 1] * 3]
+            torsion_angles.begin() + this->anchorIndices[i] * 3,
+            torsion_angles.begin() + this->anchorIndices[i + 1] * 3
         );
+
         success = reconstructBackboneReverse(
             atomByAnchor, this->anchorCoordinates[i], subTorsionAngles, this->nerf
         );
@@ -851,8 +854,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         }
         // Update prevForAnchor - last 3 atoms of atomByAnchor
         prevForAnchor = std::vector<AtomCoordinate>(
-            &atomByAnchor[atomByAnchor.size() - 3],
-            &atomByAnchor[atomByAnchor.size()]
+            atomByAnchor.end() - 3, atomByAnchor.end()
         );
     }
 
