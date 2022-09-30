@@ -6,7 +6,7 @@
  * Description:
  *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-07-20 01:59:54
+ * Last Modified: 2022-09-29 17:11:56
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved

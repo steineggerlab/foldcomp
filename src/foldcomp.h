@@ -3,11 +3,12 @@
  * Project: foldcomp
  * Created: 2021-02-02 14:04:40
  * Author: Hyunbin Kim (khb7840@gmail.com)
+ * Contributor: Milot Mirdita (milot@mirdita.de)
  * Description:
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-21 22:02:00
+ * Last Modified: 2022-09-29 17:09:40
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -25,7 +26,7 @@
 #include "nerf.h"
 
 #ifdef FOLDCOMP_EXECUTABLE
-// TAR format handling
+// TAR format handling - only for executable
 #include "microtar/microtar.h"
 #endif
 
@@ -33,7 +34,7 @@
 #define NUM_TYPE_OF_ANGLES 6
 #define MAGICNUMBER_LENGTH 4
 #define MAGICNUMBER "FCMP"
-// 2022-04-14 15:37:51
+// NUMBER OF BITS FOR ENCODING
 #define NUM_BITS_PHI_PSI 12
 #define NUM_BITS_OMEGA 11
 #define NUM_BITS_BOND 8
@@ -46,6 +47,7 @@
 #define C_TO_N_DIST 1.3311
 #define PRO_N_TO_CA_DIST 1.353
 
+// ERROR CODES FOR CHECKING VALIDITY
 enum ValidityError {
     SUCCESS = 0,
     E_BACKBONE_COUNT_MISMATCH,
@@ -93,19 +95,16 @@ struct DecompressedBackboneChain {
     float omega;
 };
 
-// 2022-06-16 21:35:20 - REMOVED UNNECESSARY STRUCTURES
-
-// TODO: Implement offset array
+// IDEA: Implement offset array
 // An array of offsets?
-struct FileOffset {
-    unsigned int firstBackboneStart: 32;
-    unsigned int sideChainStart: 32;
-};
-
-
-// TODO: Split fixed size header & variable size header
-// An array of chain names
-
+// struct FileOffset {
+//     unsigned int firstBackboneStart: 32;
+//     unsigned int sideChainStart: 32;
+// };
+// struct CompressedFileOffset {
+//     unsigned int firstBackboneStart : 32;
+//     unsigned int sideChainStart : 32;
+// };
 
 struct CompressedFileHeader {
     /* data */
@@ -115,7 +114,7 @@ struct CompressedFileHeader {
     unsigned int nAtom: 16;    // 16 bits
     unsigned int idxResidue: 16; // 16 bits
     unsigned int idxAtom: 16;    // 16 bits
-    // Anchor points - 2022-08-08 18:28:51
+    // Anchor points
     unsigned int nAnchor: 8; // 8 bits
     char chain;
     // Sidechain
@@ -126,12 +125,6 @@ struct CompressedFileHeader {
     // Discretizer for backbone chain
     float mins[6];
     float cont_fs[6];
-    // IDEA: Offset?
-};
-
-struct CompressedFileOffset {
-    unsigned int firstBackboneStart: 32;
-    unsigned int sideChainStart: 32;
 };
 
 struct SideChainDiscretizers {
@@ -386,6 +379,7 @@ public:
     int write(std::string filename);
     // Read & write for tar files
 #ifdef FOLDCOMP_EXECUTABLE
+// FOLDCOMP PYTHON API DOESN'T HANDLE TAR FORMAT
     // int readTar(mtar_t& tar, std::string filename, size_t size);
     int writeTar(mtar_t& tar, std::string filename, size_t size);
 #endif

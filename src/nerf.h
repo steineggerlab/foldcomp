@@ -3,13 +3,14 @@
  * Project: foldcomp
  * Created: 2021-01-11 16:42:32
  * Author: Hyunbin Kim (khb7840@gmail.com)
+ * Contributor: Milot Mirdita (milot@mirdita.de)
  * Description:
  *     This file contains NeRF (Natural Extension of Reference Frame) algorithm
  *     implementation. NeRF is a method to calculate upcoming atoms' coordinates
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-07-20 01:55:43
+ * Last Modified: 2022-09-29 17:56:31
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -58,23 +59,6 @@ public:
         float torsion_angle
     );
 
-    // 2021-01-22 13:41:03
-    // NOTE: Testing 3 cases for reconstruction
-    //  1) Use constants for bond angles and bond lengths
-    //  2) Use peptide-specific bond angles and bond lengths
-    //  3) Use dynamic (atom specific) bond angles and bond lengths
-
-    std::vector<AtomCoordinate> reconstructWithConstants(
-        const std::vector<AtomCoordinate>&original_atoms,
-        const std::vector<float>& torsion_angles);
-
-    std::vector<AtomCoordinate> reconstructWithAASpecificAngles(
-        const std::vector<AtomCoordinate>& original_atoms,
-        const std::vector<float>& torsion_angles,
-        const std::map<std::string, float>& aa_bond_lengths,
-        const std::map<std::string, std::map<std::string, float>>& aa_bond_angles
-    );
-
     std::vector<AtomCoordinate> reconstructWithAAMaps(
         const std::vector<AtomCoordinate>& original_atoms,
         const std::map <std::string, std::vector<std::string>>& prev_atom_map,
@@ -101,11 +85,6 @@ public:
         const std::vector<float>& torsion_angles,
         const std::vector<float>& atom_bond_angles,
         const std::vector<int>& break_indices
-    );
-
-    std::vector<AtomCoordinate> reconstrutWithRelativePositions(
-        const std::vector<AtomCoordinate>& original_atoms,
-        const std::vector<AtomCoordinate>& relative_position
     );
 
     std::vector<AtomCoordinate> reconstructWithReversed(
@@ -137,6 +116,5 @@ public:
     std::vector<int> identifyBreaks(
         const std::vector<AtomCoordinate>& original_atoms, float cutoff = 2
     );
-
 
 };
