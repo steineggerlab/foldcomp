@@ -9,7 +9,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-09-13 15:15:02
+ * Last Modified: 2022-09-29 17:47:07
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -102,101 +102,6 @@ std::vector<float> Nerf::place_atom(
     atm_d[2] += atm_c[2];
 
     return atm_d;
-}
-
-/**
- * @brief Reconstruct structure from torsion angles using constant bond info
- *
- * @param original_atoms std::vector<AtomCoordinate>
- * @param torsion_angles std::vector<float>
- * @return std::vector<AtomCoordinate>
- */
-std::vector<AtomCoordinate> Nerf::reconstructWithConstants(
-    const std::vector<AtomCoordinate>& original_atoms,
-    const std::vector<float>& torsion_angles
-) {
-    std::vector<AtomCoordinate> reconstructed_atoms;
-    // save three first atoms
-    reconstructed_atoms.push_back(original_atoms[0]);
-    reconstructed_atoms.push_back(original_atoms[1]);
-    reconstructed_atoms.push_back(original_atoms[2]);
-
-    int total = original_atoms.size();
-    std::vector<AtomCoordinate> prev_atoms;
-    std::vector< std::vector<float> > prev_coord;
-    AtomCoordinate curr_atom;
-    std::string curr_bond_name;
-    std::vector<float> curr_coord;
-
-    for (int i = 0; i < (total-3); i++) {
-        curr_atom = original_atoms[i+3];
-        prev_atoms = {reconstructed_atoms[i], reconstructed_atoms[i+1], reconstructed_atoms[i+2]};
-        prev_coord = extractCoordinates(prev_atoms);
-        curr_bond_name = original_atoms[i+2].atom + "_TO_" + curr_atom.atom;
-        curr_coord = place_atom(
-            prev_coord, this->bond_lengths.at(curr_bond_name),
-            this->bond_angles.at(curr_bond_name), torsion_angles[i]
-        );
-        AtomCoordinate reconstructed_atom = AtomCoordinate(
-            curr_atom.atom, curr_atom.residue, curr_atom.chain,
-            curr_atom.atom_index, curr_atom.residue_index,
-            curr_coord
-        );
-        reconstructed_atoms.push_back(reconstructed_atom);
-    }
-
-    return reconstructed_atoms;
-}
-
-/**
- * @brief Reconstruct structure from torsion angles using amino-acid-specific bond info
- *
- * @param original_atoms std::vector<AtomCoordinate>
- * @param torsion_angles std::vector<float>
- * @param aa_bond_lengths
- * @param aa_bond_angles
- * @return std::vector<AtomCoordinate>
- */
-std::vector<AtomCoordinate> Nerf::reconstructWithAASpecificAngles(
-    const std::vector<AtomCoordinate>& original_atoms,
-    const std::vector<float>& torsion_angles,
-    const std::map<std::string, float>& aa_bond_lengths,
-    const std::map<std::string, std::map<std::string, float>>& aa_bond_angles
-) {
-
-    std::vector<AtomCoordinate> reconstructed_atoms;
-
-    // save three first atoms
-    reconstructed_atoms.push_back(original_atoms[0]);
-    reconstructed_atoms.push_back(original_atoms[1]);
-    reconstructed_atoms.push_back(original_atoms[2]);
-
-    int total = original_atoms.size();
-    std::vector<AtomCoordinate> prev_atoms;
-    std::vector<std::vector<float> > prev_coord;
-    AtomCoordinate curr_atom;
-    std::string curr_bond_name;
-    float curr_bond_length;
-    float curr_bond_angle;
-    std::vector<float> curr_coord;
-
-    for (int i = 0; i < (total - 3); i++) {
-        curr_atom = original_atoms[i + 3];
-        prev_atoms = {reconstructed_atoms[i], reconstructed_atoms[i + 1],
-                      reconstructed_atoms[i + 2]};
-        prev_coord = extractCoordinates(prev_atoms);
-        curr_bond_name = original_atoms[i + 2].atom + "_TO_" + curr_atom.atom;
-        curr_bond_length = aa_bond_lengths.at(curr_bond_name);
-        curr_bond_angle = aa_bond_angles.at(curr_atom.residue).at(curr_bond_name);
-        curr_coord = place_atom(
-            prev_coord, curr_bond_length, curr_bond_angle, torsion_angles[i]
-        );
-        AtomCoordinate reconstructed_atom = AtomCoordinate(
-            curr_atom.atom, curr_atom.residue, curr_atom.chain,
-            curr_atom.atom_index, curr_atom.residue_index, curr_coord);
-        reconstructed_atoms.push_back(reconstructed_atom);
-    }
-    return reconstructed_atoms;
 }
 
 std::vector<AtomCoordinate> Nerf::reconstructAminoAcid(
@@ -464,65 +369,12 @@ std::vector<AtomCoordinate> Nerf::reconstructWithBreaks(
 }
 
 /**
- * @brief Reconstruct with relative positions
- *
+ * @brief Reconstruct the peptide in a reversed order
  * @param original_atoms
- * @param relative_position
+ * @param torsion_angles
+ * @param atom_bond_angles
  * @return std::vector<AtomCoordinate>
  */
-std::vector<AtomCoordinate> reconstrutWithRelativePositions(
-    const std::vector<AtomCoordinate>& /* original_atoms */,
-    const std::vector<AtomCoordinate>& /* relative_position */
-){
-    std::vector<AtomCoordinate> reconstructed_atoms;
-    // Reconstruct with relative postion
-    // Just adding them?
-
-    return reconstructed_atoms;
-}
-
-// std::vector< std::vector<float> > Nerf::calculateCoordinates(
-//     std::vector<AtomCoordinate> first_atoms,
-//     std::vector<AtomCoordinate> last_atoms,
-//     std::vector<float> torsion_angles,
-//     std::vector<float> atom_bond_angles,
-//     std::vector<float> atom_bond_lengths
-// ) {
-//     std::vector< std::vector<float> > output;
-
-//     std::vector<std::vector<float> > prev_coord = extractCoordinates(first_atoms);
-//     AtomCoordinate curr_atom;
-//     std::string curr_bond_name;
-//     float curr_bond_length;
-//     float curr_bond_angle;
-//     std::vector<float> curr_coord;
-
-//     // save three first atoms
-//     for (int i = 0; i < 3; i++) {
-//         output.push_back(first_atoms[i]);
-//     }
-
-//     for (int i = 0; i < (total - 3); i++) {
-//       curr_atom = atoms[i + 3];
-//       prev_atoms = {reconstructed_atoms[i], reconstructed_atoms[i + 1],
-//                     reconstructed_atoms[i + 2]};
-//       prev_coord = extractCoordinates(prev_atoms);
-//       curr_bond_name = atoms[i + 2].atom + "_TO_" + curr_atom.atom;
-//       curr_bond_length = this->bond_lengths[curr_bond_name];
-//       curr_bond_angle = atom_bond_angles[i + 1];
-//       curr_coord = place_atom(prev_coord, curr_bond_length, curr_bond_angle,
-//                               torsion_angles[i]);
-//       AtomCoordinate reconstructed_atom = AtomCoordinate(
-//           curr_atom.atom, curr_atom.residue, curr_atom.chain,
-//           curr_atom.atom_index, curr_atom.residue_index, curr_coord);
-//       reconstructed_atoms.push_back(reconstructed_atom);
-//     }
-//     return reconstructed_atoms;
-// }
-// 2022-04-14 21:33:03
-// TODO: WRITE A METHOD THAT CAN RECONSTRUCT ONLY WITH 3 PREV ATOMS AND ANGLES
-
-
 std::vector<AtomCoordinate> Nerf::reconstructWithReversed(
     std::vector<AtomCoordinate> original_atoms,
     std::vector<float> torsion_angles,
@@ -616,7 +468,7 @@ void Nerf::writeInfoForChecking(
             // WARNING:
             // FIXME: FIX THIS --> curr_atm to next atm
             prev_atm = coord_list[i - 1];
-            bond_name = prev_atm.atom + "_TO_" + curr_atm.atom;
+            bond_name = prev_atm.atom + "_" + curr_atm.atom;
             bond_length = distance(prev_atm.coordinate, curr_atm.coordinate);
             // check error conditions
             // 01. same atom name with previous atom (ex: CA-CA bond)

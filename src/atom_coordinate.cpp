@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-27 11:50:10
+ * Last Modified: 2022-09-29 17:30:10
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -373,7 +373,7 @@ float distance(AtomCoordinate& a, AtomCoordinate& b) {
 }
 std::vector<float> distance(std::vector<AtomCoordinate>& a, std::vector<AtomCoordinate>& b) {
     std::vector<float> output;
-    for (int i = 0; i < a.size(); i++) {
+    for (size_t i = 0; i < a.size(); i++) {
         output.push_back(distance(a[i], b[i]));
     }
     return output;
@@ -383,8 +383,8 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
     // RMSD: Root Mean Square Deviation
     float sum = 0;
     // Sum of square of distance
-    for (int i = 0; i < atoms1.size(); i++) {
-        for (int j = 0; j < atoms2.size(); j++) {
+    for (size_t i = 0; i < atoms1.size(); i++) {
+        for (size_t j = 0; j < atoms2.size(); j++) {
             sum += pow(atoms1[i].coordinate[j] - atoms2[i].coordinate[j], 2);
         }
     }

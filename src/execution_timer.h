@@ -1,3 +1,15 @@
+/**
+ * File: execution_timer.h
+ * Project: foldcomp
+ * Created: 2022-09-29 16:45:16
+ * Author: Hyunbin Kim (khb7840@gmail.com)
+ * Description:
+ *     This code is written as part of project "foldcomp".
+ * ---
+ * Last Modified: 2022-09-29 16:58:55
+ * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * ---
+ */
 #include <chrono>
 #include <type_traits>
 

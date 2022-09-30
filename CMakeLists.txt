@@ -1,4 +1,4 @@
-# Author: Hyunbin Kim (khb7840@gmail.com)
+# Author: Milot Mirdita (milot@mirdita.de), Hyunbin Kim (khb7840@gmail.com)
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_CXX_STANDARD 17)
@@ -27,7 +27,7 @@ if(BUILD_LIBRARY)
         ${foldcomp_source_files})
 elseif(BUILD_PYTHON)
         find_package(PythonExtensions REQUIRED)
-        add_library(foldcomp MODULE 
+        add_library(foldcomp MODULE
             ${foldcomp_header_files}
             ${foldcomp_source_files}
             foldcomp/foldcomp.cxx)
@@ -35,7 +35,7 @@ elseif(BUILD_PYTHON)
         install(TARGETS foldcomp LIBRARY DESTINATION foldcomp)
 else()
     include_directories(lib)
-    
+
     add_executable(foldcomp
         ${foldcomp_header_files}
         ${foldcomp_source_files}
@@ -43,7 +43,8 @@ else()
         ${foldcomp_exe_source_files})
 
     target_compile_definitions(foldcomp PUBLIC FOLDCOMP_EXECUTABLE)
-
+    # For debugging
+    target_compile_definitions(foldcomp PUBLIC _GLIBCXX_DEBUG=1 _LIBCPP_DEBUG=1)
     find_package(OpenMP REQUIRED)
     if(OPENMP_CXX_FOUND)
         target_link_libraries(foldcomp PUBLIC OpenMP::OpenMP_CXX)
@@ -54,10 +55,10 @@ else()
     target_link_libraries(foldcomp PUBLIC ZLIB::ZLIB)
 
     include_directories(lib/gemmi)
-    
+
     include_directories(lib/microtar)
     add_subdirectory(lib/microtar)
-    
+
     target_link_libraries(foldcomp PUBLIC microtar)
 
     if(GCS_SUPPORT)

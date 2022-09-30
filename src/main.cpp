@@ -3,6 +3,7 @@
  * Project: foldcomp
  * Created: 2021-12-23 17:44:53
  * Author: Hyunbin Kim (khb7840@gmail.com)
+ * Contributor: Milot Mirdita (milot@mirdita.de), Martin Steinegger (themartinsteinegger@gmail.com)
  * Description:
  *     This code contains main function for "foldcomp".
  *     Foldcomp is a fast lossy compression algorithm for protein structure.
@@ -12,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-09-23 00:42:16
+ * Last Modified: 2022-09-30 13:10:50
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -283,7 +284,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazt:b:c:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -483,7 +484,10 @@ int main(int argc, char* const *argv) {
                     std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
                     Foldcomp compRes = Foldcomp();
                     compressWithoutWriting(compRes, inputFile);
+#pragma omp critical
+                {
                     compRes.writeTar(tar, outputFile, compRes.getSize());
+                }
                 }
             }
             mtar_finalize(&tar);
