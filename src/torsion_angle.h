@@ -18,18 +18,19 @@
 #include <iosfwd>
 #include <string> // IWYU pragma: keep
 
+#include "float3d.h"
+
 class AtomCoordinate;
 
 std::vector<float> getTorsionFromXYZ(
-    const std::vector<std::vector<float>>& coordinates, int atm_inc
-);
-std::vector<float> getTorsionFromXYZForDebugging(
-    const std::vector<std::vector<float>>& coordinates, int atm_inc
+    const std::vector<float3d>& coordinates, int atm_inc
 );
 
 std::vector<float> getTorsionFromXYZ(
     const std::vector<AtomCoordinate>& coordinates, int atm_inc
 );
+
+std::vector<float> getTorsionFromXYZ(float3d coordinates[4], int atm_inc);
 
 void float3dVectorToDoubleArray(const std::vector<float>& fv, double output[3]);
 

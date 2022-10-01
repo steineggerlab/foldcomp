@@ -20,6 +20,8 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <cstring>
+#include <sstream>
 
 /**
  * @brief Construct a new Atom Coordinate:: Atom Coordinate object
@@ -38,7 +40,6 @@ AtomCoordinate::AtomCoordinate(
     float occupancy, float tempFactor
 ): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor) {
     this->coordinate = {x, y, z};
-    this->check3dCoordinate();
 }
 
 /**
@@ -52,22 +53,9 @@ AtomCoordinate::AtomCoordinate(
  */
 AtomCoordinate::AtomCoordinate(
     std::string a, std::string r, std::string c,
-    int ai, int ri, std::vector<float> coord,
+    int ai, int ri, float3d coord,
     float occupancy, float tempFactor
 ): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor) {
-    this->check3dCoordinate();
-}
-
-/**
- * @brief Check if 3 coordinates given.
- *
- */
-void AtomCoordinate::check3dCoordinate() {
-    if (this->coordinate.size() != 3) {
-        throw(std::out_of_range(
-            "Unexpected length of atom coordinates: 3 floats should be given"
-        ));
-    }
 }
 
 bool AtomCoordinate::operator==(const AtomCoordinate& other) const {
@@ -77,7 +65,9 @@ bool AtomCoordinate::operator==(const AtomCoordinate& other) const {
         (this->residue == other.residue) &&
         (this->residue_index == other.residue_index) &&
         (this->chain == other.chain) &&
-        (this->coordinate == other.coordinate)
+        (this->coordinate.x == other.coordinate.x) &&
+        (this->coordinate.y == other.coordinate.y) &&
+        (this->coordinate.z == other.coordinate.z)
     );
 }
 bool AtomCoordinate::operator!=(const AtomCoordinate& other) const {
@@ -97,9 +87,9 @@ void AtomCoordinate::print(int option) {
         std::cout << "Residue Index: " << this->residue_index << std::endl;
         if (option == 2) {
             std::cout << "Coordinate: ";
-            for (size_t i = 0; i < this->coordinate.size(); i++) {
-                std::cout << this->coordinate[i] << " ";
-            }
+            std::cout << this->coordinate.x << " ";
+            std::cout << this->coordinate.y << " ";
+            std::cout << this->coordinate.z << " ";
             std::cout << std::endl;
         }
     }
@@ -111,12 +101,12 @@ void AtomCoordinate::print(int option) {
  * @param atoms A vector of AtomCoordinate
  * @return std::vector< std::vector<float> >
  */
-std::vector< std::vector<float> > extractCoordinates(
+std::vector<float3d> extractCoordinates(
     const std::vector<AtomCoordinate>& atoms
 ) {
-    std::vector<std::vector<float>> output;
-    for (AtomCoordinate curr_atm : atoms) {
-        output.push_back(curr_atm.coordinate);
+    std::vector<float3d> output(atoms.size());
+    for (size_t i = 0; i < atoms.size(); i++) {
+        output[i] = atoms[i].coordinate;
     }
     return output;
 }
@@ -125,13 +115,11 @@ std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 ) {
     std::vector<AtomCoordinate> output;
-    AtomCoordinate next_atm;
-    AtomCoordinate curr_atm;
     int total = atoms.size();
     for (int i = 0; i < total; i++) {
-        curr_atm = atoms[i];
+        const AtomCoordinate& curr_atm = atoms[i];
         if (i < (total-1)) {
-            next_atm = atoms[i + 1];
+            const AtomCoordinate& next_atm = atoms[i + 1];
             if (next_atm.atom == curr_atm.atom) {
                 continue;
             }
@@ -160,29 +148,79 @@ std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms) {
 }
 
 std::vector<AtomCoordinate> weightedAverage(
-    std::vector<AtomCoordinate>& origAtoms, std::vector<AtomCoordinate>& revAtoms
+    const std::vector<AtomCoordinate>& origAtoms, const std::vector<AtomCoordinate>& revAtoms
 ) {
     std::vector<AtomCoordinate> output;
-    AtomCoordinate curr_atm;
-    AtomCoordinate rev_atm;
+    output.reserve(origAtoms.size());
     int total = origAtoms.size();
     for (int i = 0; i < total; i++) {
-        curr_atm = origAtoms[i];
-        rev_atm = revAtoms[i];
-        std::vector<float> coord = {
-            ((curr_atm.coordinate[0] * (float)(total - i)) + (rev_atm.coordinate[0] * (float)i)) / (float)total,
-            ((curr_atm.coordinate[1] * (float)(total - i)) + (rev_atm.coordinate[1] * (float)i)) / (float)total,
-            ((curr_atm.coordinate[2] * (float)(total - i)) + (rev_atm.coordinate[2] * (float)i)) / (float)total
-        };
-        output.push_back(AtomCoordinate(
+        const AtomCoordinate& curr_atm = origAtoms[i];
+        const AtomCoordinate&  rev_atm = revAtoms[i];
+        output.emplace_back(
             curr_atm.atom, curr_atm.residue, curr_atm.chain,
-            curr_atm.atom_index, curr_atm.residue_index, coord
-        ));
+            curr_atm.atom_index, curr_atm.residue_index,
+            ((curr_atm.coordinate.x * (float)(total - i)) + (rev_atm.coordinate.x * (float)i)) / (float)total,
+            ((curr_atm.coordinate.y * (float)(total - i)) + (rev_atm.coordinate.y * (float)i)) / (float)total,
+            ((curr_atm.coordinate.z * (float)(total - i)) + (rev_atm.coordinate.z * (float)i)) / (float)total
+        );
     }
     return output;
 }
 
-// 2021-01-18 13:53:00 TESTED.
+void reverse(char* s) {
+    for (int i = 0, j = strlen(s)-1; i < j; i++, j--) {
+        char c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}  
+
+void itoa_pos_only(int n, char* s) {
+    int i = 0;
+    do {
+        // generate digits in reverse order
+        // get next digit
+        s[i++] = n % 10 + '0';
+    // shift to next
+    } while ((n /= 10) > 0);
+    s[i] = '\0';
+    reverse(s);
+}
+
+template <int32_t T, int32_t P>
+void fast_ftoa(float n, char* s) {
+    float rounded = n + ((n < 0) ? -(0.5f / T) : (0.5f / T));
+    int32_t integer = (int32_t)rounded;
+    int32_t decimal = (int32_t)((rounded - (float)integer) * (float)T);
+    char* data = s;
+    if (n < 0) {
+        integer = std::abs(integer);
+        decimal = std::abs(decimal);
+        *data = '-';
+        data++;
+    }
+    itoa_pos_only(integer, data);
+    data += strlen(data);
+    *data = '.';
+    data++;
+    char buffer[10];
+    itoa_pos_only(decimal, buffer);
+    int32_t len = strlen(buffer);
+    for (int32_t i = 0; i < (P - len); i++) {
+        *data = '0';
+        data++;
+    }
+    memcpy(data, buffer, len);
+    // add a null terminator
+    data += len;
+    *data = '\0';
+    // std::string check(s);
+    // std::ostringstream ss;
+    // ss << std::fixed << std::setprecision(P) << n;
+    // if (ss.str() != check) {
+    //     std::cout << "ERROR: " << ss.str() << " != " << check << " ORIG: " << std::fixed << std::setprecision(10) << n << std::endl;
+    // }
+}
 
 void writeAtomCoordinatesToPDB(
     std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_stream
@@ -195,19 +233,13 @@ void writeAtomCoordinatesToPDB(
             title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
         }
         // Split title into lines of 70 characters.
-        std::vector<std::string> title_per_line;
         for (int i = 0; i < title_line_num; i++) {
             if (i == 0) {
-                title_per_line.push_back(title.substr(0, 70));
+                pdb_stream << "TITLE     " << title.substr(0, 70) << "\n";
+
             } else {
-                title_per_line.push_back(title.substr(i * 72 - 2, 72));
-            }
-        }
-        for (int i = 0; i < title_line_num; i++) {
-            if (i == 0) {
-                pdb_stream << "TITLE     " << title_per_line[i] << "\n";
-            } else {
-                pdb_stream << "TITLE   " << title_per_line[i] << std::endl;
+                pdb_stream << "TITLE   " << title.substr(i * 72 - 2, 72) << std::endl;
+
             }
         }
     }
@@ -230,11 +262,16 @@ void writeAtomCoordinatesToPDB(
         pdb_stream << atoms[i].chain; // 22
         pdb_stream << std::setw(4) << atoms[i].residue_index; // 23-26
         pdb_stream << "    "; // 27-30
-        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[0]; // 31-38
-        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[1]; // 39-46
-        pdb_stream << std::setw(8) << std::setprecision(3) << std::fixed << atoms[i].coordinate[2]; // 47-54
+        char buffer[16];
+        fast_ftoa<1000, 3>(atoms[i].coordinate.x, buffer);
+        pdb_stream << std::setw(8) << buffer; // 31-38
+        fast_ftoa<1000, 3>(atoms[i].coordinate.y, buffer);
+        pdb_stream << std::setw(8) << buffer; // 39-46
+        fast_ftoa<1000, 3>(atoms[i].coordinate.z, buffer);
+        pdb_stream << std::setw(8) << buffer; // 47-54
         pdb_stream << "  1.00"; // 55-60
-        pdb_stream << std::setw(6) << std::setprecision(2) << std::fixed << atoms[i].tempFactor; // 61-66
+        fast_ftoa<100, 2>(atoms[i].tempFactor, buffer);
+        pdb_stream << std::setw(6) << buffer; // 61-66
         pdb_stream << "          "; // 67-76
         // First one character from atom
         pdb_stream << std::setw(2) << atoms[i].atom[0]; // 77-78
@@ -311,8 +348,8 @@ std::vector<std::string> getResidueNameVector(
     return output;
 }
 
-AtomCoordinate findFirstAtom(std::vector<AtomCoordinate>& atoms, std::string atom_name) {
-    for (AtomCoordinate curr_atm : atoms) {
+AtomCoordinate findFirstAtom(const std::vector<AtomCoordinate>& atoms, std::string atom_name) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.atom == atom_name) {
             return curr_atm;
         }
@@ -363,30 +400,4 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
         output.push_back(curr_atoms);
     }
     return output;
-}
-
-float distance(AtomCoordinate& a, AtomCoordinate& b) {
-    float x = a.coordinate[0] - b.coordinate[0];
-    float y = a.coordinate[1] - b.coordinate[1];
-    float z = a.coordinate[2] - b.coordinate[2];
-    return sqrt(x*x + y*y + z*z);
-}
-std::vector<float> distance(std::vector<AtomCoordinate>& a, std::vector<AtomCoordinate>& b) {
-    std::vector<float> output;
-    for (size_t i = 0; i < a.size(); i++) {
-        output.push_back(distance(a[i], b[i]));
-    }
-    return output;
-}
-
-float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2) {
-    // RMSD: Root Mean Square Deviation
-    float sum = 0;
-    // Sum of square of distance
-    for (size_t i = 0; i < atoms1.size(); i++) {
-        for (size_t j = 0; j < atoms2.size(); j++) {
-            sum += pow(atoms1[i].coordinate[j] - atoms2[i].coordinate[j], 2);
-        }
-    }
-    return sqrt(sum / atoms1.size());
 }
