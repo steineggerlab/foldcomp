@@ -401,6 +401,7 @@ public:
         };
         // output.emplace("ASX", AminoAcid('B', "ASX", "Asparagine/aspartic acid"));
         // output.emplace("GLX", AminoAcid('Z', "GLX", "Glutamine/glutamic acid"));
+        output.emplace("UNK", AminoAcid('X', "UNK", "Unknown"));
         return output;
     }
 
