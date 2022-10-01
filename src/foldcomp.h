@@ -191,19 +191,19 @@ BackboneChain newBackboneChain(
 
 // TODO: Change header
 DecompressedBackboneChain decompressBackboneChain(
-    BackboneChain& bb, CompressedFileHeader& header
+    const BackboneChain& bb, const CompressedFileHeader& header
 );
 std::vector<DecompressedBackboneChain> decompressBackboneChain(
-    std::vector<BackboneChain>& bbv, CompressedFileHeader& header
+    const std::vector<BackboneChain>& bbv, const CompressedFileHeader& header
 );
 
 float _continuize(unsigned int input, float min, float cont_f);
 
 // Reconstruct
 std::vector<AtomCoordinate> reconstructBackboneAtoms(
-    std::vector<AtomCoordinate>& prevAtoms,
-    std::vector<BackboneChain>& backbone,
-    CompressedFileHeader& header
+    const std::vector<AtomCoordinate>& prevAtoms,
+    const std::vector<BackboneChain>& backbone,
+    const CompressedFileHeader& header
 );
 
 std::vector<AtomCoordinate> reconstructSidechainAtoms(
@@ -286,8 +286,10 @@ private:
     );
 
 public:
-    Foldcomp(/* args */){};
-    ~Foldcomp(){};
+    Foldcomp(){
+        AminoAcid aa;
+        this->AAS = aa.AminoAcids();
+    };
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
@@ -335,7 +337,7 @@ public:
     std::vector<char> residues;
     std::vector<std::string> residueThreeLetter;
     AtomCoordinate OXT;
-    std::vector<float> OXT_coords;
+    float3d OXT_coords;
 
     // Angles
     std::vector<float> psi;

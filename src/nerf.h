@@ -27,6 +27,8 @@
 #include <string>
 #include <vector>
 
+#include "float3d.h"
+
 class AminoAcid;
 class AtomCoordinate;
 
@@ -34,8 +36,6 @@ class Nerf {
 private:
     // private members
 public:
-    Nerf(/* args */);
-    ~Nerf();
     /* data */
     const std::map<std::string, float> bond_lengths {
         // TODO: if residue is proline, apply different bond length
@@ -53,10 +53,9 @@ public:
     // PDB file is ordered from N terminal to C terminal
     const std::vector<std::string> bond_order { "C_TO_N", "N_TO_CA", "CA_TO_C" };
 
-    std::vector<float> place_atom(
-        const std::vector<std::vector<float>>& prev_atoms, // Need three previous atoms
-        float bond_length, float bond_angle,
-        float torsion_angle
+    float3d place_atom(
+        const float3d* prev_atoms,
+        float bond_length, float bond_angle, float torsion_angle
     );
 
     std::vector<AtomCoordinate> reconstructWithAAMaps(
