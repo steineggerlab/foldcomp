@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cmath>
 
 struct float3d {
     float3d() : x(0), y(0), z(0) {}
@@ -8,10 +8,6 @@ struct float3d {
     float y;
     float z;
 };
-
-
-#define _USE_MATH_DEFINES
-#include <cmath>
 
 /**
  * @brief Return the cross product of two vectors

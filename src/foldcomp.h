@@ -14,12 +14,8 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
-#include <map>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <cstdint>
-#include <cstring>
+#include "float3d.h"
+
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
@@ -29,6 +25,13 @@
 // TAR format handling - only for executable
 #include "microtar/microtar.h"
 #endif
+
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <string>
+#include <vector>
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6

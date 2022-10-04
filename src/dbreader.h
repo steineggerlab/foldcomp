@@ -1,6 +1,5 @@
 #ifndef DBREADER_H
 #define DBREADER_H
-
 #include <cstdint>
 
 static const int DB_READER_USE_DATA   = 1u << 0;

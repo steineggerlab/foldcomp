@@ -11,9 +11,7 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 // TODO: TRIM WHITE SPACES FROM PDB LINE
-
 #include "utility.h"
 
 #include <cstdlib>
@@ -22,6 +20,7 @@
 
 #ifdef FOLDCOMP_EXECUTABLE
 #include <dirent.h>
+#include <errno.h>
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir) {
     std::vector<std::string> files;

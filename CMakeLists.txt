@@ -69,6 +69,9 @@ else()
     endif()
 endif()
 
+# always enable math defines like M_PI
+target_compile_definitions(foldcomp PUBLIC _USE_MATH_DEFINES=1)
+
 if(MSVC)
     target_compile_options(foldcomp PRIVATE /W4)
 else()

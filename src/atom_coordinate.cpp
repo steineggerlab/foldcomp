@@ -11,17 +11,12 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "atom_coordinate.h"
 
-#include <cstddef>
-#include <stdexcept>
-
-#include <iostream>
-#include <iomanip>
-#include <cmath>
 #include <cstring>
-#include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream> // IWYU pragma: keep
 
 /**
  * @brief Construct a new Atom Coordinate:: Atom Coordinate object

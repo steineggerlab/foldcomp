@@ -14,16 +14,14 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "nerf.h"
+
+#include "amino_acid.h"
+#include "atom_coordinate.h"
 
 #include <algorithm>
 #include <cstddef>
-#include <cmath>
-#include "amino_acid.h"
-#include "atom_coordinate.h"
-#include "utility.h"
-
+#include <fstream>
 
 /**
  * @brief Calculate the position of next atom with torsion angle.
