@@ -19,15 +19,12 @@
 // COMMENT FROM REFERENCE
 // # TODO - PROLINE has different lengths which we should take into account
 // # TODO - A_TO_C angle differs by + / -5 degrees
-
 #pragma once
+#include "float3d.h"
 
-#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
-
-#include "float3d.h"
 
 class AminoAcid;
 class AtomCoordinate;

@@ -16,17 +16,13 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "torsion_angle.h"
 
-#include <cmath>
-#include <iostream>
-#include <cstddef>
-#include <string>
-
-#include "utility.h"
 #include "atom_coordinate.h"
-#include "float3d.h"
+
+#include <cstddef>
+#include <iostream>
+#include <string>
 
  // Temp function
 void print3DFloatVec(std::string name, const std::vector<float>& input) {

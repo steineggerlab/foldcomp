@@ -12,8 +12,8 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
+#include <string> // IWYU pragma: keep
 #include <vector>
-#include <fstream>
 
 #define MIN_ANGLE -180.0
 #define MAX_ANLGE 180.0

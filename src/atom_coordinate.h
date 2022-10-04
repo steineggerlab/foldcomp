@@ -11,14 +11,13 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
+#include "float3d.h"
+
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>
-#include <array>
-
-#include "float3d.h"
 
 class AtomCoordinate {
 public:
@@ -107,3 +106,6 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
     std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
+
+template <int32_t T, int32_t P>
+void ftoa(float n, char* s);

@@ -11,19 +11,21 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "sidechain.h"
-#include <utility>
-#include <map>
-#include <stddef.h>
-#include <iostream>
-#include <string>
+
 #include "amino_acid.h"
 #include "atom_coordinate.h"
+#include "float3d.h"
 #include "nerf.h"
 #include "torsion_angle.h"
 #include "utility.h"
-#include "float3d.h"
+
+#include <cstddef>
+#include <iostream>
+#include <map>
+#include <string>
+#include <utility>
+
 
 std::vector<AtomCoordinate> reconstructSideChain(
     std::vector<AtomCoordinate> backbone, AtomCoordinate /* c0 */

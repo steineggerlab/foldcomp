@@ -11,13 +11,11 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
-
 #include <iosfwd>
 #include <map>
-#include <vector>
 #include <string> // IWYU pragma: keep
+#include <vector>
 
 class AminoAcid;
 class AtomCoordinate;

@@ -11,14 +11,12 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
+#include "float3d.h"
 
-#include <vector>
 #include <iosfwd>
 #include <string> // IWYU pragma: keep
-
-#include "float3d.h"
+#include <vector>
 
 class AtomCoordinate;
 

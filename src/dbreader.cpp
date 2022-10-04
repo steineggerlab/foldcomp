@@ -1,15 +1,15 @@
 #include "dbreader.h"
 
-#include <cstdlib>
+#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <sys/stat.h>
 
-#include <utility>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <string>
 
 #ifdef _MSC_VER
 #include <windows.h>

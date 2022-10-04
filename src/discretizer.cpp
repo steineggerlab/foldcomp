@@ -13,9 +13,11 @@
  */
 #include "discretizer.h"
 
-#include <cstdlib>
-#include <iostream>
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <fstream> // IWYU pragma: keep
+#include <iostream>
 
 Discretizer::Discretizer(const std::vector<float>& values, unsigned int nb):
     n_bin(nb) {

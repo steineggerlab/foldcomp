@@ -19,26 +19,23 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 // Headers in the project
-#include "sidechain.h"
-#include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "foldcomp.h"
-#include "discretizer.h"
-#include "nerf.h"
 #include "structure_reader.h"
-#include "torsion_angle.h"
 #include "utility.h"
-// Standard libraries
-#include <vector>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <sys/stat.h>
-#include <cstring>
-#include <getopt.h>
-// OpenMP for parallelization
 
+// Standard libraries
+#include <cstring>
+#include <fstream> // IWYU pragma: keep
+#include <getopt.h>
+#include <iostream>
+#include <sstream> // IWYU pragma: keep
+#include <string>
+#include <vector>
+
+#include <sys/stat.h>
+
+// OpenMP for parallelization
 #ifdef OPENMP
 #include <omp.h>
 #endif
