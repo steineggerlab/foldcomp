@@ -88,7 +88,10 @@ int compress(std::string input, std::string output) {
     compRes.anchorThreshold = anchor_residue_threshold;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
-    compRes.write(output);
+    if (compRes.write(output) != 0) {
+        std::cout << "Error writing file: " << output << std::endl;
+        return -1;
+    }
     // DEBUGGING
     // Nerf nerf;
     // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");

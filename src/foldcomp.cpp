@@ -12,7 +12,6 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "foldcomp.h"
 
 #include "sidechain.h"
@@ -1128,24 +1127,12 @@ int Foldcomp::writeStream(std::ostream& os) {
 }
 
 int Foldcomp::write(std::string filename) {
-    int flag = 0;
-    std::ofstream outfile;
-    outfile.open(filename, std::ios::out | std::ios::binary);
     // Open in binary & writing mode
-    if (!outfile.is_open()) {
-        std::cout << "Error opening file: " << filename << std::endl;
-        flag = -1;
-        return flag;
+    std::ofstream outfile(filename, std::ios::out | std::ios::binary);
+    if (!outfile) {
+        return -1;
     }
-    if (outfile.good()) {
-        flag = writeStream(outfile);
-        // Close file
-        outfile.close();
-    } else {
-        std::cout << "Error writing file: " << filename << std::endl;
-        flag = -1;
-    }
-    return flag;
+    return writeStream(outfile);
 }
 
 #ifdef FOLDCOMP_EXECUTABLE
