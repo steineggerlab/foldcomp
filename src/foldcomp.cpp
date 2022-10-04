@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-30 16:45:17
+ * Last Modified: 2022-10-04 14:30:43
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -831,17 +831,31 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
             prevForAnchor = this->prevAtoms;
         }
         // std::vector<int>   sub(&data[100000],&data[101000]);
+        // MANUALLY CHECK THAT THE INDICES ARE WITHIN BOUNDS
+        int maxIndex = (int)this->compressedBackBone.size() - 1;
+        size_t firstIndex = std::min(this->anchorIndices[i], maxIndex);
+        size_t lastIndex = std::min(this->anchorIndices[i + 1] + 1, maxIndex);
         std::vector<BackboneChain> subBackbone(
-            &this->compressedBackBone[this->anchorIndices[i]],
-            &this->compressedBackBone[this->anchorIndices[i + 1]] + 1
+            &this->compressedBackBone[firstIndex],
+            &this->compressedBackBone[lastIndex]
         );
+        // LAST RESIDUE SHOULD BE INCLUDED
+        if (i == (this->nAllAnchor - 2)) {
+            subBackbone.push_back(this->compressedBackBone.back());
+        }
         atomByAnchor = reconstructBackboneAtoms(prevForAnchor, subBackbone, this->header);
 
         // Subset torsion_angles
+        maxIndex = (int)torsion_angles.size() - 1;
+        firstIndex = std::min(this->anchorIndices[i] * 3, maxIndex);
+        lastIndex = std::min(this->anchorIndices[i + 1] * 3, maxIndex);
         std::vector<float> subTorsionAngles(
-            torsion_angles.begin() + this->anchorIndices[i] * 3,
-            torsion_angles.begin() + this->anchorIndices[i + 1] * 3
+            &torsion_angles[firstIndex], &torsion_angles[lastIndex]
         );
+        // LAST ANGLE SHOULD BE APPENDED
+        if (i == (this->nAllAnchor - 2)) {
+            subTorsionAngles.push_back(torsion_angles.back());
+        }
 
         success = reconstructBackboneReverse(
             atomByAnchor, this->anchorCoordinates[i], subTorsionAngles, this->nerf
