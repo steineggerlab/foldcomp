@@ -128,9 +128,9 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
         }
     }
 
-    if ((data_mode & DB_READER_NO_CACHE) == 0) {
-        save_cache(reader, cache_name);
-    }
+    // if ((data_mode & DB_READER_NO_CACHE) == 0) {
+    //     save_cache(reader, cache_name);
+    // }
 
     return (void *)reader;
 }
