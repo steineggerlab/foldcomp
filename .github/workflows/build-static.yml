@@ -1,0 +1,138 @@
+name: Sanitizers, static binaries and artifacts
+
+on:
+  push:
+    branches: [ "master", "dev" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+
+jobs:
+  sanitizer:
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+        type: [ASan, UBSan, TSan]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake
+      run: |
+        if [ "$CC" = "clang" ]; then
+          CLANG_MAJOR=$(echo | clang -dM -E - | grep __clang_major__ | awk '{ print $3; }')
+          sudo apt-get install libc++-${CLANG_MAJOR}-dev libc++abi-${CLANG_MAJOR}-dev
+        fi
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.type}} -DHAVE_SANITIZER=1
+      env:
+        CC: ${{matrix.compiler}}
+        CXX: ${{ fromJSON(matrix.compiler == 'gcc' && '"g++"' || '"clang++"') }}
+        CXXFLAGS: ${{ fromJSON(matrix.compiler == 'clang' && '"-stdlib=libc++"' || '""') }}
+        LDFLAGS: ${{ fromJSON(matrix.compiler == 'clang' && '"-lc++abi"' || '""') }}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.type}} --parallel $(nproc --all)
+
+    - name: ASan
+      working-directory: ${{github.workspace}}/build
+      run: |
+        ./foldcomp compress ../test/test.pdb
+        ./foldcomp decompress ../test/test.fcz
+        ./foldcomp compress ../test/test.cif.gz
+        ./foldcomp decompress ../test/test.cif.fcz
+
+  compile:
+    strategy:
+      matrix:
+        arch: [ {name: 'arm64', prefix: 'aarch64-linux-gnu-'}, {name: 'x86_64', prefix: ''} ]
+      fail-fast: false
+    needs: sanitizer
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Apt dependencies
+      run: |
+        sudo apt install -y cmake build-essential zlib1g-dev libc6-dev gcc-10 g++-10
+        sudo rm -rf /home/linuxbrew /usr/local/lib/android
+
+    - name: "Install foreign arch dependencies"
+      if: matrix.arch.name != 'x86_64'
+      run: |
+        sudo apt install -y crossbuild-essential-${{ matrix.arch.name }} gcc-10-aarch64-linux-gnu  g++-10-aarch64-linux-gnu
+        DIST=$(lsb_release -cs)
+        cat << HEREDOC | sudo tee /etc/apt/sources.list
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal main universe multiverse
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-updates main universe multiverse
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-backports main universe multiverse
+        deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ focal-security main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal main  universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-updates main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-backports main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-security main universe multiverse
+        HEREDOC
+        sudo rm -rf /etc/apt/sources.list.d/*
+        sudo dpkg --add-architecture ${{ matrix.arch.name }}
+        sudo apt update
+        sudo apt install -y zlib1g-dev:${{ matrix.arch.name }} zlib1g:${{ matrix.arch.name }}
+
+    - name: Build ${{ matrix.arch.name }}
+      run: |
+        export CC=${{ matrix.arch.prefix }}gcc-10
+        export CXX=${{ matrix.arch.prefix }}g++-10
+        cmake -B ${{github.workspace}}/build \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
+          -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+          -DZLIB_USE_STATIC_LIBS=ON
+        cmake --build ${{github.workspace}}/build --config Release --parallel $(nproc --all)
+        tar -czf foldcomp-linux-${{ matrix.arch.name }}.tar.gz -C ${{github.workspace}}/build foldcomp
+
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
+
+  compile_macos:
+    needs: sanitizer
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Homebrew dependencies
+      run: |
+        brew install cmake gnu-tar libomp
+        brew uninstall zlib -f --ignore-dependencies
+
+    - name: Download libomp.a for arm64
+      run: |
+        mkdir ${{github.workspace}}/libomp_arm64
+        BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.arm64_big_sur.url')
+        curl -s -L -H "Authorization: Bearer QQ==" -o - $BOTTLE_URL \
+          | gtar --strip-components=2 -xzf- -C ${{github.workspace}}/libomp_arm64
+
+    - name: Build x86_64 x86_64h arm64
+      run: |
+        for i in arm64 x86_64 x86_64h; do
+          LIBOMP=$(brew --prefix libomp)
+          if [ "$i" = "arm64" ]; then
+            LIBOMP=${{github.workspace}}/libomp_arm64
+          fi
+          cmake -B build_${i} -DCMAKE_OSX_ARCHITECTURES=${i} \
+            -DBUILD_SHARED_LIBS=OFF -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+            -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I${LIBOMP}/include" -DOpenMP_C_LIB_NAMES=omp \
+            -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I${LIBOMP}/include" -DOpenMP_CXX_LIB_NAMES=omp \
+            -DOpenMP_omp_LIBRARY=${LIBOMP}/lib/libomp.a -DZLIB_USE_STATIC_LIBS=OFF .
+          cmake --build build_${i} --config Release --parallel $(sysctl -n hw.ncpu)
+        done
+        mkdir dist
+        lipo -create \
+          -arch x86_64 ${{github.workspace}}/build_x86_64/foldcomp \
+          -arch x86_64h ${{github.workspace}}/build_x86_64h/foldcomp \
+          -arch arm64 ${{github.workspace}}/build_arm64/foldcomp \
+          -output "dist/foldcomp"
+        tar -C dist -czf foldcomp-macos-universal.tar.gz foldcomp
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: foldcomp-macos-universal.tar.gz
