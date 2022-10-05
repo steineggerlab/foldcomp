@@ -64,6 +64,7 @@ int print_usage(void) {
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=25]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
+    std::cout << " -c, --cpu            CPU cores for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
