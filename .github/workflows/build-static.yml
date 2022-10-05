@@ -141,6 +141,7 @@ jobs:
   upload_all:
     needs: [compile, compile_macos]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     steps:
     - uses: actions/download-artifact@v3
       with:
