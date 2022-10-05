@@ -136,3 +136,31 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         path: foldcomp-macos-universal.tar.gz
+
+
+  upload_all:
+    needs: [compile, compile_macos]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: artifact
+        path: .
+
+    - name: Create private key for upload
+      run: |
+        mkdir ~/.ssh
+        chmod 700 ~/.ssh
+        echo "$SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+      shell: bash
+      env:
+        SSH_KEY: ${{secrets.SSH_PRIVKEY}}
+
+    - name: SCP to server
+      run: |
+        ssh-keyscan -t rsa uniclust.mmseqs.com >> ~/.ssh/known_hosts
+        ssh codeship@uniclust.mmseqs.com "mkdir -p \"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}\""
+        scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz \
+          codeship@uniclust.mmseqs.com:"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}"
+        ssh codeship@uniclust.mmseqs.com "update-latest-foldcomp.sh \"${GITHUB_SHA}\""
