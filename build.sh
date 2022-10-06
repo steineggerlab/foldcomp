@@ -5,7 +5,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: 2022-09-20 11:52:22
+# Last Modified: 2022-10-06 20:38:41
 # Modified By: Hyunbin Kim (khb7840@gmail.com)
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -24,6 +24,7 @@ cmake --build ./build --target foldcomp
 # Test - PDB
 ./build/foldcomp compress ./test/test.pdb ./test/compressed.fcz
 ./build/foldcomp decompress ./test/compressed.fcz ./test/decompressed.pdb
+./build/foldcomp rmsd ./test/test.pdb ./test/decompressed.pdb
 # Test - Gzipped CIF
 ./build/foldcomp compress ./test/test.cif.gz ./test/compressed_cif.fcz
-./build/foldcomp decompress ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
+./build/foldcomp decompress -a ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
