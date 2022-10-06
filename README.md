@@ -1,7 +1,7 @@
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~4.2kb.
 
-<p align="center"><img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/Abstract.jpg" height="400" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_data_format.png" height="400" /></p>
 
 Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format, FCZ.
 
