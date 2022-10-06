@@ -1,7 +1,29 @@
 # Foldcomp
 Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~4.2kb.
 
+![abstract](.github/img/Abstract.jpg)
+
+Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format, FCZ.
+
+> Foldcomp currently only supports compression of single chain PDB files
+
 ## Usage
+
+### Installing Foldcomp
+
+```
+# Install Foldcomp Python package
+pip install foldcomp
+
+# Download static binaries for Linux
+wget https://mmseqs.com/foldcomp/foldcomp-linux-x86_64.tar.gz
+
+# Download static binaries for Linux (ARM64)
+wget https://mmseqs.com/foldcomp/foldcomp-linux-arm64.tar.gz
+
+# Download binary for macOS
+wget https://mmseqs.com/foldcomp/foldcomp-macos-universal.tar.gz
+```
 
 ### Executable
 ```
@@ -59,31 +81,6 @@ with foldcomp.open(path=Path("test/example_db"), uniprot_ids=ids) as db:
       with open(name + ".pdb", "wb") as pdb_file:
         pdb_file.write(pdb)
 ```
-
-## Build
-
-### Executable
-```sh
-./build.sh
-```
-or
-```sh
-# Configure
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cd ..
-# Build
-cmake --build ./build --target foldcomp
-```
-
-## About
-
-Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format, FCZ.
-
-![abstract](.github/img/Abstract.jpg)
-
-> WARNING: Current version of Foldcomp does not support compression of multiple chains in a single file.
 
 ## Contributor
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
