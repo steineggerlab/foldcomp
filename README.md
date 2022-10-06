@@ -43,6 +43,9 @@ foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
 foldcomp check <fcz_file>
 foldcomp check [-t number] <fcz_dir|tar>
 
+# RMSD
+foldcomp rmsd <pdb_file1> <pdb_file2>
+
 # Options
  -h, --help           print this help message
  -t, --threads        threads for (de)compression of folders/tar files [default=1]
