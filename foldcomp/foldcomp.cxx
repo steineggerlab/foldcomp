@@ -86,7 +86,7 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
             PyErr_SetString(FoldcompError, "Error decompressing.");
             return NULL;
         }
-        return Py_BuildValue("(s,O)", name.c_str(), PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().size()));
+        return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
     }
     return PyBytes_FromStringAndSize(data, length);
 }
@@ -236,7 +236,7 @@ static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("(s,O)", name.c_str(), PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().size()));
+    return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
 }
 
 std::string trim(const std::string& str, const std::string& whitespace = " \t") {
