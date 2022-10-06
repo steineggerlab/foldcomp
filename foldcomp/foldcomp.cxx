@@ -56,7 +56,8 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
     size_t length;
     if (db->uniprot_ids != NULL) {
         if (index >= PySequence_Length(db->uniprot_ids)) {
-           return NULL;
+            PyErr_SetString(PyExc_IndexError, "index out of range");
+            return NULL;
         }
         PyObject* item = PySequence_GetItem(db->uniprot_ids, index);
         // get string representation of id as c string
@@ -67,12 +68,14 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
         }
         int64_t id = reader_get_id(db->memory_handle, key);
         if (id == -1) {
+            PyErr_SetString(PyExc_KeyError, "Could not find key in database.");
             return NULL;
         }
         data = reader_get_data(db->memory_handle, id);
         length = std::max(reader_get_length(db->memory_handle, id), (int64_t)1) - (int64_t)1;
     } else {
         if (index >= reader_get_size(db->memory_handle)) {
+            PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
         data = reader_get_data(db->memory_handle, index);
@@ -164,7 +167,8 @@ static PyTypeObject FoldcompDatabaseType = {
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
     if (!PyObject_TypeCheck(self, &FoldcompDatabaseType)) {
-         return NULL;
+        PyErr_SetString(PyExc_TypeError, "Expected FoldcompDatabase object.");
+        return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
     Py_XDECREF(db->uniprot_ids);
@@ -305,6 +309,7 @@ static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObjec
     std::ostringstream oss;
     int flag = compress(name, pdb_input, oss, threshold);
     if (flag != 0) {
+        PyErr_SetString(FoldcompError, "Error compressing.");
         return NULL;
     }
 
@@ -351,6 +356,7 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
 
     FoldcompDatabaseObject *obj = PyObject_New(FoldcompDatabaseObject, &FoldcompDatabaseType);
     if (obj == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for FoldcompDatabaseObject");
         return NULL;
     }
 
