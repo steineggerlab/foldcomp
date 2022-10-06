@@ -3,7 +3,6 @@ Foldcomp compresses protein structures with torsion angles effectively. It compr
 
 <p align="center"><img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/Abstract.jpg" height="400" /></p>
 
-
 Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format, FCZ.
 
 > Foldcomp currently only supports compression of single chain PDB files
@@ -56,6 +55,10 @@ foldcomp check [-t number] <fcz_dir|tar>
 ```
 
 ### Python API
+
+You can find more in-depth examples of using Foldcomp's Python interface in the example notebook:
+<a href="https://colab.research.google.com/github/steineggerlab/foldcomp/blob/master/foldcomp-py-examples.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
 ```py
 import foldcomp
 # 01. Handling a FCZ file
