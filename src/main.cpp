@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-06 21:20:14
+ * Last Modified: 2022-10-06 21:59:26
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -59,6 +59,7 @@ int print_usage(void) {
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
     std::cout << "       foldcomp check <fcz_file>" << std::endl;
     std::cout << "       foldcomp check [-t number] <fcz_dir|tar>" << std::endl;
+    std::cout << "       foldcomp rmsd <pdb_file1> <pdb_file2>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
