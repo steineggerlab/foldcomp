@@ -60,11 +60,10 @@ int print_usage(void) {
     std::cout << "       foldcomp check <fcz_file>" << std::endl;
     std::cout << "       foldcomp check [-t number] <fcz_dir|tar>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
-    std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
+    std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=25]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
-    std::cout << " -c, --cpu            CPU cores for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
@@ -254,7 +253,6 @@ int main(int argc, char* const *argv) {
             {"no-merge",      no_argument, &ext_merge,  0 },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
-            {"cpu",     required_argument,          0, 'c'},
             {0,                         0,          0,  0 }
     };
 
@@ -277,15 +275,12 @@ int main(int argc, char* const *argv) {
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
-            case 'c':
-                num_threads = atoi(optarg);
-                break;
             case '?':
                 return print_usage();
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazt:b:c:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
     }
 
     // Parse non-option arguments

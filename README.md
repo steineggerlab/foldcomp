@@ -45,11 +45,10 @@ foldcomp check [-t number] <fcz_dir|tar>
 
 # Options
  -h, --help           print this help message
- -t, --threads        number of threads to use [default=1]
+ -t, --threads        threads for (de)compression of folders/tar files [default=1]
  -a, --alt            use alternative atom order [default=false]
  -b, --break          interval size to save absolute atom coordinates [default=200]
  -z, --tar            save as tar file [default=false]
- -c, --cpu            CPU cores for (de)compression of folders/tar files [default=1]
  --plddt              extract pLDDT score (only for extraction mode)
  --fasta              extract amino acid sequence (only for extraction mode)
  --no-merge           do not merge output files (only for extraction mode)
