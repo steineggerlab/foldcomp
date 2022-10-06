@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-06 20:40:30
+ * Last Modified: 2022-10-06 21:20:14
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -244,7 +244,7 @@ int rmsd(std::string pdb1, std::string pdb2) {
     std::vector<AtomCoordinate> backbone2 = filterBackbone(atomCoordinates2);
     // Print
     std::cout << pdb1 << '\t' << pdb2 << '\t';
-    std::cout << backbone1.size() << '\t' << atomCoordinates1.size() << '\t';
+    std::cout << backbone1.size() / 3 << '\t' << atomCoordinates1.size() << '\t';
     std::cout << RMSD(backbone1, backbone2) << '\t';
     std::cout << RMSD(atomCoordinates1, atomCoordinates2) << std::endl;
     return 0;
