@@ -8,15 +8,20 @@ def test_decompress(pytestconfig):
         print(foldcomp.decompress(foldcomp.compress("test", data)))
 
 
-def test_open_db(pytestconfig):
+def test_open_db_all(pytestconfig):
     path = Path(pytestconfig.rootpath.joinpath("test/example_db"))
-    ids = ["d1asha_", "d1it2a_"]
     with foldcomp.open(path) as db:
         for i in db:
             print(i)
 
 
+def test_open_db_ids(pytestconfig):
+    path = Path(pytestconfig.rootpath.joinpath("test/example_db"))
+    with foldcomp.open(path, ids=["d1asha_", "d1it2a_"]) as db:
+        for i in db:
+            print(i)
+
+
 def test_open_db_str(pytestconfig):
-    ids = ["d1asha_", "d1it2a_"]
     with foldcomp.open(str(pytestconfig.rootpath.joinpath("test/example_db"))) as db:
         pass

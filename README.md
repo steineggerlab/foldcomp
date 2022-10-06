@@ -73,7 +73,7 @@ with open("test/compressed.fcz", "rb") as fcz:
 # 02. Iterate over a database of FCZ files
 # Open a foldcomp database
 ids = ["d1asha_", "d1it2a_"]
-with foldcomp.open("test/example_db", uniprot_ids=ids) as db:
+with foldcomp.open("test/example_db", ids=ids) as db:
   # Iterate through database
   for (name, pdb) in db:
       # save entries as seperate pdb files
