@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-29 17:30:10
+ * Last Modified: 2022-10-06 19:59:30
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -168,7 +168,7 @@ void reverse(char* s) {
         s[i] = s[j];
         s[j] = c;
     }
-}  
+}
 
 void itoa_pos_only(int n, char* s) {
     int i = 0;
@@ -395,4 +395,16 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
         output.push_back(curr_atoms);
     }
     return output;
+}
+
+float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2) {
+    // RMSD: Root Mean Square Deviation
+    float sum = 0;
+    // Sum of square of distance
+    for (size_t i = 0; i < atoms1.size(); i++) {
+        sum += pow(atoms1[i].coordinate.x - atoms2[i].coordinate.x, 2);
+        sum += pow(atoms1[i].coordinate.y - atoms2[i].coordinate.y, 2);
+        sum += pow(atoms1[i].coordinate.z - atoms2[i].coordinate.z, 2);
+    }
+    return sqrt(sum / atoms1.size());
 }
