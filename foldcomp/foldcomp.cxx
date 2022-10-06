@@ -319,32 +319,35 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     PyObject* uniprot_ids = NULL;
     PyObject* decompress = NULL;
     static const char *kwlist[] = {"path", "uniprot_ids", "decompress", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|$OO", const_cast<char**>(kwlist), &path, &uniprot_ids, &decompress)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|$OO", const_cast<char**>(kwlist), PyUnicode_FSConverter, &path, &uniprot_ids, &decompress)) {
         return NULL;
     }
-
-    // get path-like object's path
-    PyObject* pathStr = PyObject_CallMethod(path, "as_posix", NULL);
-    if (pathStr == NULL) {
+    if (path == NULL) {
+        PyErr_SetString(PyExc_TypeError, "path must be a path-like object");
         return NULL;
     }
-    const char* pathCStr = PyUnicode_AsUTF8(pathStr);
+    const char* pathCStr = PyBytes_AS_STRING(path);
     if (pathCStr == NULL) {
+        Py_XDECREF(path);
+        PyErr_SetString(PyExc_TypeError, "path must be a path-like object");
         return NULL;
     }
 
     if (uniprot_ids != NULL && !PyList_Check(uniprot_ids)) {
+        Py_XDECREF(path);
         PyErr_SetString(PyExc_TypeError, "uniprot_ids must be a list.");
         return NULL;
     }
 
     if (decompress != NULL && !PyBool_Check(decompress)) {
+        Py_XDECREF(path);
         PyErr_SetString(PyExc_TypeError, "decompress must be a boolean");
         return NULL;
     }
 
     std::string dbname(pathCStr);
     std::string index = dbname + ".index";
+    Py_XDECREF(path);
 
     FoldcompDatabaseObject *obj = PyObject_New(FoldcompDatabaseObject, &FoldcompDatabaseType);
     if (obj == NULL) {

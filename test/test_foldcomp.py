@@ -14,3 +14,9 @@ def test_open_db(pytestconfig):
     with foldcomp.open(path) as db:
         for i in db:
             print(i)
+
+
+def test_open_db_str(pytestconfig):
+    ids = ["d1asha_", "d1it2a_"]
+    with foldcomp.open(str(pytestconfig.rootpath.joinpath("test/example_db"))) as db:
+        pass
