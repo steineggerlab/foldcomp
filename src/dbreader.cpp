@@ -1,15 +1,15 @@
 #include "dbreader.h"
 
-#include <cstdlib>
+#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <sys/stat.h>
 
-#include <utility>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <string>
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -128,9 +128,9 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
         }
     }
 
-    if ((data_mode & DB_READER_NO_CACHE) == 0) {
-        save_cache(reader, cache_name);
-    }
+    // if ((data_mode & DB_READER_NO_CACHE) == 0) {
+    //     save_cache(reader, cache_name);
+    // }
 
     return (void *)reader;
 }

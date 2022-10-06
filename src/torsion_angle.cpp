@@ -16,113 +16,24 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "torsion_angle.h"
 
-#include <cmath>
-#include <iostream>
-#include <cstddef>
-#include <string>
-
-#include "utility.h"
 #include "atom_coordinate.h"
+
+#include <cstddef>
+#include <iostream>
+#include <string>
 
  // Temp function
 void print3DFloatVec(std::string name, const std::vector<float>& input) {
     std::cout << name << ": " << input[0] << ", " << input[1] << ", " << input[2] << std::endl;
 }
 
-/**
- * @brief Get the torsion from xyz object
- *
- * @param coordinates a vector of float vectors
- * @param atm_inc an integer
- * @return std::vector<std::vector<float>>
- */
-std::vector<float> getTorsionFromXYZForDebugging(
-    const std::vector<std::vector<float>>& coordinates, int atm_inc = 1
-) {
-    std::vector<float> torsion_vector;
-    std::vector<size_t> atm_inds{ 0, 1, 2, 3 };
-    while (atm_inds[3] < coordinates.size()) {
-        // 00. Get 4 atom coordinates
-        std::vector<float> atm_1 = coordinates[atm_inds[0]];
-        std::vector<float> atm_2 = coordinates[atm_inds[1]];
-        std::vector<float> atm_3 = coordinates[atm_inds[2]];
-        std::vector<float> atm_4 = coordinates[atm_inds[3]];
-        // 01. Obtain vectors from coordinates
-        std::vector<float> d1{
-            (atm_2[0] - atm_1[0]), (atm_2[1] - atm_1[1]), (atm_2[2] - atm_1[2])
-        };
-        std::vector<float> d2{
-            (atm_3[0] - atm_2[0]), (atm_3[1] - atm_2[1]), (atm_3[2] - atm_2[2])
-        };
-        std::vector<float> d3{
-            (atm_4[0] - atm_3[0]), (atm_4[1] - atm_3[1]), (atm_4[2] - atm_3[2])
-        };
-        // 02. Calculate cross product
-        std::vector<float> u1 = crossProduct(d1, d2);
-        std::vector<float> u2 = crossProduct(d2, d3);
-
-        print3DFloatVec("d1", d1);
-        print3DFloatVec("d2", d2);
-        print3DFloatVec("d3", d3);
-        print3DFloatVec("u1", u1);
-        print3DFloatVec("u2", u2);
-
-        // 03. Get cosine theta of u1 & u2
-        float cos_torsion = getCosineTheta(u1, u2);
-        std::cout << "cos_torsion: " << cos_torsion << std::endl;
-
-        // 04. Calculate arc cosine
-        float torsion_angle;
-        if (std::isnan(acos(cos_torsion))) {
-            if (cos_torsion < 0) {
-                torsion_angle = 180.0;
-            } else {
-                torsion_angle = 0.0;
-            }
-        } else {
-            torsion_angle = acos(cos_torsion) * 180.0 / PI;
-        }
-
-        std::cout << "torsion_angle: " << torsion_angle << std::endl;
-
-        // 05. check torsion.xyz.R line 37
-        // IMPORTANT: torsion_angle should be minus in specific case;
-        // the vector on the plane beta can be represented as
-        // cross product of u2 & d2
-        std::vector<float> plane_beta_vec = crossProduct(u2, d2);
-        std::vector<float> det{
-            (u1[0] * plane_beta_vec[0]), (u1[1] * plane_beta_vec[1]),
-            (u1[2] * plane_beta_vec[2])
-        };
-
-        print3DFloatVec("beta", plane_beta_vec);
-        print3DFloatVec("det", det);
-
-        if (det[0] + det[1] + det[2] < 0) {
-            torsion_angle = -1 * torsion_angle;
-        }
-        torsion_vector.push_back(torsion_angle);
-        // 06. next index;
-        atm_inds[0] += atm_inc;
-        atm_inds[1] += atm_inc;
-        atm_inds[2] += atm_inc;
-        atm_inds[3] += atm_inc;
-    }
-    return torsion_vector;
-}
-
-
 std::vector<float> getTorsionFromXYZ(
     const std::vector<AtomCoordinate>& coordinates, int atm_inc
 ) {
-    std::vector< std::vector<float>> coordinate_vector;
-    coordinate_vector = extractCoordinates(coordinates);
-    std::vector<float> output;
-    output = getTorsionFromXYZ(coordinate_vector, atm_inc);
-    return output;
+    std::vector<float3d> coord = extractCoordinates(coordinates);
+    return getTorsionFromXYZ(coord, atm_inc);
 }
 
 /**
@@ -133,28 +44,28 @@ std::vector<float> getTorsionFromXYZ(
  * @return std::vector<std::vector<float>>
  */
 std::vector<float> getTorsionFromXYZ(
-    const std::vector<std::vector<float>>& coordinates, int atm_inc = 1
+    const std::vector<float3d>& coordinates, int atm_inc = 1
 ) {
     std::vector<float> torsion_vector;
     for (size_t i = 0; i < (coordinates.size() - 3); i += atm_inc) {
         // 00. Get 4 atom coordinates
-        std::vector<float> atm_1 = coordinates[i + 0];
-        std::vector<float> atm_2 = coordinates[i + 1];
-        std::vector<float> atm_3 = coordinates[i + 2];
-        std::vector<float> atm_4 = coordinates[i + 3];
+        float3d atm_1 = coordinates[i + 0];
+        float3d atm_2 = coordinates[i + 1];
+        float3d atm_3 = coordinates[i + 2];
+        float3d atm_4 = coordinates[i + 3];
         // 01. Obtain vectors from coordinates
-        std::vector<float> d1 {
-            (atm_2[0] - atm_1[0]), (atm_2[1] - atm_1[1]), (atm_2[2] - atm_1[2])
+        float3d d1 {
+            (atm_2.x - atm_1.x), (atm_2.y - atm_1.y), (atm_2.z - atm_1.z)
         };
-        std::vector<float> d2{
-            (atm_3[0] - atm_2[0]), (atm_3[1] - atm_2[1]), (atm_3[2] - atm_2[2])
+        float3d d2{
+            (atm_3.x - atm_2.x), (atm_3.y - atm_2.y), (atm_3.z - atm_2.z)
         };
-        std::vector<float> d3{
-            (atm_4[0] - atm_3[0]), (atm_4[1] - atm_3[1]), (atm_4[2] - atm_3[2])
+        float3d d3{
+            (atm_4.x - atm_3.x), (atm_4.y - atm_3.y), (atm_4.z - atm_3.z)
         };
         // 02. Calculate cross product
-        std::vector<float> u1 = crossProduct(d1, d2);
-        std::vector<float> u2 = crossProduct(d2, d3);
+        float3d u1 = crossProduct(d1, d2);
+        float3d u2 = crossProduct(d2, d3);
 
         // 03. Get cosine theta of u1 & u2
         float cos_torsion = getCosineTheta(u1, u2);
@@ -167,19 +78,16 @@ std::vector<float> getTorsionFromXYZ(
                 torsion_angle = 0.0;
             }
         } else {
-            torsion_angle = acos(cos_torsion) * 180.0 / PI;
+            torsion_angle = acos(cos_torsion) * 180.0 / M_PI;
         }
 
         // 05. check torsion.xyz.R line 37
         // IMPORTANT: torsion_angle should be minus in specific case;
         // the vector on the plane beta can be represented as
         // cross product of u2 & d2
-        std::vector<float> plane_beta_vec = crossProduct(u2, d2);
-        std::vector<float> det {
-            (u1[0] * plane_beta_vec[0]), (u1[1] * plane_beta_vec[1]),
-            (u1[2] * plane_beta_vec[2])
-        };
-        if (det[0] + det[1] + det[2] < 0) {
+        float3d plane_beta_vec = crossProduct(u2, d2);
+        // determinate of u1 & plane_beta_vec
+        if ((u1.x * plane_beta_vec.x) + (u1.y * plane_beta_vec.y) + (u1.z * plane_beta_vec.z) < 0) {
             torsion_angle = -1 * torsion_angle;
         }
         torsion_vector.push_back(torsion_angle);

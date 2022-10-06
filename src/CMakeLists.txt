@@ -5,6 +5,7 @@ set(foldcomp_header_files
     src/execution_timer.h
     src/dbreader.h
     src/discretizer.h
+    src/float3d.h
     src/foldcomp.h
     src/nerf.h
     src/sidechain.h

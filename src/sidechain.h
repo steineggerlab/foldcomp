@@ -11,13 +11,11 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
-
 #include <iosfwd>
 #include <map>
-#include <vector>
 #include <string> // IWYU pragma: keep
+#include <vector>
 
 class AminoAcid;
 class AtomCoordinate;
@@ -50,16 +48,13 @@ std::map<std::string, float> calculateTorsionAngles(
 );
 
 std::vector<float> calculateTorsionAnglesInResidue(
-    std::vector<AtomCoordinate>& originalAtoms, AminoAcid& AA
+    const std::vector<AtomCoordinate>& originalAtoms, const AminoAcid& AA
 );
 
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(
     std::vector<AtomCoordinate>& originalAtoms, std::map<std::string, AminoAcid>& AAmap
 );
 
-std::map<std::string, AtomCoordinate> convertAtomCoordinateVectorToMap(
-    std::vector<AtomCoordinate> input
-);
 void compareMap(
     std::map<std::string, float> m1, std::map<std::string, float> m2,
     std::string m1Name, std::string m2Name

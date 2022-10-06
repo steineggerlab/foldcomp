@@ -11,18 +11,21 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "sidechain.h"
-#include <utility>
-#include <map>
-#include <stddef.h>
-#include <iostream>
-#include <string>
+
 #include "amino_acid.h"
 #include "atom_coordinate.h"
+#include "float3d.h"
 #include "nerf.h"
 #include "torsion_angle.h"
 #include "utility.h"
+
+#include <cstddef>
+#include <iostream>
+#include <map>
+#include <string>
+#include <utility>
+
 
 std::vector<AtomCoordinate> reconstructSideChain(
     std::vector<AtomCoordinate> backbone, AtomCoordinate /* c0 */
@@ -69,23 +72,28 @@ std::vector<AtomCoordinate> reconstructSideChainFromCalculatedInfo(
     return output;
 }
 
+std::map<std::string, float3d> convertAtomCoordinateVectorToMap(
+    const std::vector<AtomCoordinate>& input
+) {
+    std::map<std::string, float3d> output;
+    for (const auto& ac : input) {
+        output.emplace(ac.atom, ac.coordinate);
+    }
+    return output;
+}
+
 std::map<std::string, float> calculateBondLengths(
     std::vector<AtomCoordinate> originalAtoms,  AminoAcid AA
 ) {
     std::map<std::string, float> output;
-    std::map<std::string, AtomCoordinate> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
+    std::map<std::string, float3d> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
     // Calculating bond angle works for side chain - 2021-10-01 14:56:20
-    std::vector<std::string> prev_atoms;
-    AtomCoordinate prev_atom, curr_atom;
-    float d;
-    std::string k;
-
-    for (auto atom : AA.sideChainAtoms) {
-        prev_atoms = AA.sideChain[atom];
-        prev_atom = origAtomMap[prev_atoms[2]];
-        curr_atom = origAtomMap[atom];
-        k = prev_atom.atom + "_" + curr_atom.atom;
-        d = distance(prev_atom.coordinate, curr_atom.coordinate);
+    for (const auto& atom : AA.sideChainAtoms) {
+        const std::vector<std::string>& prev_atoms = AA.sideChain.at(atom);
+        float3d prev_atom = origAtomMap.at(prev_atoms[2]);
+        float3d curr_atom = origAtomMap.at(atom);
+        std::string k = prev_atoms[2] + "_" + atom;
+        float d = distance(prev_atom, curr_atom);
         output[k] = d;
     }
     return output;
@@ -95,21 +103,15 @@ std::map<std::string, float> calculateBondAngles(
     std::vector<AtomCoordinate> originalAtoms, AminoAcid AA
 ) {
     std::map<std::string, float> output;
-    std::map<std::string, AtomCoordinate> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
-
-    std::vector<std::string> prev_atoms;
-    AtomCoordinate prev_atom1, prev_atom2, curr_atom;
-    float a;
-    std::string k;
-
-    for (auto atom : AA.sideChainAtoms) {
+    std::map<std::string, float3d> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
+    for (const auto& atom : AA.sideChainAtoms) {
         if (atom == "N") { continue; }
-        prev_atoms = AA.sideChain[atom];
-        prev_atom1 = origAtomMap[prev_atoms[1]];
-        prev_atom2 = origAtomMap[prev_atoms[2]];
-        curr_atom = origAtomMap[atom];
-        k = prev_atom1.atom + "_" + prev_atom2.atom + "_" + curr_atom.atom;
-        a = angle(prev_atom1.coordinate, prev_atom2.coordinate, curr_atom.coordinate);
+        const std::vector<std::string>& prev_atoms = AA.sideChain[atom];
+        float3d prev_atom1 = origAtomMap[prev_atoms[1]];
+        float3d prev_atom2 = origAtomMap[prev_atoms[2]];
+        float3d curr_atom = origAtomMap[atom];
+        std::string k = prev_atoms[1] + "_" + prev_atoms[2] + "_" + atom;
+        float a = angle(prev_atom1, prev_atom2, curr_atom);
         output[k] = a;
     }
     return output;
@@ -119,54 +121,47 @@ std::map<std::string, float> calculateTorsionAngles(
     std::vector<AtomCoordinate> originalAtoms, AminoAcid AA
 ) {
     std::map<std::string, float> output;
-    std::map<std::string, AtomCoordinate> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
-
-    std::vector<std::string> prev_atoms;
-    AtomCoordinate prev_atom1, prev_atom2, prev_atom3, curr_atom;
-    std::string k;
-    std::vector< std::vector<float> > coordinates(4);
-    std::vector<float> vt;
-    for (auto atom : AA.sideChainAtoms) {
+    std::map<std::string, float3d> origAtomMap = convertAtomCoordinateVectorToMap(originalAtoms);
+    for (const auto& atom : AA.sideChainAtoms) {
         if (atom == "N" || atom == "CA") { continue; }
-        prev_atoms = AA.sideChain[atom];
-        prev_atom1 = origAtomMap[prev_atoms[0]];
-        prev_atom2 = origAtomMap[prev_atoms[1]];
-        prev_atom3 = origAtomMap[prev_atoms[2]];
-        curr_atom = origAtomMap[atom];
-        coordinates[0] = (prev_atom1.coordinate);
-        coordinates[1] = (prev_atom2.coordinate);
-        coordinates[2] = (prev_atom3.coordinate);
-        coordinates[3] = (curr_atom.coordinate);
-
-        k = prev_atom1.atom + "_" + prev_atom2.atom + "_" + prev_atom3.atom + "_" + curr_atom.atom;
-        vt = getTorsionFromXYZ(coordinates, 1);
+        const std::vector<std::string>& prev_atoms = AA.sideChain.at(atom);
+        float3d prev_atom1 = origAtomMap.at(prev_atoms[0]);
+        float3d prev_atom2 = origAtomMap.at(prev_atoms[1]);
+        float3d prev_atom3 = origAtomMap.at(prev_atoms[2]);
+        float3d curr_atom  = origAtomMap.at(atom);
+        std::string k = prev_atoms[0] + "_" + prev_atoms[1] + "_" + prev_atoms[2] + "_" + atom;
+        std::vector<float3d> coordinates = {prev_atom1, prev_atom2, prev_atom3, curr_atom};
+        std::vector<float> vt = getTorsionFromXYZ(coordinates, 1);
         output[k] = vt[0];
     }
     return output;
 }
 
+float3d findFirstAtomCoords(const std::vector<AtomCoordinate>& atoms, std::string atom_name) {
+    for (const AtomCoordinate& curr_atm : atoms) {
+        if (curr_atm.atom == atom_name) {
+            return curr_atm.coordinate;
+        }
+    }
+    return {0, 0, 0};
+}
+
 std::vector<float> calculateTorsionAnglesInResidue(
-    std::vector<AtomCoordinate>& originalAtoms, AminoAcid& AA
+    const std::vector<AtomCoordinate>& originalAtoms, const AminoAcid& AA
 ) {
     std::vector<float> output;
-    std::vector<std::string> prev_atom_names;
-    std::vector<AtomCoordinate> prev_atoms(4);
-    AtomCoordinate prev_atom1, prev_atom2, prev_atom3, curr_atom;
-    std::string k;
-    std::vector< std::vector<float> > coordinates(4);
-    std::vector<float> vt;
-    for (auto atom : AA.sideChainAtoms) {
+    output.reserve(AA.sideChainAtoms.size());
+    for (const auto& atom : AA.sideChainAtoms) {
         if (atom == "N" || atom == "CA") { continue; }
-        prev_atom_names = AA.sideChain[atom];
+        const std::vector<std::string>& prev_atom_names = AA.sideChain.at(atom);
 
-        prev_atom1 = findFirstAtom(originalAtoms, prev_atom_names[0]);
-        prev_atom2 = findFirstAtom(originalAtoms, prev_atom_names[1]);
-        prev_atom3 = findFirstAtom(originalAtoms, prev_atom_names[2]);
-        curr_atom = findFirstAtom(originalAtoms, atom);
+        float3d prev_atom1 = findFirstAtomCoords(originalAtoms, prev_atom_names[0]);
+        float3d prev_atom2 = findFirstAtomCoords(originalAtoms, prev_atom_names[1]);
+        float3d prev_atom3 = findFirstAtomCoords(originalAtoms, prev_atom_names[2]);
+        float3d curr_atom  = findFirstAtomCoords(originalAtoms, atom);
 
-        prev_atoms = {prev_atom1, prev_atom2, prev_atom3, curr_atom};
-        coordinates = extractCoordinates(prev_atoms);
-        vt = getTorsionFromXYZ(coordinates, 1);
+        std::vector<float3d> coordinates = {prev_atom1, prev_atom2, prev_atom3, curr_atom};
+        std::vector<float> vt = getTorsionFromXYZ(coordinates, 1);
         output.push_back(vt[0]);
     }
     return output;
@@ -175,22 +170,11 @@ std::vector<float> calculateTorsionAnglesInResidue(
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(
     std::vector<AtomCoordinate>& originalAtoms, std::map<std::string, AminoAcid>& AAmap
 ) {
-    std::vector< std::vector<float> > output;
-    std::vector<float> residueTorsionAngles;
-    std::vector< std::vector<AtomCoordinate> > atomByResidue = splitAtomByResidue(originalAtoms);
-    for (auto residue : atomByResidue) {
-        residueTorsionAngles = calculateTorsionAnglesInResidue(residue, AAmap[residue[0].residue]);
-        output.push_back(residueTorsionAngles);
-    }
-    return output;
-}
-
-std::map<std::string, AtomCoordinate> convertAtomCoordinateVectorToMap(
-    std::vector<AtomCoordinate> input
-) {
-    std::map<std::string, AtomCoordinate> output;
-    for (auto ac : input) {
-        output[ac.atom] = ac;
+    std::vector<std::vector<AtomCoordinate>> atomByResidue = splitAtomByResidue(originalAtoms);
+    std::vector<std::vector<float>> output;
+    output.reserve(atomByResidue.size());
+    for (const auto& residue : atomByResidue) {
+        output.emplace_back(calculateTorsionAnglesInResidue(residue, AAmap[residue[0].residue]));
     }
     return output;
 }
@@ -271,7 +255,7 @@ int calculateSideChainInfo(
         }
     }
     // Divide the sum with the count of residues to calculate average
-    for (auto aa : AAS) {
+    for (const auto& aa : AAS) {
         success = divideMapWithConst(&(AAS[aa.first].bondLengths), resCountMap[aa.first]);
         success = divideMapWithConst(&(AAS[aa.first].bondAngles), resCountMap[aa.first]);
         success = divideMapWithConst(&(AAS[aa.first].torsionAngles), resCountMap[aa.first]);
@@ -370,8 +354,8 @@ std::vector<AtomCoordinate> residueReconstruction(
     std::map<std::string, float>& currResTorsionAngles
 ) {
     // Get bond angles and bond lengths from currAA
-    std::map<std::string, float> bondAngles = currAA.bondAngles;
-    std::map<std::string, float> bondLengths = currAA.bondLengths;
+    const std::map<std::string, float>& bondAngles = currAA.bondAngles;
+    const std::map<std::string, float>& bondLengths = currAA.bondLengths;
 
     Nerf nerf;
     std::vector<AtomCoordinate> output = nerf.reconstructWithAAMaps(
@@ -450,7 +434,7 @@ std::map<std::string, std::vector< std::vector<float> > > groupSideChainTorsionB
 ) {
     std::map<std::string, std::vector< std::vector<float> > > output;
     // Initialize the map
-    for (auto aa : AAS) {
+    for (const auto& aa : AAS) {
         std::vector< std::vector<float> > temp;
         output[aa.first] = temp;
     }
@@ -467,8 +451,9 @@ std::vector<float> getSpecificTorsionAngle(
     std::map<std::string, std::vector< std::vector<float> > > sideChainTorsionMap,
     std::string& residueName, int index
 ) {
-    std::vector<float> output;
     const std::vector<std::vector<float>>& temp = sideChainTorsionMap[residueName];
+    std::vector<float> output;
+    output.resize(temp.size());
     for (size_t i = 0; i < temp.size(); i++) {
         output.push_back(temp[i][index]);
     }

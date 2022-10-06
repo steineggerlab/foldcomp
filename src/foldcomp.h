@@ -14,12 +14,8 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
-#include <map>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <cstdint>
-#include <cstring>
+#include "float3d.h"
+
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
@@ -29,6 +25,13 @@
 // TAR format handling - only for executable
 #include "microtar/microtar.h"
 #endif
+
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <string>
+#include <vector>
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
@@ -61,28 +64,29 @@ enum ValidityError {
 // NOTE: ORDER OF BOND ANGLE: CA_C_N, C_N_CA, N_CA_C
 // NOTE: THE ORDER OF TORSION ANGLE IS PSI->OMEGA->PHI
 struct BackboneChain {
-    /* data */
     // TOTAL BITS: 64 bits = 8 bytes
-    unsigned int residue: NUM_BITS_RESIDUE; // 5 bits
-    unsigned int omega : NUM_BITS_OMEGA;   // 11 bits
-    unsigned int psi : NUM_BITS_PHI_PSI;    // 12 bits
-    unsigned int phi : NUM_BITS_PHI_PSI;    // 12 bits
-    unsigned int ca_c_n_angle : NUM_BITS_BOND;  // 8 bits
-    unsigned int c_n_ca_angle : NUM_BITS_BOND;  // 8 bits
-    unsigned int n_ca_c_angle: NUM_BITS_BOND;  // 8 bits
+    uint64_t residue: NUM_BITS_RESIDUE;     // 5 bits
+    uint64_t omega : NUM_BITS_OMEGA;        // 11 bits
+    uint64_t psi : NUM_BITS_PHI_PSI;        // 12 bits
+    uint64_t phi : NUM_BITS_PHI_PSI;        // 12 bits
+    uint64_t ca_c_n_angle : NUM_BITS_BOND;  // 8 bits
+    uint64_t c_n_ca_angle : NUM_BITS_BOND;  // 8 bits
+    uint64_t n_ca_c_angle: NUM_BITS_BOND;   // 8 bits
 };
+static_assert(sizeof(BackboneChain) == 8, "BackboneChain must remain compatible");
 
 // IDEA: Split backbone chain header & general header??
 // First residue string should be saved in the header
 // TODO: SAVE FIRST RESIDUE
 struct BackboneChainHeader {
-    unsigned int nResidue: 16; // 16 bits
-    unsigned int nAtom: 16;    // 16 bits
-    unsigned int idxResidue: 16; // 16 bits
-    unsigned int idxAtom: 16;    // 16 bits
+    uint16_t nResidue;   // 16 bits
+    uint16_t nAtom;      // 16 bits
+    uint16_t idxResidue; // 16 bits
+    uint16_t idxAtom;    // 16 bits
     // char firstResidue; // 1 byte = 8 bits --> WILL BE APPLIED AFTER CHANGING BACKBONE CHAIN
-    float prevAtoms[9];
+    float prevAtoms[9];  // 9 * 4 byte
 };
+static_assert(sizeof(BackboneChainHeader) == 44, "BackboneChainHeader must remain compatible");
 
 struct DecompressedBackboneChain {
     /* data */
@@ -107,25 +111,24 @@ struct DecompressedBackboneChain {
 // };
 
 struct CompressedFileHeader {
-    /* data */
-    // TOTAL:
     // Backbone
-    unsigned int nResidue: 16; // 16 bits
-    unsigned int nAtom: 16;    // 16 bits
-    unsigned int idxResidue: 16; // 16 bits
-    unsigned int idxAtom: 16;    // 16 bits
+    uint16_t nResidue;   // 16 bits
+    uint16_t nAtom;      // 16 bits
+    uint16_t idxResidue; // 16 bits
+    uint16_t idxAtom;    // 16 bits
     // Anchor points
-    unsigned int nAnchor: 8; // 8 bits
-    char chain;
+    uint8_t nAnchor;     // 8 bits
+    char chain;          // 8 bits + 8 bits padding TODO
     // Sidechain
-    unsigned int nSideChainTorsion: 32;
-    char firstResidue;
-    char lastResidue;
-    unsigned int lenTitle: 32;
+    uint32_t nSideChainTorsion; // 32 bits
+    char firstResidue;   // 8 bits
+    char lastResidue;    // 8 bits + 8 bits padding TODO
+    uint32_t lenTitle;   // 32 bits
     // Discretizer for backbone chain
-    float mins[6];
-    float cont_fs[6];
+    float mins[6];       // 6 * 32 bits
+    float cont_fs[6];    // 6 * 32 bits
 };
+static_assert(sizeof(CompressedFileHeader) == 72, "CompressedFileHeader must remain compatible");
 
 struct SideChainDiscretizers {
     float ala_min[2];
@@ -170,11 +173,6 @@ struct SideChainDiscretizers {
     float val_cont_fs[4];
 };
 
-struct SidechainAngles {
-    unsigned int torsion1: 4;
-    unsigned int torsion2: 4;
-};
-
 // Conversion
 uint32_t convertCompressedResidueToFirst4Bytes(BackboneChain& res);
 uint32_t convertCompressedResidueToSecond4Bytes(BackboneChain& res);
@@ -191,19 +189,19 @@ BackboneChain newBackboneChain(
 
 // TODO: Change header
 DecompressedBackboneChain decompressBackboneChain(
-    BackboneChain& bb, CompressedFileHeader& header
+    const BackboneChain& bb, const CompressedFileHeader& header
 );
 std::vector<DecompressedBackboneChain> decompressBackboneChain(
-    std::vector<BackboneChain>& bbv, CompressedFileHeader& header
+    const std::vector<BackboneChain>& bbv, const CompressedFileHeader& header
 );
 
 float _continuize(unsigned int input, float min, float cont_f);
 
 // Reconstruct
 std::vector<AtomCoordinate> reconstructBackboneAtoms(
-    std::vector<AtomCoordinate>& prevAtoms,
-    std::vector<BackboneChain>& backbone,
-    CompressedFileHeader& header
+    const std::vector<AtomCoordinate>& prevAtoms,
+    const std::vector<BackboneChain>& backbone,
+    const CompressedFileHeader& header
 );
 
 std::vector<AtomCoordinate> reconstructSidechainAtoms(
@@ -286,8 +284,10 @@ private:
     );
 
 public:
-    Foldcomp(/* args */){};
-    ~Foldcomp(){};
+    Foldcomp(){
+        AminoAcid aa;
+        this->AAS = aa.AminoAcids();
+    };
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
@@ -335,7 +335,7 @@ public:
     std::vector<char> residues;
     std::vector<std::string> residueThreeLetter;
     AtomCoordinate OXT;
-    std::vector<float> OXT_coords;
+    float3d OXT_coords;
 
     // Angles
     std::vector<float> psi;

@@ -13,11 +13,11 @@
  */
 
 #pragma once
-#include <string>
-#include <vector>
-#include <utility>
-#include <map>
 #include <fstream>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 class AminoAcid {
 public:
@@ -401,6 +401,7 @@ public:
         };
         // output.emplace("ASX", AminoAcid('B', "ASX", "Asparagine/aspartic acid"));
         // output.emplace("GLX", AminoAcid('Z', "GLX", "Glutamine/glutamic acid"));
+        output.emplace("UNK", AminoAcid('X', "UNK", "Unknown"));
         return output;
     }
 

@@ -13,9 +13,12 @@
  * ---
  * Copyright © 2022 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
 #include "atom_coordinate.h"
+
+#include <cstddef>
+#include <string>
+#include <vector>
 
 class StructureReader {
 private:
