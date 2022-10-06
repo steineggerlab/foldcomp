@@ -17,7 +17,7 @@ static PyObject *FoldcompError;
 
 typedef struct {
     PyObject_HEAD
-    PyObject* uniprot_ids;
+    PyObject* user_ids;
     bool decompress;
     void* memory_handle;
 } FoldcompDatabaseObject;
@@ -42,8 +42,8 @@ static PyMethodDef FoldcompDatabase_methods[] = {
 // FoldcompDatabase_sq_length
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
-    if (db->uniprot_ids != NULL) {
-        return PySequence_Length(db->uniprot_ids);
+    if (db->user_ids != NULL) {
+        return PySequence_Length(db->user_ids);
     }
     return (Py_ssize_t)reader_get_size(db->memory_handle);
 }
@@ -54,11 +54,12 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
 
     const char* data;
     size_t length;
-    if (db->uniprot_ids != NULL) {
-        if (index >= PySequence_Length(db->uniprot_ids)) {
-           return NULL;
+    if (db->user_ids != NULL) {
+        if (index >= PySequence_Length(db->user_ids)) {
+            PyErr_SetString(PyExc_IndexError, "index out of range");
+            return NULL;
         }
-        PyObject* item = PySequence_GetItem(db->uniprot_ids, index);
+        PyObject* item = PySequence_GetItem(db->user_ids, index);
         // get string representation of id as c string
         uint32_t key = reader_lookup_entry(db->memory_handle, PyUnicode_AsUTF8(item));
         if (key == UINT32_MAX) {
@@ -67,12 +68,14 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
         }
         int64_t id = reader_get_id(db->memory_handle, key);
         if (id == -1) {
+            PyErr_SetString(PyExc_KeyError, "Could not find key in database.");
             return NULL;
         }
         data = reader_get_data(db->memory_handle, id);
         length = std::max(reader_get_length(db->memory_handle, id), (int64_t)1) - (int64_t)1;
     } else {
         if (index >= reader_get_size(db->memory_handle)) {
+            PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
         data = reader_get_data(db->memory_handle, index);
@@ -86,7 +89,7 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
             PyErr_SetString(FoldcompError, "Error decompressing.");
             return NULL;
         }
-        return Py_BuildValue("(s,O)", name.c_str(), PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().size()));
+        return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
     }
     return PyBytes_FromStringAndSize(data, length);
 }
@@ -164,10 +167,11 @@ static PyTypeObject FoldcompDatabaseType = {
 // FoldcompDatabase_close
 static PyObject* FoldcompDatabase_close(PyObject* self) {
     if (!PyObject_TypeCheck(self, &FoldcompDatabaseType)) {
-         return NULL;
+        PyErr_SetString(PyExc_TypeError, "Expected FoldcompDatabase object.");
+        return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
-    Py_XDECREF(db->uniprot_ids);
+    Py_XDECREF(db->user_ids);
     if (db->memory_handle != NULL) {
         free_reader(db->memory_handle);
         db->memory_handle = NULL;
@@ -236,7 +240,7 @@ static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("(s,O)", name.c_str(), PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().size()));
+    return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
 }
 
 std::string trim(const std::string& str, const std::string& whitespace = " \t") {
@@ -305,6 +309,7 @@ static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObjec
     std::ostringstream oss;
     int flag = compress(name, pdb_input, oss, threshold);
     if (flag != 0) {
+        PyErr_SetString(FoldcompError, "Error compressing.");
         return NULL;
     }
 
@@ -316,47 +321,51 @@ PyTypeObject* pathType = NULL;
 
 static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* kwargs) {
     PyObject* path;
-    PyObject* uniprot_ids = NULL;
+    PyObject* user_ids = NULL;
     PyObject* decompress = NULL;
-    static const char *kwlist[] = {"path", "uniprot_ids", "decompress", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|$OO", const_cast<char**>(kwlist), &path, &uniprot_ids, &decompress)) {
+    static const char *kwlist[] = {"path", "ids", "decompress", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|$OO", const_cast<char**>(kwlist), PyUnicode_FSConverter, &path, &user_ids, &decompress)) {
         return NULL;
     }
-
-    // get path-like object's path
-    PyObject* pathStr = PyObject_CallMethod(path, "as_posix", NULL);
-    if (pathStr == NULL) {
+    if (path == NULL) {
+        PyErr_SetString(PyExc_TypeError, "path must be a path-like object");
         return NULL;
     }
-    const char* pathCStr = PyUnicode_AsUTF8(pathStr);
+    const char* pathCStr = PyBytes_AS_STRING(path);
     if (pathCStr == NULL) {
+        Py_XDECREF(path);
+        PyErr_SetString(PyExc_TypeError, "path must be a path-like object");
         return NULL;
     }
 
-    if (uniprot_ids != NULL && !PyList_Check(uniprot_ids)) {
-        PyErr_SetString(PyExc_TypeError, "uniprot_ids must be a list.");
+    if (user_ids != NULL && !PyList_Check(user_ids)) {
+        Py_XDECREF(path);
+        PyErr_SetString(PyExc_TypeError, "user_ids must be a list.");
         return NULL;
     }
 
     if (decompress != NULL && !PyBool_Check(decompress)) {
+        Py_XDECREF(path);
         PyErr_SetString(PyExc_TypeError, "decompress must be a boolean");
         return NULL;
     }
 
     std::string dbname(pathCStr);
     std::string index = dbname + ".index";
+    Py_XDECREF(path);
 
     FoldcompDatabaseObject *obj = PyObject_New(FoldcompDatabaseObject, &FoldcompDatabaseType);
     if (obj == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for FoldcompDatabaseObject");
         return NULL;
     }
 
-    obj->uniprot_ids = NULL;
+    obj->user_ids = NULL;
     int mode = DB_READER_USE_DATA;
-    if (uniprot_ids != NULL && PySequence_Length(uniprot_ids) > 0) {
+    if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
         mode |= DB_READER_USE_LOOKUP;
-        obj->uniprot_ids = uniprot_ids;
-        Py_INCREF(obj->uniprot_ids);
+        obj->user_ids = user_ids;
+        Py_INCREF(obj->user_ids);
     }
 
     if (decompress == NULL) {

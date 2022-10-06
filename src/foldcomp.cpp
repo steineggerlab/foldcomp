@@ -12,15 +12,15 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #include "foldcomp.h"
-#include <algorithm>
-#include <bitset>
-#include <cmath>
-#include <utility>
+
 #include "sidechain.h"
 #include "torsion_angle.h"
 #include "utility.h"
+
+#include <algorithm>
+#include <bitset>
+#include <utility>
 
 // Changed at 2022-04-14 16:02:30
 /**
@@ -119,7 +119,7 @@ BackboneChain newBackboneChain(
  * @return DecompressedBackboneChain
  */
 DecompressedBackboneChain decompressBackboneChain(
-    BackboneChain& bb, CompressedFileHeader& header
+    const BackboneChain& bb, const CompressedFileHeader& header
 ) {
     DecompressedBackboneChain output;
     output.residue = convertIntToOneLetterCode(bb.residue);
@@ -141,10 +141,11 @@ DecompressedBackboneChain decompressBackboneChain(
  * @return std::vector<DecompressedBackboneChain>
  */
 std::vector<DecompressedBackboneChain> decompressBackboneChain(
-    std::vector<BackboneChain>& bbv, CompressedFileHeader& header
+    const std::vector<BackboneChain>& bbv, const CompressedFileHeader& header
 ) {
     std::vector<DecompressedBackboneChain> output;
-    for (auto& bb : bbv) {
+    output.reserve(bbv.size());
+    for (const auto& bb : bbv) {
         output.push_back(decompressBackboneChain(bb, header));
     }
     return output;
@@ -163,47 +164,42 @@ float _continuize(unsigned int input, float min, float cont_f) {
  * @return std::vector<AtomCoordinate>
  */
 std::vector<AtomCoordinate> reconstructBackboneAtoms(
-    std::vector<AtomCoordinate>& prevAtoms,
-    std::vector<BackboneChain>& backbone,
+    const std::vector<AtomCoordinate>& prevAtoms,
+    const std::vector<BackboneChain>& backbone,
     CompressedFileHeader& header
 ) {
     Nerf nerf;
-    std::vector<AtomCoordinate> reconstructedAtoms;
-
     // Save first three atoms
-    for (int i = 0; i < 3; i++) {
-        reconstructedAtoms.push_back(prevAtoms[i]);
-    }
+    std::vector<AtomCoordinate> reconstructedAtoms = {
+        prevAtoms[0], prevAtoms[1], prevAtoms[2]
+    };
     int total = backbone.size();
 
-    std::vector< std::vector<float> > prevCoords;
-    std::vector<DecompressedBackboneChain> deBackbone;
-    deBackbone = decompressBackboneChain(backbone, header);
-    AtomCoordinate currN, currCA, currC;
-    std::vector<float> currNCoord, currCACoord, currCCoord;
+    std::vector<DecompressedBackboneChain> deBackbone = decompressBackboneChain(backbone, header);
     int currAtomIndex = prevAtoms[2].atom_index + 1;
     int currResidueIndex = prevAtoms[2].residue_index + 1;
-    std::string currResidue;
 
     // Iterate through backbone
     // Should put N, CA, C in this loop
     for (int i = 0; i < (total - 1); i++) {
-        prevAtoms = {reconstructedAtoms[i*3], reconstructedAtoms[i*3+1], reconstructedAtoms[i*3+2]};
-        prevCoords = extractCoordinates(prevAtoms);
+        const AtomCoordinate& prevAtom1 = reconstructedAtoms[i*3];
+        const AtomCoordinate& prevAtom2 = reconstructedAtoms[i*3 + 1];
+        const AtomCoordinate& prevAtom3 = reconstructedAtoms[i*3 + 2];
+        float3d prevCoords[3];
+        extractCoordinates(prevCoords, prevAtom1, prevAtom2, prevAtom3);
         // Convert char (deBackbone[i].residue) to string (currResidue)
-        currResidue = getThreeLetterCode(deBackbone[i + 1].residue);
+        std::string currResidue = getThreeLetterCode(deBackbone[i + 1].residue);
+        std::string currChain = prevAtom1.chain;
 
         // Place N
-        currNCoord = nerf.place_atom(
+        float3d currNCoord = nerf.place_atom(
             prevCoords, C_TO_N_DIST, deBackbone[i].ca_c_n_angle, deBackbone[i].psi
         );
-        currN = AtomCoordinate(
-            "N", currResidue, prevAtoms[0].chain,
-            currAtomIndex, currResidueIndex, currNCoord
-        );
         // Place CA
-        currAtomIndex++;
-        prevCoords = {prevCoords[1], prevCoords[2], currNCoord};
+        prevCoords[0] = prevCoords[1];
+        prevCoords[1] = prevCoords[2];
+        prevCoords[2] = currNCoord;
+        float3d currCACoord;
         if (deBackbone[i].residue != 'P') {
             currCACoord = nerf.place_atom(
                 prevCoords, N_TO_CA_DIST, deBackbone[i].c_n_ca_angle, deBackbone[i].omega
@@ -213,26 +209,33 @@ std::vector<AtomCoordinate> reconstructBackboneAtoms(
                 prevCoords, PRO_N_TO_CA_DIST, deBackbone[i].c_n_ca_angle, deBackbone[i].omega
             );
         }
-        currCA = AtomCoordinate(
-            "CA", currResidue, prevAtoms[0].chain,
-            currAtomIndex, currResidueIndex, currCACoord
-        );
+
         // Place C
         currAtomIndex++;
-        prevCoords = {prevCoords[1], prevCoords[2], currCACoord};
-        //
-        currCCoord = nerf.place_atom(
+        prevCoords[0] = prevCoords[1];
+        prevCoords[1] = prevCoords[2];
+        prevCoords[2] = currCACoord;
+        float3d currCCoord = nerf.place_atom(
             prevCoords, CA_TO_C_DIST, deBackbone[i].n_ca_c_angle, deBackbone[i].phi
         );
-        currC = AtomCoordinate(
-            "C", currResidue, prevAtoms[0].chain,
-            currAtomIndex, currResidueIndex, currCCoord
-        );
 
-        // Append to reconstructedAtoms
-        reconstructedAtoms.push_back(currN);
-        reconstructedAtoms.push_back(currCA);
-        reconstructedAtoms.push_back(currC);
+        reconstructedAtoms.emplace_back(
+            "N", currResidue, currChain,
+            currAtomIndex, currResidueIndex,
+            currNCoord.x, currNCoord.y, currNCoord.z
+        );
+        currAtomIndex++;
+        reconstructedAtoms.emplace_back(
+            "CA", currResidue, currChain,
+            currAtomIndex, currResidueIndex,
+            currCACoord.x, currCACoord.y, currCACoord.z
+        );
+        currAtomIndex++;
+        reconstructedAtoms.emplace_back(
+            "C", currResidue, currChain,
+            currAtomIndex, currResidueIndex,
+            currCCoord.x, currCCoord.y, currCCoord.z
+        );
         // Increment Residue Index
         currResidueIndex++;
         currAtomIndex++;
@@ -247,17 +250,17 @@ int reconstructBackboneReverse(
 ) {
     std::vector<AtomCoordinate> atomBack = atom;
     // Last atoms
-    atomBack[atomBack.size() - 3].coordinate[0] = lastCoords[0][0];
-    atomBack[atomBack.size() - 3].coordinate[1] = lastCoords[0][1];
-    atomBack[atomBack.size() - 3].coordinate[2] = lastCoords[0][2];
-    atomBack[atomBack.size() - 2].coordinate[0] = lastCoords[1][0];
-    atomBack[atomBack.size() - 2].coordinate[1] = lastCoords[1][1];
-    atomBack[atomBack.size() - 2].coordinate[2] = lastCoords[1][2];
-    atomBack[atomBack.size() - 1].coordinate[0] = lastCoords[2][0];
-    atomBack[atomBack.size() - 1].coordinate[1] = lastCoords[2][1];
-    atomBack[atomBack.size() - 1].coordinate[2] = lastCoords[2][2];
+    atomBack[atomBack.size() - 3].coordinate.x = lastCoords[0][0];
+    atomBack[atomBack.size() - 3].coordinate.y = lastCoords[0][1];
+    atomBack[atomBack.size() - 3].coordinate.z = lastCoords[0][2];
+    atomBack[atomBack.size() - 2].coordinate.x = lastCoords[1][0];
+    atomBack[atomBack.size() - 2].coordinate.y = lastCoords[1][1];
+    atomBack[atomBack.size() - 2].coordinate.z = lastCoords[1][2];
+    atomBack[atomBack.size() - 1].coordinate.x = lastCoords[2][0];
+    atomBack[atomBack.size() - 1].coordinate.y = lastCoords[2][1];
+    atomBack[atomBack.size() - 1].coordinate.z = lastCoords[2][2];
 
-   std::vector<float> bond_angles = nerf.getBondAngles(atom);
+    std::vector<float> bond_angles = nerf.getBondAngles(atom);
 
     std::vector<AtomCoordinate> atomBackward = nerf.reconstructWithReversed(
         atomBack, torsion_angles, bond_angles
@@ -291,7 +294,7 @@ int discretizeSideChainTorsionAngles(
     sideChainTorsionMap = groupSideChainTorsionByResidue(torsionPerResidue, residueNames, AAS);
 
     // Fill in Discretizer map
-    for (auto& sc : sideChainTorsionMap) {
+    for (const auto& sc : sideChainTorsionMap) {
         currResidue = sc.first;
         currResidueTorsionNum = getSideChainTorsionNum(currResidue);
         min_arr = getMinPointerFromSideChainDiscretizers(currResidue, scDiscretizers);
@@ -379,7 +382,7 @@ int fillSideChainDiscretizerMap(
     int currResidueTorsionNum;
     float min, cont_f;
     // Iterate through map
-    for (auto& sc : scDiscretizersMap) {
+    for (const auto& sc : scDiscretizersMap) {
         currResidue = sc.first;
         currResidueTorsionNum = getSideChainTorsionNum(currResidue);
         for (int i = 0; i < currResidueTorsionNum; i++) {
@@ -453,8 +456,6 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     this->rawAtoms = atoms;
     this->compressedBackBone.resize(atoms.size());
     this->compressedSideChain.resize(atoms.size());
-    AminoAcid aa;
-    this->AAS = aa.AminoAcids();
 
     // Remove duplicated atoms
     removeAlternativePosition(atoms);
@@ -485,7 +486,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     } else {
         this->hasOXT = 0;
         this->OXT = AtomCoordinate();
-        this->OXT_coords = std::vector<float>(3, 0.0);
+        this->OXT_coords = {0.0, 0.0, 0.0};
     }
 
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
@@ -642,8 +643,8 @@ int _restoreResidueNames(
 int Foldcomp::_restoreDiscretizer(int angleType) {
     int success = 0;
     std::vector<unsigned int> temp;
-
-    for (auto cb : this->compressedBackBone) {
+    temp.reserve(this->compressedBackBone.size());
+    for (const auto& cb : this->compressedBackBone) {
         switch (angleType) {
         case 0: // Phi
             temp.push_back(cb.phi);
@@ -774,12 +775,13 @@ void Foldcomp::_setAnchor() {
 }
 
 std::vector<float> Foldcomp::checkTorsionReconstruction() {
-    std::vector<float> output;
     // Continuize torsion angles
     this->phi = this->phiDisc.continuize(this->phiDiscretized);
     this->psi = this->psiDisc.continuize(this->psiDiscretized);
     this->omega = this->omegaDisc.continuize(this->omegaDiscretized);
     // Append psi, omega, phi to torsion angles
+    std::vector<float> output;
+    output.reserve(this->phi.size());
     for (size_t i = 0; i < this->phi.size(); i++) {
         output.push_back(this->psi[i]);
         output.push_back(this->omega[i]);
@@ -875,9 +877,6 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     // Reconstruct sidechain
     std::vector< std::vector<AtomCoordinate> > backBonePerResidue = splitAtomByResidue(atom);
     std::string currResidue = getThreeLetterCode(this->header.firstResidue);
-    AminoAcid aa;
-    std::map<std::string, AminoAcid> aminoAcidMap = aa.AminoAcids();
-    this->AAS =aminoAcidMap;
     std::vector<AtomCoordinate> fullResidue;
 
     success = this->_continuizeSideChainTorsionAngles(
@@ -889,10 +888,10 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
             currResidue = backBonePerResidue[i][0].residue;
         }
         fullResidue = nerf.reconstructAminoAcid(
-            backBonePerResidue[i], this->sideChainAnglesPerResidue[i], aminoAcidMap[currResidue]
+            backBonePerResidue[i], this->sideChainAnglesPerResidue[i], AAS.at(currResidue)
         );
         if (this->useAltAtomOrder) {
-            _reorderAtoms(fullResidue, aminoAcidMap[currResidue]);
+            _reorderAtoms(fullResidue, AAS.at(currResidue));
         }
         backBonePerResidue[i] = fullResidue;
     }
@@ -1069,18 +1068,18 @@ int Foldcomp::writeStream(std::ostream& os) {
 
     // 2022-08-08 19:15:30 - Changed to write all anchor atoms
     // TODO: NEED TO BE CHECKED
-    for (auto anchors : this->anchorAtoms) {
+    for (const auto& anchors : this->anchorAtoms) {
         for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                os.write((char*)&anchors[i].coordinate[j], sizeof(float));
-            }
+            os.write((char*)&anchors[i].coordinate.x, sizeof(float));
+            os.write((char*)&anchors[i].coordinate.y, sizeof(float));
+            os.write((char*)&anchors[i].coordinate.z, sizeof(float));
         }
     }
 
     os.write(&this->hasOXT, sizeof(char));
-    for (int i = 0; i < 3; i++) {
-        os.write((char*)&this->OXT_coords[i], sizeof(float));
-    }
+    os.write((char*)&this->OXT_coords.x, sizeof(float));
+    os.write((char*)&this->OXT_coords.y, sizeof(float));
+    os.write((char*)&this->OXT_coords.z, sizeof(float));
 
     // END OF BACKBONE METADATA
     // // Write sidechain discretizers
@@ -1128,24 +1127,12 @@ int Foldcomp::writeStream(std::ostream& os) {
 }
 
 int Foldcomp::write(std::string filename) {
-    int flag = 0;
-    std::ofstream outfile;
-    outfile.open(filename, std::ios::out | std::ios::binary);
     // Open in binary & writing mode
-    if (!outfile.is_open()) {
-        std::cout << "Error opening file: " << filename << std::endl;
-        flag = -1;
-        return flag;
+    std::ofstream outfile(filename, std::ios::out | std::ios::binary);
+    if (!outfile) {
+        return -1;
     }
-    if (outfile.good()) {
-        flag = writeStream(outfile);
-        // Close file
-        outfile.close();
-    } else {
-        std::cout << "Error writing file: " << filename << std::endl;
-        flag = -1;
-    }
-    return flag;
+    return writeStream(outfile);
 }
 
 #ifdef FOLDCOMP_EXECUTABLE
@@ -1164,19 +1151,19 @@ int Foldcomp::writeTar(mtar_t& tar, std::string filename, size_t size) {
     // Write title
     mtar_write_data(&tar, this->strTitle.c_str(), this->strTitle.length());
     // Write anchor atoms
-    for (auto anchors : this->anchorAtoms) {
+    for (const auto& anchors : this->anchorAtoms) {
         for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                mtar_write_data(&tar, &anchors[i].coordinate[j], sizeof(float));
-            }
+            mtar_write_data(&tar, &anchors[i].coordinate.x, sizeof(float));
+            mtar_write_data(&tar, &anchors[i].coordinate.y, sizeof(float));
+            mtar_write_data(&tar, &anchors[i].coordinate.z, sizeof(float));
         }
     }
     // Write hasOXT
     mtar_write_data(&tar, &this->hasOXT, sizeof(char));
     // Write OXT_coords
-    for (int i = 0; i < 3; i++) {
-        mtar_write_data(&tar, &this->OXT_coords[i], sizeof(float));
-    }
+    mtar_write_data(&tar, &this->OXT_coords.x, sizeof(float));
+    mtar_write_data(&tar, &this->OXT_coords.y, sizeof(float));
+    mtar_write_data(&tar, &this->OXT_coords.z, sizeof(float));
     // Write sideChainDisc
     // mtar_write_data(&tar, &this->sideChainDisc, sizeof(SideChainDiscretizers));
     // Write the compressed backbone
@@ -1262,7 +1249,7 @@ int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& dat
     // Write title
     outfile << ">" << this->strTitle << std::endl;
     // Write data
-    for (auto s : data) {
+    for (const auto& s : data) {
         outfile << s;
     }
     outfile << std::endl;
@@ -1280,7 +1267,7 @@ int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<s
     // MKLLSKPR... YVK // amino acid sequence
     // Write title
     std::string str = ">" + this->strTitle + "\n";
-    for (auto s : data) {
+    for (const auto& s : data) {
         str += s;
     }
     str += "\n";
@@ -1401,9 +1388,9 @@ void Foldcomp::print(int length) {
     std::cout << "[PrevAtoms]" << std::endl;
     for (int i = 0; i < 3; i++) {
         std::cout << "Atom " << this->prevAtoms[i].atom << ": " << std::endl;
-        std::cout << "x: " << this->prevAtoms[i].coordinate[0] << std::endl;
-        std::cout << "y: " << this->prevAtoms[i].coordinate[1] << std::endl;
-        std::cout << "z: " << this->prevAtoms[i].coordinate[2] << std::endl;
+        std::cout << "x: " << this->prevAtoms[i].coordinate.x << std::endl;
+        std::cout << "y: " << this->prevAtoms[i].coordinate.y << std::endl;
+        std::cout << "z: " << this->prevAtoms[i].coordinate.z << std::endl;
     }
     std::cout << "--------------------" << std::endl;
 
@@ -1440,13 +1427,13 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
     for (int i = 0; i < this->nResidue; i++) {
         currBondAngle = calculateBondAngles(atomByResidue[i], this->AAS[this->residueThreeLetter[i]]);
         currBondLength = calculateBondLengths(atomByResidue[i], this->AAS[this->residueThreeLetter[i]]);
-        for (auto bl: currBondLength) {
+        for (const auto& bl: currBondLength) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondLength,";
             outfile << bl.first << "," << bl.second << ",NA,NA,NA,";
             outfile << this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << ",";
             outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << "\n";
         }
-        for (auto ba : currBondAngle) {
+        for (const auto& ba : currBondAngle) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondAngle,";
             outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << ",";
             outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << "\n";

@@ -1,2 +1,2 @@
 from .foldcomp import *
-from .setup import setup
+from .setup import setup, setup_async

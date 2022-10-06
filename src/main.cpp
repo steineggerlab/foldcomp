@@ -19,26 +19,23 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 // Headers in the project
-#include "sidechain.h"
-#include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "foldcomp.h"
-#include "discretizer.h"
-#include "nerf.h"
 #include "structure_reader.h"
-#include "torsion_angle.h"
 #include "utility.h"
-// Standard libraries
-#include <vector>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <sys/stat.h>
-#include <cstring>
-#include <getopt.h>
-// OpenMP for parallelization
 
+// Standard libraries
+#include <cstring>
+#include <fstream> // IWYU pragma: keep
+#include <getopt.h>
+#include <iostream>
+#include <sstream> // IWYU pragma: keep
+#include <string>
+#include <vector>
+
+#include <sys/stat.h>
+
+// OpenMP for parallelization
 #ifdef OPENMP
 #include <omp.h>
 #endif
@@ -63,7 +60,7 @@ int print_usage(void) {
     std::cout << "       foldcomp check <fcz_file>" << std::endl;
     std::cout << "       foldcomp check [-t number] <fcz_dir|tar>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
-    std::cout << " -t, --threads        number of threads to use [default=1]" << std::endl;
+    std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=25]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
@@ -91,7 +88,10 @@ int compress(std::string input, std::string output) {
     compRes.anchorThreshold = anchor_residue_threshold;
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
-    compRes.write(output);
+    if (compRes.write(output) != 0) {
+        std::cout << "Error writing file: " << output << std::endl;
+        return -1;
+    }
     // DEBUGGING
     // Nerf nerf;
     // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
@@ -253,7 +253,6 @@ int main(int argc, char* const *argv) {
             {"no-merge",      no_argument, &ext_merge,  0 },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
-            {"cpu",     required_argument,          0, 'c'},
             {0,                         0,          0,  0 }
     };
 
@@ -276,15 +275,12 @@ int main(int argc, char* const *argv) {
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
-            case 'c':
-                num_threads = atoi(optarg);
-                break;
             case '?':
                 return print_usage();
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazt:b:c:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
     }
 
     // Parse non-option arguments

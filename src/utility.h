@@ -13,12 +13,10 @@
  */
 #pragma once
 #include <cstring>
-#include <iostream>
 #include <fstream> // IWYU pragma: keep
+#include <iostream>
 #include <map>
 #include <vector>
-
-const float PI = 3.14159265;
 
 template<typename T>
 std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
@@ -28,20 +26,6 @@ std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
     std::vector<T> vec(first, last);
     return vec;
 }
-
-std::vector<float> crossProduct(std::vector<float> v1, std::vector<float> v2);
-float norm(std::vector<float> v);
-float getCosineTheta(std::vector<float> v1, std::vector<float> v2);
-
-float angle(
-    std::vector<float> atm1,
-    std::vector<float> atm2,
-    std::vector<float> atm3
-);
-
-float distance(std::vector<float> atm1, std::vector<float> atm2);
-
-
 
 template<typename T>
 /**

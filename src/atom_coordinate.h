@@ -11,15 +11,15 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 #pragma once
+#include "float3d.h"
+
+#include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>
 
 class AtomCoordinate {
-private:
-    void check3dCoordinate();
 public:
     AtomCoordinate() = default;
     AtomCoordinate(
@@ -29,7 +29,7 @@ public:
     );
     AtomCoordinate(
         std::string a, std::string r, std::string c,
-        int ai, int ri, std::vector<float> coord,
+        int ai, int ri, float3d coord,
         float occupancy = 0.0f, float tempFactor = 0.0f
     );
     // data
@@ -38,7 +38,7 @@ public:
     std::string chain;
     int atom_index;
     int residue_index;
-    std::vector<float> coordinate;
+    float3d coordinate;
     float occupancy;
     float tempFactor;
 
@@ -53,7 +53,19 @@ public:
     void setTempFactor(float tf) { this->tempFactor = tf; };
 };
 
-std::vector< std::vector<float>> extractCoordinates(const std::vector<AtomCoordinate>& atoms);
+std::vector<float3d> extractCoordinates(const std::vector<AtomCoordinate>& atoms);
+
+static inline void extractCoordinates(
+    float3d* output,
+    const AtomCoordinate& atom1,
+    const AtomCoordinate& atom2,
+    const AtomCoordinate& atom3
+) {
+    output[0] = atom1.coordinate;
+    output[1] = atom2.coordinate;
+    output[2] = atom3.coordinate;
+}
+
 std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 );
@@ -63,7 +75,7 @@ std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms);
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option = 0);
 
 std::vector<AtomCoordinate> weightedAverage(
-    std::vector<AtomCoordinate>& origAtoms, std::vector<AtomCoordinate>& revAtoms
+    const std::vector<AtomCoordinate>& origAtoms, const std::vector<AtomCoordinate>& revAtoms
 );
 
 void writeAtomCoordinatesToPDB(
@@ -81,7 +93,7 @@ std::vector<std::string> getResidueNameVector(
     const std::vector<AtomCoordinate>& atomCoordinates
 );
 
-AtomCoordinate findFirstAtom(std::vector<AtomCoordinate>& atoms, std::string atom_name);
+AtomCoordinate findFirstAtom(const std::vector<AtomCoordinate>& atoms, std::string atom_name);
 void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start);
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms);
 
@@ -95,6 +107,5 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
 
-float distance(AtomCoordinate& a, AtomCoordinate& b);
-std::vector<float> distance(std::vector<AtomCoordinate>& a, std::vector<AtomCoordinate>& b);
-float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2);
+template <int32_t T, int32_t P>
+void ftoa(float n, char* s);

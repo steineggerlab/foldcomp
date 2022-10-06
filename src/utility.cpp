@@ -11,82 +11,16 @@
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
-
 // TODO: TRIM WHITE SPACES FROM PDB LINE
-
 #include "utility.h"
 
 #include <cstdlib>
-#include <cmath>
 #include <fstream>
 #include <string>
 
-/**
- * @brief Return the cross product of two vectors
- *
- * @param v1 A 3d vector of float
- * @param v2 A 3d vector of float
- * @return std::vector<float>
- */
-std::vector<float> crossProduct(std::vector<float> v1, std::vector<float> v2) {
-    // TODO: Check the length of v1, v2 to be 3
-    float x = (v1[1] * v2[2]) - (v2[1] * v1[2]);
-    float y = (v1[2] * v2[0]) - (v2[2] * v1[0]);
-    float z = (v1[0] * v2[1]) - (v2[0] * v1[1]);
-    // Calculate
-    std::vector<float> product{ x, y, z };
-    return product;
-}
-
-/**
- * @brief Return the norm of given vector
- *
- * @param v A 3d vector of float
- * @return float
- */
-float norm(std::vector<float> v) {
-    return sqrt(pow(v[0], 2) + pow(v[1], 2) + pow(v[2], 2));
-}
-
-float getCosineTheta(std::vector<float> v1, std::vector<float> v2) {
-    float output;
-    // TODO: Check the length of v1, v2 to be 3
-    // Calculate inner product of two vectors
-    float inner_product = (v1[0] * v2[0]) + (v1[1] * v2[1]) + (v1[2] * v2[2]);
-    float v1_size = pow(v1[0], 2) + pow(v1[1], 2) + pow(v1[2], 2);
-    float v2_size = pow(v2[0], 2) + pow(v2[1], 2) + pow(v2[2], 2);
-    output = inner_product / sqrt(v1_size * v2_size);
-    return output;
-}
-
-float distance(std::vector<float> atm1, std::vector<float> atm2) {
-    float output = 0.0;
-    output = sqrt(
-        (pow(atm1[0] - atm2[0], 2) +
-            pow(atm1[1] - atm2[1], 2) +
-            pow(atm1[2] - atm2[2], 2))
-    );
-    return output;
-}
-
-float angle(
-    std::vector<float> atm1,
-    std::vector<float> atm2,
-    std::vector<float> atm3
-) {
-    std::vector<float> d1{
-        (atm1[0] - atm2[0]), (atm1[1] - atm2[1]), (atm1[2] - atm2[2])
-    };
-    std::vector<float> d2{
-        (atm3[0] - atm2[0]), (atm3[1] - atm2[1]), (atm3[2] - atm2[2])
-    };
-    float cos_theta = getCosineTheta(d1, d2);
-    float theta = acos(cos_theta) * 180.0 / PI;
-    return theta;
-}
-
 #ifdef FOLDCOMP_EXECUTABLE
 #include <dirent.h>
+#include <errno.h>
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(std::string dir) {
     std::vector<std::string> files;
@@ -106,7 +40,7 @@ std::vector<std::string> getFilesInDirectory(std::string dir) {
     }
     closedir(dp);
     return files;
-};
+}
 #endif
 
 std::string baseName(std::string const path) {

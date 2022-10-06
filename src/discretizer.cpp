@@ -13,9 +13,11 @@
  */
 #include "discretizer.h"
 
-#include <cstdlib>
-#include <iostream>
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <fstream> // IWYU pragma: keep
+#include <iostream>
 
 Discretizer::Discretizer(const std::vector<float>& values, unsigned int nb):
     n_bin(nb) {
@@ -39,6 +41,7 @@ std::vector<unsigned int> Discretizer::discretize(const std::vector<float>& cont
     std::vector<float>::const_iterator it;
     unsigned int tmp_disc_value;
     std::vector<unsigned int> discretizedValues;
+    discretizedValues.reserve(continuous_values.size());
     for (it = continuous_values.cbegin(); it != continuous_values.cend(); it++) {
         tmp_disc_value = (*it - min) * (this->disc_f);
         discretizedValues.push_back(tmp_disc_value);
@@ -51,11 +54,11 @@ unsigned int Discretizer::discretize(float continuous_value) {
 }
 
 std::vector<float> Discretizer::continuize(const std::vector<unsigned int>& discrete_values) {
-    std::vector<float> output;
     std::vector<unsigned int>::const_iterator it;
-    float tmp_cont_value;
+    std::vector<float> output;
+    output.reserve(discrete_values.size());
     for (it = discrete_values.cbegin(); it != discrete_values.cend(); it++) {
-        tmp_cont_value = (*it * this->cont_f) + this->min;
+        float tmp_cont_value = (*it * this->cont_f) + this->min;
         output.push_back(tmp_cont_value);
     }
     return output;

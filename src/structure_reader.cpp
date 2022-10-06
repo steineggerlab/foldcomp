@@ -11,15 +11,14 @@
  * ---
  * Copyright © 2022 Hyunbin Kim, All rights reserved
  */
-
 #include "structure_reader.h"
 
 #include <stdexcept>
 
 // Gemmi
-#include "gemmi/mmread.hpp"
-#include "gemmi/input.hpp"
 #include "gemmi/gz.hpp"
+#include "gemmi/input.hpp"
+#include "gemmi/mmread.hpp"
 
 /**
  * @brief StructureReader::updateStructure
