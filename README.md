@@ -3,8 +3,8 @@ Foldcomp compresses protein structures with torsion angles effectively. It compr
 
 <p align="center">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_data_format_dark.png">
-  <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_data_format.png" height="400">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/format_benchmark_dark.png">
+  <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/format_benchmark_light.png" height="400" alt="Left panel: Foldcomp data format, saving amino acid residue in 13 byte. Top right panel:  Foldcomp decompression is as fast as gzip. Bottom right panel: Foldcomp compression ratio is higher than pulchra and gzip.">
 </picture>
 </p>
 
