@@ -40,6 +40,11 @@ jobs:
         ./foldcomp decompress ../test/test.fcz
         ./foldcomp compress ../test/test.cif.gz
         ./foldcomp decompress ../test/test.cif.fcz
+        RMSD1=$(./build/foldcomp rmsd ./test/test.pdb ./test/decompressed.pdb | cut -f6)
+        awk -v check=$RMSD1 -v target=0.102262 'BEGIN { if (check != target) { print check"!="target; exit 1 } }'
+        RMSD2=$(./build/foldcomp rmsd ./test/test.cif.gz ./test/decompressed_cif.pdb | cut -f6)
+        awk -v check=$RMSD2 -v target=0.144428 'BEGIN { if (check != target) { print check"!="target; exit 1 } }'
+        echo "All good!"
 
   compile:
     strategy:

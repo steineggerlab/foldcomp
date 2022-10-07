@@ -49,7 +49,7 @@ foldcomp check <fcz_file>
 foldcomp check [-t number] <fcz_dir|tar>
 
 # RMSD
-foldcomp rmsd <pdb_file1> <pdb_file2>
+foldcomp rmsd <pdb1|cif1> <pdb2|cif2>
 
 # Options
  -h, --help           print this help message
