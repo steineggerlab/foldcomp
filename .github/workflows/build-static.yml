@@ -41,9 +41,9 @@ jobs:
         ./foldcomp compress ../test/test.cif.gz
         ./foldcomp decompress ../test/test.cif.fcz
         RMSD1=$(./foldcomp rmsd ../test/test.pdb ../test/test_fcz.pdb | cut -f6)
-        awk -v check=$RMSD1 -v target=0.102262 'BEGIN { if (check != target) { print check"!="target; exit 1 } }'
+        awk -v check=$RMSD1 -v target=0.102262 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 } }'
         RMSD2=$(./foldcomp rmsd ../test/test.cif.gz ../test/test.cif_fcz.pdb | cut -f6)
-        awk -v check=$RMSD2 -v target=0.144428 'BEGIN { if (check != target) { print check"!="target; exit 1 } }'
+        awk -v check=$RMSD2 -v target=0.144428 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 }  }'
         echo "All good!"
 
   compile:
