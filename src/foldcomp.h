@@ -16,7 +16,6 @@
 #pragma once
 #include "float3d.h"
 
-#include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
 #include "nerf.h"
@@ -32,6 +31,9 @@
 #include <map>
 #include <string>
 #include <vector>
+
+// forward declaration
+class AminoAcid;
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
@@ -246,7 +248,7 @@ int fillSideChainDiscretizerMap(
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap
 );
 
-void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa);
+void _reorderAtoms(std::vector<AtomCoordinate>& atoms, const AminoAcid& aa);
 
 // Print
 void printCompressedResidue(BackboneChain& res);
@@ -284,10 +286,6 @@ private:
     );
 
 public:
-    Foldcomp(){
-        AminoAcid aa;
-        this->AAS = aa.AminoAcids();
-    };
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
@@ -356,7 +354,7 @@ public:
     std::vector<unsigned int> ca_c_n_angleDiscretized;
     Discretizer c_n_ca_angleDisc;
     std::vector<unsigned int> c_n_ca_angleDiscretized;
-    std::map<std::string, AminoAcid> AAS;
+    const static std::map<std::string, AminoAcid> AAS;
     Nerf nerf;
     // Sidechain angles
     std::vector<float> sideChainAngles;

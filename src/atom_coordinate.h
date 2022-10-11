@@ -48,8 +48,8 @@ public:
     //BackboneChain toCompressedResidue();
 
     //methods
-    bool isBackbone();
-    void print(int option = 0);
+    bool isBackbone() const;
+    void print(int option = 0) const ;
     void setTempFactor(float tf) { this->tempFactor = tf; };
 };
 
@@ -70,7 +70,7 @@ std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 );
 
-std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms);
+std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms);
 
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option = 0);
 
