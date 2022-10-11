@@ -69,7 +69,7 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
         fclose(file);
     }
 
-    char cache_name[FILENAME_MAX];
+    // char cache_name[FILENAME_MAX];
     // if ((data_mode & DB_READER_NO_CACHE) == 0) {
     //     sprintf(cache_name, "%s.cache.%d", index_name, data_mode);
 
