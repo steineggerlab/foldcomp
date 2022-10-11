@@ -168,13 +168,13 @@ std::vector<float> calculateTorsionAnglesInResidue(
 }
 
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(
-    std::vector<AtomCoordinate>& originalAtoms, std::map<std::string, AminoAcid>& AAmap
+    std::vector<AtomCoordinate>& originalAtoms, const std::map<std::string, AminoAcid>& AAmap
 ) {
     std::vector<std::vector<AtomCoordinate>> atomByResidue = splitAtomByResidue(originalAtoms);
     std::vector<std::vector<float>> output;
     output.reserve(atomByResidue.size());
     for (const auto& residue : atomByResidue) {
-        output.emplace_back(calculateTorsionAnglesInResidue(residue, AAmap[residue[0].residue]));
+        output.emplace_back(calculateTorsionAnglesInResidue(residue, AAmap.at(residue[0].residue)));
     }
     return output;
 }
@@ -430,7 +430,7 @@ void checkEmptyAtomsInResidue(
 std::map<std::string, std::vector< std::vector<float> > > groupSideChainTorsionByResidue(
     std::vector< std::vector<float> >& sideChainTorsionAngles,
     std::vector<std::string>& residueNames,
-    std::map<std::string, AminoAcid>& AAS
+    const std::map<std::string, AminoAcid>& AAS
 ) {
     std::map<std::string, std::vector< std::vector<float> > > output;
     // Initialize the map

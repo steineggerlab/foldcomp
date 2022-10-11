@@ -14,6 +14,7 @@
  */
 #include "foldcomp.h"
 
+#include "amino_acid.h"
 #include "sidechain.h"
 #include "torsion_angle.h"
 #include "utility.h"
@@ -275,7 +276,7 @@ int reconstructBackboneReverse(
 int discretizeSideChainTorsionAngles(
     std::vector< std::vector<float> >& torsionPerResidue,
     std::vector<std::string>& residueNames,
-    std::map<std::string, AminoAcid>& AAS,
+    const std::map<std::string, AminoAcid>& AAS,
     SideChainDiscretizers& scDiscretizers,
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap,
     std::vector<unsigned int>& output
@@ -341,28 +342,23 @@ int continuizeSideChainTorsionAngles(
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap,
     std::vector< std::vector<float> >& output
 ) {
-    // Declare
-    int success = 0;
-    std::string currResidue;
-    int currResidueTorsionNum = 0;
-    int currIndex = 0;
-    float currTorsion = 0;
 
     scDiscretizersMap = initializeSideChainDiscMap();
-    success = fillSideChainDiscretizerMap(scDiscretizers, scDiscretizersMap);
+    int success = fillSideChainDiscretizerMap(scDiscretizers, scDiscretizersMap);
     std::vector< std::vector<float> > torsionPerResidue;
     std::vector<float> currTorsionVector;
-    FixedAngleDiscretizer currDiscretizer = FixedAngleDiscretizer(pow(2, NUM_BITS_TEMP) - 1);
+    FixedAngleDiscretizer currDiscretizer(pow(2, NUM_BITS_TEMP) - 1);
     // Iterate
+    int currIndex = 0;
     for (size_t i = 0; i < residueNames.size(); i++) {
-        currResidue = residueNames[i];
-        currResidueTorsionNum = getSideChainTorsionNum(currResidue);
+        std::string currResidue = residueNames[i];
+        int currResidueTorsionNum = getSideChainTorsionNum(currResidue);
         currTorsionVector.clear();
         currTorsionVector.resize(currResidueTorsionNum);
         for (int j = 0; j < currResidueTorsionNum; j++) {
             // Get current torsion angle vector
             //currTorsion = scDiscretizersMap[currResidue][j].continuize(torsionDiscretized[currIndex]);
-            currTorsion = currDiscretizer.continuize(torsionDiscretized[currIndex]);
+            float currTorsion = currDiscretizer.continuize(torsionDiscretized[currIndex]);
             currTorsionVector[j] = currTorsion;
             currIndex++;
         }
@@ -1425,18 +1421,18 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
     std::map<std::string, float> currTorsionAngle;
 
     for (int i = 0; i < this->nResidue; i++) {
-        currBondAngle = calculateBondAngles(atomByResidue[i], this->AAS[this->residueThreeLetter[i]]);
-        currBondLength = calculateBondLengths(atomByResidue[i], this->AAS[this->residueThreeLetter[i]]);
+        currBondAngle = calculateBondAngles(atomByResidue[i], this->AAS.at(this->residueThreeLetter[i]));
+        currBondLength = calculateBondLengths(atomByResidue[i], this->AAS.at(this->residueThreeLetter[i]));
         for (const auto& bl: currBondLength) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondLength,";
             outfile << bl.first << "," << bl.second << ",NA,NA,NA,";
-            outfile << this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << ",";
-            outfile << bl.second - this->AAS[this->residueThreeLetter[i]].bondLengths[bl.first] << "\n";
+            outfile << this->AAS.at(this->residueThreeLetter[i]).bondLengths.at(bl.first) << ",";
+            outfile << bl.second - this->AAS.at(this->residueThreeLetter[i]).bondLengths.at(bl.first) << "\n";
         }
         for (const auto& ba : currBondAngle) {
             outfile << i << "," << this->residueThreeLetter[i] << ",BondAngle,";
-            outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << ",";
-            outfile << ba.second - this->AAS[this->residueThreeLetter[i]].bondAngles[ba.first] << "\n";
+            outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS.at(this->residueThreeLetter[i]).bondAngles.at(ba.first) << ",";
+            outfile << ba.second - this->AAS.at(this->residueThreeLetter[i]).bondAngles.at(ba.first) << "\n";
         }
         for (size_t j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             outfile << i << "," << this->residueThreeLetter[i] << ",TorsionAngle,";
@@ -1528,7 +1524,7 @@ void printValidityError(ValidityError err, std::string& filename) {
     }
 }
 
-void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa) {
+void _reorderAtoms(std::vector<AtomCoordinate>& atoms, const AminoAcid& aa) {
     std::vector<AtomCoordinate> newAtoms = atoms;
     for (size_t i = 0; i < atoms.size(); i++) {
         if (atoms[i].atom == aa.altAtoms[i]) {
@@ -1774,3 +1770,4 @@ int getSideChainTorsionNum(std::string residue) {
     return out;
 }
 
+const std::map<std::string, AminoAcid> Foldcomp::AAS = AminoAcid::AminoAcids();

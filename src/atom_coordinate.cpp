@@ -69,11 +69,11 @@ bool AtomCoordinate::operator!=(const AtomCoordinate& other) const {
     return !(*this == other);
 }
 
-bool AtomCoordinate::isBackbone() {
+bool AtomCoordinate::isBackbone() const {
     return ((this->atom == "N") ||(this->atom == "CA") ||(this->atom == "C"));
 }
 
-void AtomCoordinate::print(int option) {
+void AtomCoordinate::print(int option) const {
     std::cout << "Atom: " << this->atom << std::endl;
     if (option != 0) {
         std::cout << "Residue: " << this->residue << std::endl;
@@ -127,16 +127,16 @@ std::vector<AtomCoordinate> extractChain(
 }
 
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option) {
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         curr_atm.print(option);
     }
 }
 
-std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms) {
+std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms) {
     std::vector<AtomCoordinate> output;
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.isBackbone()) {
-            output.push_back(curr_atm);
+            output.emplace_back(curr_atm);
         }
     }
     return output;
@@ -373,11 +373,11 @@ std::vector<AtomCoordinate> getAtomsWithResidueIndex(
     std::vector<std::string> atomNames
 ) {
     std::vector<AtomCoordinate> output;
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.residue_index == residue_index) {
-            for (std::string atom_name : atomNames) {
+            for (const std::string& atom_name : atomNames) {
                 if (curr_atm.atom == atom_name) {
-                    output.push_back(curr_atm);
+                    output.emplace_back(curr_atm);
                 }
             }
         }
