@@ -1,5 +1,11 @@
 # Foldcomp
-Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~6kb.
+<img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_strong_marv.png" align="right" height="225"/>
+Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~6kb. 
+
+Foldcomp efficient compressed format stores protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format (FCZ).
+
+> Foldcomp currently only supports compression of single chain PDB files
+<br clear="right"/>
 
 <p align="center">
 <picture>
@@ -7,10 +13,6 @@ Foldcomp compresses protein structures with torsion angles effectively. It compr
   <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/format_benchmark_light.png" height="400" alt="Left panel: Foldcomp data format, saving amino acid residue in 13 byte. Top right panel:  Foldcomp decompression is as fast as gzip. Bottom right panel: Foldcomp compression ratio is higher than pulchra and gzip.">
 </picture>
 </p>
-
-Foldcomp is a compression method and format to compress protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format, FCZ.
-
-> Foldcomp currently only supports compression of single chain PDB files
 
 ## Usage
 
@@ -96,3 +98,4 @@ with foldcomp.open("test/example_db", ids=ids) as db:
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
   <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
 </a>
+
