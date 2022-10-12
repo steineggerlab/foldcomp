@@ -57,7 +57,7 @@ foldcomp rmsd <pdb1|cif1> <pdb2|cif2>
  -h, --help           print this help message
  -t, --threads        threads for (de)compression of folders/tar files [default=1]
  -a, --alt            use alternative atom order [default=false]
- -b, --break          interval size to save absolute atom coordinates [default=200]
+ -b, --break          interval size to save absolute atom coordinates [default=25]
  -z, --tar            save as tar file [default=false]
  --plddt              extract pLDDT score (only for extraction mode)
  --fasta              extract amino acid sequence (only for extraction mode)
