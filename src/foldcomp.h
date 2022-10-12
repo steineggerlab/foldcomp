@@ -297,7 +297,7 @@ public:
     int nSideChainTorsion = 0;
     int nInnerAnchor = 0;
     int nAllAnchor = 0;
-    int anchorThreshold = 200;
+    int anchorThreshold = 25;
     // Indices for residue & atom
     int idxResidue = 0;
     int idxAtom = 0;
