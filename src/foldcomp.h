@@ -52,6 +52,8 @@ class AminoAcid;
 #define C_TO_N_DIST 1.3311
 #define PRO_N_TO_CA_DIST 1.353
 
+#define DEFAULT_ANCHOR_THRESHOLD 25
+
 // ERROR CODES FOR CHECKING VALIDITY
 enum ValidityError {
     SUCCESS = 0,
@@ -297,7 +299,7 @@ public:
     int nSideChainTorsion = 0;
     int nInnerAnchor = 0;
     int nAllAnchor = 0;
-    int anchorThreshold = 25;
+    int anchorThreshold = DEFAULT_ANCHOR_THRESHOLD;
     // Indices for residue & atom
     int idxResidue = 0;
     int idxAtom = 0;
