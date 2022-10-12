@@ -45,7 +45,7 @@
 #endif
 
 static int use_alt_order = 0;
-static int anchor_residue_threshold = 25;
+static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
@@ -63,7 +63,7 @@ int print_usage(void) {
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
-    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=25]" << std::endl;
+    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
