@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-07 17:25:34
+ * Last Modified: 2022-10-13 22:05:14
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -81,6 +81,41 @@ int compress(std::string input, std::string output) {
         return 1;
     }
     std::string title = reader.title;
+
+    // Prototyping for multiple chain support - 2022-10-13 22:01:53
+    // TODO: Integrate this to COMPRESS_MULTIPLE mode
+    removeAlternativePosition(atomCoordinates);
+    // Identify multiple chains or regions with discontinous residue indices
+    std::vector<int> fr = identifyFragments(atomCoordinates);
+    if (fr.size() > 0) {
+        // Split
+        std::vector<std::vector<AtomCoordinate>> fragments = splitFragments(atomCoordinates, fr);
+        // Variables for naming output files
+        int fragIndex = 0;
+        std::string prevChain = fragments[0][0].chain;
+        std::string output_file;
+        for (size_t i = 0; i < fragments.size(); i++) {
+            // New chain observed. Update frageIndex and prevChain
+            if (fragments[i][0].chain != prevChain) {
+                fragIndex = 0;
+                prevChain = fragments[i][0].chain;
+            }
+            output_file = getFileWithoutExt(output) + fragments[i][0].chain + "_" + std::to_string(fragIndex) + ".fcz";
+            // When there's only one fragment with a chain, ignore fragment index
+            if (fragIndex == 0 && i != fragments.size() - 1 && fragments[i][0].chain != fragments[i + 1][0].chain) {
+                output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
+            }
+            std::cout << "Compressing chain " << fragments[i][0].chain << ", fragment " << fragIndex << " to " << output_file << std::endl;
+            // Compress
+            Foldcomp foldcomp;
+            foldcomp.anchorThreshold = anchor_residue_threshold;
+            foldcomp.strTitle = title;
+            foldcomp.compress(fragments[i]);
+            foldcomp.write(output_file);
+            fragIndex++;
+        }
+        return 0;
+    }
 
     std::vector<BackboneChain> compData;
     Foldcomp compRes = Foldcomp();
@@ -261,6 +296,7 @@ int main(int argc, char* const *argv) {
     int num_threads = 1;
     int has_output = 0;
 
+    // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
     enum {
         COMPRESS,

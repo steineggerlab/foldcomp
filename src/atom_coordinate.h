@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-10-06 19:54:30
+ * Last Modified: 2022-10-13 21:03:13
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -110,3 +110,6 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
 
 template <int32_t T, int32_t P>
 void ftoa(float n, char* s);
+
+std::vector<int> identifyFragments(std::vector<AtomCoordinate>& atoms, int mode = 3);
+std::vector<std::vector<AtomCoordinate>> splitFragments(std::vector<AtomCoordinate>& atoms, std::vector<int> br);
