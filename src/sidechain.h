@@ -52,7 +52,7 @@ std::vector<float> calculateTorsionAnglesInResidue(
 );
 
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(
-    std::vector<AtomCoordinate>& originalAtoms, std::map<std::string, AminoAcid>& AAmap
+    std::vector<AtomCoordinate>& originalAtoms, const std::map<std::string, AminoAcid>& AAmap
 );
 
 void compareMap(
@@ -103,7 +103,7 @@ void checkEmptyAtomsInResidue(std::vector<AtomCoordinate>& Residue, AminoAcid& A
 std::map<std::string, std::vector< std::vector<float> > > groupSideChainTorsionByResidue(
     std::vector< std::vector<float> >& sideChainTorsionAngles,
     std::vector<std::string>& residueNames,
-    std::map<std::string, AminoAcid>& AAS
+    const std::map<std::string, AminoAcid>& AAS
 );
 std::vector<float> getSpecificTorsionAngle(
     std::map<std::string, std::vector< std::vector<float> > > sideChainTorsionMap,

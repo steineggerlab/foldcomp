@@ -16,7 +16,6 @@
 #pragma once
 #include "float3d.h"
 
-#include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "discretizer.h"
 #include "nerf.h"
@@ -32,6 +31,9 @@
 #include <map>
 #include <string>
 #include <vector>
+
+// forward declaration
+class AminoAcid;
 
 // CONSTANTS
 #define NUM_TYPE_OF_ANGLES 6
@@ -49,6 +51,8 @@
 #define CA_TO_C_DIST 1.5281
 #define C_TO_N_DIST 1.3311
 #define PRO_N_TO_CA_DIST 1.353
+
+#define DEFAULT_ANCHOR_THRESHOLD 25
 
 // ERROR CODES FOR CHECKING VALIDITY
 enum ValidityError {
@@ -246,7 +250,7 @@ int fillSideChainDiscretizerMap(
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap
 );
 
-void _reorderAtoms(std::vector<AtomCoordinate>& atoms, AminoAcid& aa);
+void _reorderAtoms(std::vector<AtomCoordinate>& atoms, const AminoAcid& aa);
 
 // Print
 void printCompressedResidue(BackboneChain& res);
@@ -284,10 +288,6 @@ private:
     );
 
 public:
-    Foldcomp(){
-        AminoAcid aa;
-        this->AAS = aa.AminoAcids();
-    };
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
@@ -299,7 +299,7 @@ public:
     int nSideChainTorsion = 0;
     int nInnerAnchor = 0;
     int nAllAnchor = 0;
-    int anchorThreshold = 200;
+    int anchorThreshold = DEFAULT_ANCHOR_THRESHOLD;
     // Indices for residue & atom
     int idxResidue = 0;
     int idxAtom = 0;
@@ -356,7 +356,7 @@ public:
     std::vector<unsigned int> ca_c_n_angleDiscretized;
     Discretizer c_n_ca_angleDisc;
     std::vector<unsigned int> c_n_ca_angleDiscretized;
-    std::map<std::string, AminoAcid> AAS;
+    const static std::map<std::string, AminoAcid> AAS;
     Nerf nerf;
     // Sidechain angles
     std::vector<float> sideChainAngles;

@@ -66,7 +66,7 @@ public:
         }
     };
 
-    std::map<std::string, AminoAcid> AminoAcids() {
+    static std::map<std::string, AminoAcid> AminoAcids() {
         std::map<std::string, AminoAcid> output;
         output.emplace("ALA", AminoAcid('A', "ALA", "Alanine", // name
             {"N", "CA", "C", "O", "CB",}, // atoms

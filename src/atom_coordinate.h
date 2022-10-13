@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-27 11:50:15
+ * Last Modified: 2022-10-06 19:54:30
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -48,8 +48,8 @@ public:
     //BackboneChain toCompressedResidue();
 
     //methods
-    bool isBackbone();
-    void print(int option = 0);
+    bool isBackbone() const;
+    void print(int option = 0) const ;
     void setTempFactor(float tf) { this->tempFactor = tf; };
 };
 
@@ -70,7 +70,7 @@ std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 );
 
-std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms);
+std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms);
 
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option = 0);
 
@@ -106,6 +106,7 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
     std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
+float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2);
 
 template <int32_t T, int32_t P>
 void ftoa(float n, char* s);
