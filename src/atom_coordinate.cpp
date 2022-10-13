@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-09-29 17:30:10
+ * Last Modified: 2022-10-06 19:59:30
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -69,11 +69,11 @@ bool AtomCoordinate::operator!=(const AtomCoordinate& other) const {
     return !(*this == other);
 }
 
-bool AtomCoordinate::isBackbone() {
+bool AtomCoordinate::isBackbone() const {
     return ((this->atom == "N") ||(this->atom == "CA") ||(this->atom == "C"));
 }
 
-void AtomCoordinate::print(int option) {
+void AtomCoordinate::print(int option) const {
     std::cout << "Atom: " << this->atom << std::endl;
     if (option != 0) {
         std::cout << "Residue: " << this->residue << std::endl;
@@ -127,16 +127,16 @@ std::vector<AtomCoordinate> extractChain(
 }
 
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option) {
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         curr_atm.print(option);
     }
 }
 
-std::vector<AtomCoordinate> filterBackbone(std::vector<AtomCoordinate>& atoms) {
+std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms) {
     std::vector<AtomCoordinate> output;
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.isBackbone()) {
-            output.push_back(curr_atm);
+            output.emplace_back(curr_atm);
         }
     }
     return output;
@@ -168,7 +168,7 @@ void reverse(char* s) {
         s[i] = s[j];
         s[j] = c;
     }
-}  
+}
 
 void itoa_pos_only(int n, char* s) {
     int i = 0;
@@ -373,11 +373,11 @@ std::vector<AtomCoordinate> getAtomsWithResidueIndex(
     std::vector<std::string> atomNames
 ) {
     std::vector<AtomCoordinate> output;
-    for (AtomCoordinate curr_atm : atoms) {
+    for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.residue_index == residue_index) {
-            for (std::string atom_name : atomNames) {
+            for (const std::string& atom_name : atomNames) {
                 if (curr_atm.atom == atom_name) {
-                    output.push_back(curr_atm);
+                    output.emplace_back(curr_atm);
                 }
             }
         }
@@ -395,4 +395,16 @@ std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
         output.push_back(curr_atoms);
     }
     return output;
+}
+
+float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2) {
+    // RMSD: Root Mean Square Deviation
+    float sum = 0;
+    // Sum of square of distance
+    for (size_t i = 0; i < atoms1.size(); i++) {
+        sum += pow(atoms1[i].coordinate.x - atoms2[i].coordinate.x, 2);
+        sum += pow(atoms1[i].coordinate.y - atoms2[i].coordinate.y, 2);
+        sum += pow(atoms1[i].coordinate.z - atoms2[i].coordinate.z, 2);
+    }
+    return sqrt(sum / atoms1.size());
 }

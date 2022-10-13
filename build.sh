@@ -1,3 +1,4 @@
+#!/bin/sh -e
 # File: build.sh
 # Project: foldcomp
 # Created: 2022-05-30 17:11:11
@@ -5,7 +6,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: 2022-09-20 11:52:22
+# Last Modified: 2022-10-07 17:48:48
 # Modified By: Hyunbin Kim (khb7840@gmail.com)
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -26,4 +27,11 @@ cmake --build ./build --target foldcomp
 ./build/foldcomp decompress ./test/compressed.fcz ./test/decompressed.pdb
 # Test - Gzipped CIF
 ./build/foldcomp compress ./test/test.cif.gz ./test/compressed_cif.fcz
-./build/foldcomp decompress ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
+./build/foldcomp decompress -a ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
+# RMSD
+RMSD1=$(./build/foldcomp rmsd ./test/test.pdb ./test/decompressed.pdb | cut -f6)
+awk -v check=$RMSD1 -v target=0.102262 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 }  }'
+RMSD2=$(./build/foldcomp rmsd ./test/test.cif.gz ./test/decompressed_cif.pdb | cut -f6)
+awk -v check=$RMSD2 -v target=0.144428 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 }  }'
+
+echo "All good!"

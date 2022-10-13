@@ -301,7 +301,7 @@ static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObjec
         return NULL;
     }
 
-    int threshold = 200;
+    int threshold = DEFAULT_ANCHOR_THRESHOLD;
     if (anchor_residue_threshold != NULL) {
         threshold = PyLong_AsLong(anchor_residue_threshold);
     }
