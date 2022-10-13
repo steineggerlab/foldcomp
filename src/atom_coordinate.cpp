@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-10-06 19:59:30
+ * Last Modified: 2022-10-13 22:07:54
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -407,4 +407,76 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
         sum += pow(atoms1[i].coordinate.z - atoms2[i].coordinate.z, 2);
     }
     return sqrt(sum / atoms1.size());
+}
+
+#include <algorithm>
+
+std::vector<int> identifyFragments(std::vector<AtomCoordinate>& atoms, int mode) {
+    // mode: 3: all conditions
+    //       1: split by chain
+    //       2: split by discontinuous residue index
+    std::vector<int> breaks;
+    std::vector<AtomCoordinate> backbone = filterBackbone(atoms);
+    if (mode & 1) {
+        // Split by chain
+        for (size_t i = 1; i < backbone.size(); i++) {
+            if (backbone[i].chain != backbone[i - 1].chain) {
+                breaks.push_back(backbone[i].residue_index);
+            }
+        }
+    }
+    if (mode & 2) {
+        // Split by discontinuous residue index
+        int prevN_residue_index = -1;
+        for (size_t i = 0; i < backbone.size(); i++) {
+            if (backbone[i].atom == "N") {
+                if (prevN_residue_index != -1) {
+                    if (backbone[i].residue_index - prevN_residue_index != 1) {
+                        breaks.push_back(backbone[i].residue_index);
+                    }
+                    prevN_residue_index = backbone[i].residue_index;
+                } else {
+                    prevN_residue_index = backbone[i].residue_index;
+                }
+            }
+        }
+    }
+
+    return breaks;
+}
+
+std::vector< std::vector<AtomCoordinate> > splitFragments(std::vector<AtomCoordinate>& atoms, std::vector<int> br) {
+    std::vector< std::vector<AtomCoordinate> > output;
+    std::vector<AtomCoordinate> currentFragment;
+    int currResidueIndex = 0;
+    // Iterate through all atoms
+    if (br.size() == 0) {
+        output.emplace_back(atoms);
+    } else {
+        for (size_t i = 0; i < atoms.size(); i++) {
+            if (i == 0) {
+                currentFragment.emplace_back(atoms[i]);
+            } else {
+                currResidueIndex = atoms[i].residue_index;
+                if (std::find(br.begin(), br.end(), currResidueIndex) != br.end()) {
+                    bool foundFirstN = false;
+                    if (atoms[i].atom == "N" && foundFirstN == false) {
+                        output.emplace_back(currentFragment);
+                        currentFragment.clear();
+                        currentFragment.emplace_back(atoms[i]);
+                        foundFirstN = true;
+                    } else if (!foundFirstN) {
+                        // If the first atom is not N, ignore the fragments until the first N
+                        continue;
+                    } else {
+                        currentFragment.emplace_back(atoms[i]);
+                    }
+                } else {
+                    currentFragment.emplace_back(atoms[i]);
+                }
+            }
+        }
+        output.emplace_back(currentFragment);
+    }
+    return output;
 }
