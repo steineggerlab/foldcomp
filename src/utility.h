@@ -89,9 +89,9 @@ void printVector(std::vector<T> v) {
 
 #ifdef FOLDCOMP_EXECUTABLE
 // Get all files in a directory using dirent.h
-std::vector<std::string> getFilesInDirectory(std::string dir);
+std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recursive);
 #endif
-std::string baseName(std::string const& path);
+std::string baseName(const std::string& path);
 
 std::string getFileWithoutExt(std::string& file);
 bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset = 0);
