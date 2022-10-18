@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-18 11:57:45
+ * Last Modified: 2022-10-18 18:00:20
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -192,6 +192,24 @@ int compressWithoutWriting(Foldcomp& compRes, std::string input) {
 int compressFromBufferWithoutWriting(Foldcomp& compRes, const std::string& content, std::string& name) {
     StructureReader reader;
     reader.loadFromBuffer(content.c_str(), content.size(), name);
+    std::vector<AtomCoordinate> atomCoordinates;
+    reader.readAllAtoms(atomCoordinates);
+    if (atomCoordinates.size() == 0) {
+        std::cout << "[Error] No atoms found in the input" << std::endl;
+        return 1;
+    }
+    std::string title = name;
+    std::vector<BackboneChain> compData;
+    // Convert title to char
+    compRes.strTitle = name;
+    compRes.anchorThreshold = anchor_residue_threshold;
+    compData = compRes.compress(atomCoordinates);
+    return 0;
+}
+
+int compressMultipleTarInner(Foldcomp& compRes, const char* buffer, size_t size, std::string& name) {
+    StructureReader reader;
+    reader.loadFromBuffer(buffer, size, name);
     std::vector<AtomCoordinate> atomCoordinates;
     reader.readAllAtoms(atomCoordinates);
     if (atomCoordinates.size() == 0) {
@@ -643,11 +661,17 @@ int main(int argc, char* const *argv) {
                         }
                     } // end read in
                     if (proceed && writeEntry) {
-                        std::istringstream input(std::string(dataBuffer, header.size));
-                        std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
-                        std::string outputFile = output + name_clean + ".fcz";
+                        const std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
+                        std::string outputFile;
+                        if (stringEndsWith(".tar", output)) {
+                            outputFile = name_clean + ".fcz";
+                        } else if (stringEndsWith("/", output)) {
+                            outputFile = output + name_clean + ".fcz";
+                        } else {
+                            outputFile = output + "/" + name_clean + ".fcz";
+                        }
                         Foldcomp compRes = Foldcomp();
-                        compressFromBufferWithoutWriting(compRes, input.str(), name_clean);
+                        compressMultipleTarInner(compRes, dataBuffer, header.size, name);
                         if (!save_as_tar) {
                             compRes.write(outputFile);
                         } else {
