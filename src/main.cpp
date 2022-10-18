@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-18 18:00:20
+ * Last Modified: 2022-10-18 19:32:59
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -62,12 +62,46 @@ int print_usage(void) {
     std::cout << "       foldcomp rmsd <pdb1|cif1> <pdb2|cif2>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
+    std::cout << " -r, --recursive      recursively look for files in directory [default=0]" << std::endl;
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
+    return 0;
+}
+
+int compressFragment(std::vector<AtomCoordinate>& atoms, std::vector<int>& fragIndices, std::string& output, std::string& name) {
+    // Split
+    std::vector<std::vector<AtomCoordinate>> fragments = splitFragments(atoms, fragIndices);
+    // Variables for naming output files
+    int fragIndex = 0;
+    std::string prevChain = fragments[0][0].chain;
+    std::string output_file;
+    for (size_t i = 0; i < fragments.size(); i++) {
+        // New chain observed. Update frageIndex and prevChain
+        if (fragments[i][0].chain != prevChain) {
+            fragIndex = 0;
+            prevChain = fragments[i][0].chain;
+        }
+        output_file = getFileWithoutExt(output) + fragments[i][0].chain + "_" + std::to_string(fragIndex) + ".fcz";
+        // When there's only one fragment with a chain, ignore fragment index
+        if (fragIndex == 0 && i != fragments.size() - 1 && fragments[i][0].chain != fragments[i + 1][0].chain) {
+            output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
+        }
+        if (i == fragments.size() - 1 && fragments[i][0].chain != fragments[i - 1][0].chain) {
+            output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
+        }
+        std::cout << "Compressing chain " << fragments[i][0].chain << ", fragment " << fragIndex << " to " << output_file << std::endl;
+        // Compress
+        Foldcomp foldcomp;
+        foldcomp.anchorThreshold = anchor_residue_threshold;
+        foldcomp.strTitle = name;
+        foldcomp.compress(fragments[i]);
+        foldcomp.write(output_file);
+        fragIndex++;
+    }
     return 0;
 }
 
@@ -88,36 +122,8 @@ int compress(std::string input, std::string output) {
     // Identify multiple chains or regions with discontinous residue indices
     std::vector<int> fr = identifyFragments(atomCoordinates);
     if (fr.size() > 0) {
-        // Split
-        std::vector<std::vector<AtomCoordinate>> fragments = splitFragments(atomCoordinates, fr);
-        // Variables for naming output files
-        int fragIndex = 0;
-        std::string prevChain = fragments[0][0].chain;
-        std::string output_file;
-        for (size_t i = 0; i < fragments.size(); i++) {
-            // New chain observed. Update frageIndex and prevChain
-            if (fragments[i][0].chain != prevChain) {
-                fragIndex = 0;
-                prevChain = fragments[i][0].chain;
-            }
-            output_file = getFileWithoutExt(output) + fragments[i][0].chain + "_" + std::to_string(fragIndex) + ".fcz";
-            // When there's only one fragment with a chain, ignore fragment index
-            if (fragIndex == 0 && i != fragments.size() - 1 && fragments[i][0].chain != fragments[i + 1][0].chain) {
-                output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
-            }
-            if (i == fragments.size() - 1 && fragments[i][0].chain != fragments[i - 1][0].chain) {
-                output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
-            }
-            std::cout << "Compressing chain " << fragments[i][0].chain << ", fragment " << fragIndex << " to " << output_file << std::endl;
-            // Compress
-            Foldcomp foldcomp;
-            foldcomp.anchorThreshold = anchor_residue_threshold;
-            foldcomp.strTitle = title;
-            foldcomp.compress(fragments[i]);
-            foldcomp.write(output_file);
-            fragIndex++;
-        }
-        return 0;
+        int flag = compressFragment(atomCoordinates, fr, output, title);
+        return flag;
     }
 
     std::vector<BackboneChain> compData;
@@ -139,7 +145,6 @@ int compress(std::string input, std::string output) {
     // compData.clear();
     return 0;
 }
-
 
 int compressFromBuffer(const std::string& content, const std::string& output, std::string& name) {
     StructureReader reader;
@@ -316,6 +321,7 @@ int main(int argc, char* const *argv) {
     int option_index = 0;
     int num_threads = 1;
     int has_output = 0;
+    int recursive = 0;
 
     // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
@@ -341,6 +347,7 @@ int main(int argc, char* const *argv) {
             {"help",          no_argument,          0, 'h'},
             {"alt",           no_argument,          0, 'a'},
             {"tar",           no_argument,          0, 'z'},
+            {"recursive",     no_argument,          0, 'r'},
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
@@ -350,7 +357,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hazt:b:c:", long_options, &option_index);
+    flag = getopt_long(argc, argv, "hazrt:b:", long_options, &option_index);
 
     while (flag != -1) {
         switch (flag) {
@@ -365,6 +372,9 @@ int main(int argc, char* const *argv) {
             case 'z':
                 save_as_tar = 1;
                 break;
+            case 'r':
+                recursive = 1;
+                break;
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
@@ -373,7 +383,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazt:b:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazrt:b:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -464,6 +474,14 @@ int main(int argc, char* const *argv) {
         output = argv[optind + 2];
     }
 
+    if (input.back() == '/') {
+        input.pop_back();
+    }
+
+    if (has_output && output.back() == '/') {
+        output.pop_back();
+    }
+
     // check if mode is compress or decompress
     if (mode == COMPRESS) {
         // compress a single file
@@ -480,7 +498,7 @@ int main(int argc, char* const *argv) {
         }
         std::ifstream inputFile(input, std::ios::binary);
         // Check if file is open
-        if (!inputFile.is_open()) {
+        if (!inputFile) {
             std::cout << "[Error] Could not open file " << input << std::endl;
             return -1;
         }
@@ -502,7 +520,7 @@ int main(int argc, char* const *argv) {
         }
         std::ifstream inputFile(input, std::ios::binary);
         // Check if file is open
-        if (!inputFile.is_open()) {
+        if (!inputFile) {
             std::cout << "[Error] Could not open file " << input << std::endl;
             return -1;
         }
@@ -512,8 +530,8 @@ int main(int argc, char* const *argv) {
     } else if (mode == CHECK){
         // Check if the file is a valid fcz file
         std::ifstream inputFile(input, std::ios::binary);
-        std::clog << "Checking " << input << std::endl;
-        if (!inputFile.is_open()) {
+        std::cout << "Checking " << input << std::endl;
+        if (!inputFile) {
             std::cerr << "[Error] Could not open file " << input << std::endl;
             return -1;
         }
@@ -525,14 +543,11 @@ int main(int argc, char* const *argv) {
         flag = 0;
     } else if (mode == COMPRESS_MULTIPLE || mode == COMPRESS_MULTIPLE_TAR) {
         // compress multiple files
-        if (input[input.length() - 1] != '/') {
-            input += "/";
-        }
         if (!has_output) {
             if (save_as_tar) {
-                output = input.substr(0, input.length() - 1) + ".fcz.tar";
+                output = input + ".fcz.tar";
             } else {
-                output = input.substr(0, input.length() - 1) + "_fcz/";
+                output = input + "_fcz/";
             }
         } else {
             if (stringEndsWith(".tar", output)) {
@@ -540,9 +555,6 @@ int main(int argc, char* const *argv) {
             }
         }
 
-        if (output[output.length() - 1] != '/' && !save_as_tar) {
-            output += "/";
-        }
         // Check output directory exists or not
         if (!save_as_tar) {
             if (stat(output.c_str(), &st) == -1) {
@@ -554,9 +566,6 @@ int main(int argc, char* const *argv) {
             }
         }
         // Get all files in input directory
-        std::string file;
-        std::string inputFile;
-        std::string outputFile;
         std::cout << "Compressing files in " << input;
         std::cout << " using " << num_threads << " threads" << std::endl;
         if (save_as_tar) {
@@ -565,17 +574,15 @@ int main(int argc, char* const *argv) {
             std::cout << "Output directory: " << output << std::endl;
         }
         if (mode == COMPRESS_MULTIPLE) {
-            std::vector<std::string> files = getFilesInDirectory(input);
+            std::vector<std::string> files = getFilesInDirectory(input, recursive);
             // Parallelize
             if (!save_as_tar) {
 #pragma omp parallel num_threads(num_threads)
                 {
 #pragma omp for
                     for (size_t i = 0; i < files.size(); i++) {
-                        std::string file = files[i];
-                        std::string inputFile = input + file;
-                        std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                        compress(inputFile, outputFile);
+                        std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".fcz";
+                        compress(files[i], outputFile);
                     }
                 }
             } else {
@@ -583,8 +590,6 @@ int main(int argc, char* const *argv) {
                 std::string tarFile;
                 if (stringEndsWith(".tar", output)) {
                     tarFile = output;
-                } else if (stringEndsWith("/", output)) {
-                    tarFile = output.substr(0, output.length() - 1) + ".tar";
                 } else {
                     tarFile = output + ".tar";
                 }
@@ -593,14 +598,15 @@ int main(int argc, char* const *argv) {
                 {
 #pragma omp for
                     for (size_t i = 0; i < files.size(); i++) {
-                        std::string file = files[i];
-                        std::string inputFile = input + file;
-                        std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                        Foldcomp compRes = Foldcomp();
-                        compressWithoutWriting(compRes, inputFile);
-#pragma omp critical
-                        {
-                            compRes.writeTar(tar, outputFile, compRes.getSize());
+                        try {
+                            Foldcomp compRes;
+                            compressWithoutWriting(compRes, files[i]);
+    #pragma omp critical
+                            {
+                                compRes.writeTar(tar, baseName(getFileWithoutExt(files[i])) + ".fcz", compRes.getSize());
+                            }
+                        } catch (...) {
+                            std::cerr << "Failed compressing " << files[i] << std::endl;
                         }
                     }
                 }
@@ -609,17 +615,15 @@ int main(int argc, char* const *argv) {
             }
         } else if (mode == COMPRESS_MULTIPLE_TAR) {
             mtar_t tar;
-            mtar_t tar_out;
-            std::string tarOutStr;
-            if (mtar_open(&tar, argv[optind + 1], "r") != MTAR_ESUCCESS) {
-                std::cerr << "[Error] open tar " << argv[optind + 1] << " failed." << std::endl;
+            if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << input << " failed." << std::endl;
                 return 1;
             }
+            std::string tarOutStr;
+            mtar_t tar_out;
             if (save_as_tar) {
                 if (stringEndsWith(".tar", output)) {
                     tarOutStr = output;
-                } else if (stringEndsWith("/", output)) {
-                    tarOutStr = output.substr(0, output.length() - 1) + ".tar";
                 } else {
                     tarOutStr = output + ".tar";
                 }
@@ -673,7 +677,7 @@ int main(int argc, char* const *argv) {
                         Foldcomp compRes = Foldcomp();
                         compressMultipleTarInner(compRes, dataBuffer, header.size, name);
                         if (!save_as_tar) {
-                            compRes.write(outputFile);
+                            compRes.write(output + "/" + outputFile);
                         } else {
 #pragma omp critical
                             {
@@ -698,9 +702,6 @@ int main(int argc, char* const *argv) {
         if (!has_output) {
             std::cerr << "Please specify output directory" << std::endl;
             return 1;
-        }
-        if (output[output.length() - 1] != '/') {
-            output += "/";
         }
         // Check output directory exists or not
         if (stat(output.c_str(), &st) == -1) {
@@ -733,7 +734,7 @@ int main(int argc, char* const *argv) {
         mtar_t tarArray[num_tar];
         std::vector<std::string> tarFiles;
         for (int i = 0; i < num_tar; i++) {
-            std::string tarFile = output + "AF2_Uniprot_foldcomp." + std::to_string(i) + ".tar";
+            std::string tarFile = output + "/" + "AF2_Uniprot_foldcomp." + std::to_string(i) + ".tar";
             tarFiles.push_back(tarFile);
             mtar_open(&tarArray[i], tarFile.c_str(), "w");
         }
@@ -759,7 +760,7 @@ int main(int argc, char* const *argv) {
 
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
                             Foldcomp compRes = Foldcomp();
-                            std::string outputFile = output + getFileWithoutExt(obj_name) + ".fcz";
+                            std::string outputFile = output + "/" + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
                             int tar_id = 0;
@@ -785,10 +786,7 @@ int main(int argc, char* const *argv) {
         flag = 0;
     } else if (mode == DECOMPRESS_MULTIPLE || mode == DECOMPRESS_MULTIPLE_TAR) {
         if (!has_output) {
-            output = input.substr(0, input.length() - 1) + "_pdb/";
-        }
-        if (output[output.length() - 1] != '/') {
-            output += "/";
+            output = input + "_pdb/";
         }
         // Check output directory exists or not
         if (stat(output.c_str(), &st) == -1) {
@@ -800,27 +798,21 @@ int main(int argc, char* const *argv) {
         }
         if (mode == DECOMPRESS_MULTIPLE) {
             // decompress multiple files
-            if (input[input.length() - 1] != '/') {
-                input += "/";
-            }
-
-            // Get all files in input directory
             std::cout << "Decompressing files in " << input;
             std::cout << " using " << num_threads << " threads" << std::endl;
             std::cout << "Output directory: " << output << std::endl;
-            std::vector<std::string> files = getFilesInDirectory(input);
+            std::vector<std::string> files = getFilesInDirectory(input, recursive);
 #pragma omp parallel num_threads(num_threads)
             {
 #pragma omp for
                 for (size_t i = 0; i < files.size(); i++) {
-                    std::string inputFile = input + files[i];
-                    std::ifstream input(inputFile, std::ios::binary);
+                    std::ifstream input(files[i], std::ios::binary);
                     // Check if file is open
-                    if (!input.is_open()) {
-                        std::cout << "[Error] Could not open file " << inputFile << std::endl;
+                    if (!input) {
+                        std::cout << "[Error] Could not open file " << files[i] << std::endl;
                         continue;
                     }
-                    std::string outputFile = output + getFileWithoutExt(files[i]) + ".pdb";
+                    std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".pdb";
                     decompress(input, outputFile);
                     input.close();
                 }
@@ -828,8 +820,8 @@ int main(int argc, char* const *argv) {
             flag = 0;
         } else if (mode == DECOMPRESS_MULTIPLE_TAR) {
             mtar_t tar;
-            if (mtar_open(&tar, argv[optind + 1], "r") != MTAR_ESUCCESS) {
-                std::cerr << "[Error] open tar " << argv[optind + 1] << " failed." << std::endl;
+            if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << input.c_str() << " failed." << std::endl;
                 return 1;
             }
 #pragma omp parallel shared(tar) num_threads(num_threads)
@@ -867,8 +859,8 @@ int main(int argc, char* const *argv) {
                     } // end read in
                     if (proceed && writeEntry) {
                         std::istringstream input(std::string(dataBuffer, header.size));
-                        std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
-                        std::string outputFile = output + name_clean + ".pdb";
+                        std::string name_clean = baseName(name);
+                        std::string outputFile = output + "/" + name_clean + ".pdb";
                         decompress(input, outputFile);
                     }
                 } // end while loop
@@ -879,19 +871,12 @@ int main(int argc, char* const *argv) {
     } else if (mode == EXTRACT_MULTIPLE || mode == EXTRACT_MULTIPLE_TAR) {
             // extract multiple files
             if (mode == EXTRACT_MULTIPLE) {
-                if (input[input.length() - 1] != '/') {
-                    input += "/";
-                }
                 if (!has_output) {
                     if (ext_mode == 0) {
-                        output = input.substr(0, input.length() - 1) + "_plddt/";
+                        output = input + "_plddt/";
+                    } else if (ext_mode == 1) {
+                        output = input + "_fasta/";
                     }
-                    else if (ext_mode == 1) {
-                        output = input.substr(0, input.length() - 1) + "_fasta/";
-                    }
-                }
-                if (output[output.length() - 1] != '/') {
-                    output += "/";
                 }
                 // Check output directory exists or not
                 if (stat(output.c_str(), &st) == -1) {
@@ -901,58 +886,71 @@ int main(int argc, char* const *argv) {
                     mkdir(output.c_str(), 0755);
 #endif
                 }
-                // Get all files in input directory
                 std::string defaultOutputFile = "";
                 if (ext_mode == 0){
                     defaultOutputFile = output + "plddt.txt";
                 } else if (ext_mode == 1) {
                     defaultOutputFile = output + "aa.fasta";
                 }
-                std::ofstream defaultOutput(defaultOutputFile, std::ios::out);
-                if (ext_merge == 0) {
-                    // close and delete defaultOutput
-                    defaultOutput.close();
+                std::ofstream defaultOutput;
+                if (ext_merge == 1) {
+                    defaultOutput.open(defaultOutputFile, std::ios::out);
                 }
                 std::cout << "Extracting files in " << input;
                 std::cout << " using " << num_threads << " threads" << std::endl;
                 std::cout << "Output directory: " << output << std::endl;
-                std::vector<std::string> files = getFilesInDirectory(input);
+                std::vector<std::string> files = getFilesInDirectory(input, recursive);
 #pragma omp parallel num_threads(num_threads)
                 {
+                    std::string buffer;
+                    buffer.reserve(1024 * 1024);
+                    std::vector<std::string> data;
+                    data.reserve(1024);
 #pragma omp for
                     for (size_t i = 0; i < files.size(); i++) {
-                        std::string inputFile = input + files[i];
-                        std::ifstream input(inputFile, std::ios::binary);
-                        // Check if file is open
-                        if (!input.is_open()) {
-                            std::cout << "[Error] Could not open file " << inputFile << std::endl;
+                        std::ifstream input(files[i], std::ios::binary);
+                        if (!input) {
+                            std::cout << "[Error] Could not open file " << files[i] << std::endl;
                             continue;
                         }
-                        std::string outputFile;
                         if (ext_merge == 1) {
-                            std::vector<std::string> data;
-                            Foldcomp compRes = Foldcomp();
+                            Foldcomp compRes;
                             compRes.read(input);
                             compRes.extract(data, ext_mode);
-                            #pragma omp critical
-                            {
-                                defaultOutput << ">" << compRes.strTitle << "\n";
-                                for (size_t j = 0; j < data.size(); j++) {
-                                    defaultOutput << data[j];
-                                }
-                                defaultOutput << "\n";
+                            buffer.append(1, '>');
+                            buffer.append(compRes.strTitle);
+                            buffer.append(1, '\n');
+                            for (size_t j = 0; j < data.size(); j++) {
+                                buffer.append(data[j]);
                             }
+                            buffer.append(1, '\n');
                         } else {
+                            std::string outputFile;
                             if (ext_mode == 0) {
                                 // output file extension is ".plddt.txt"
-                                outputFile = output + getFileWithoutExt(files[i]) + ".plddt.txt";
+                                outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".plddt.txt";
                             }
                             else if (ext_mode == 1) {
-                                outputFile = output + getFileWithoutExt(files[i]) + ".fasta";
+                                outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".fasta";
                             }
                             extract(input, outputFile);
                         }
                         input.close();
+                        data.clear();
+                        if (ext_merge == 1 && buffer.size() > 1024 * 1024) {
+                            #pragma omp critical
+                            {
+                                defaultOutput << buffer;
+                            }
+                            buffer.clear();
+                        }
+                    }
+                    if (ext_merge == 1 && buffer.size() > 0) {
+                        #pragma omp critical
+                        {
+                            defaultOutput << buffer;
+                        }
+                        buffer.clear();
                     }
                 }
                 flag = 0;
@@ -986,10 +984,9 @@ int main(int argc, char* const *argv) {
                     mkdir(output.c_str(), 0755);
 #endif
                 }
-                std::ofstream defaultOutput(defaultOutputFile, std::ios::out);
-                if (ext_merge == 0) {
-                    // close and delete defaultOutput
-                    defaultOutput.close();
+                std::ofstream defaultOutput;
+                if (ext_merge == 1) {
+                    defaultOutput.open(defaultOutputFile, std::ios::out);
                 }
                 std::cout << "Extracting files in " << input << " using " << num_threads << " threads" << std::endl;
                 // TAR READING PART BY MARTIN STEINEGGER
@@ -999,6 +996,8 @@ int main(int argc, char* const *argv) {
                     mtar_header_t header;
                     size_t bufferSize = 1024 * 1024;
                     char* dataBuffer = (char*)malloc(bufferSize);
+                    std::string buffer;
+                    buffer.reserve(1024 * 1024);
                     std::string name;
                     while (proceed) {
                         bool writeEntry = true;
@@ -1030,29 +1029,32 @@ int main(int argc, char* const *argv) {
                         } // end read in
                         if (proceed && writeEntry) {
                             std::istringstream input(std::string(dataBuffer, header.size));
-                            std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
-                            std::string outputFile = "";
-
                             if (ext_merge == 1) {
                                 std::vector<std::string> data;
                                 Foldcomp compRes = Foldcomp();
                                 compRes.read(input);
                                 compRes.extract(data, ext_mode);
-                            #pragma omp critical
-                                {
-                                    defaultOutput << ">" << compRes.strTitle << "\n";
-                                    for (size_t j = 0; j < data.size(); j++) {
-                                        defaultOutput << data[j];
-                                    }
-                                    defaultOutput << "\n";
+                                buffer.append(1, '>');
+                                buffer.append(compRes.strTitle);
+                                buffer.append(1, '\n');
+                                for (size_t j = 0; j < data.size(); j++) {
+                                    buffer.append(data[j]);
                                 }
+                                buffer.append(1, '\n');
+                                #pragma omp critical
+                                {
+                                    defaultOutput << buffer;
+                                }
+                                buffer.clear();
                             } else {
+                                std::string outputFile;
+                                std::string name_clean = baseName(name);
                                 if (ext_mode == 0) {
                                     // output file extension is ".plddt.txt"
-                                    outputFile = output + name_clean + ".plddt.txt";
+                                    outputFile = output + "/" + name_clean + ".plddt.txt";
                                 }
                                 else if (ext_mode == 1) {
-                                    outputFile = output + name_clean + ".fasta";
+                                    outputFile = output + "/" + name_clean + ".fasta";
                                 }
                                 extract(input, outputFile);
                             }
@@ -1063,28 +1065,23 @@ int main(int argc, char* const *argv) {
                 mtar_close(&tar);
                 flag = 0;
                 if (ext_merge == 1) {
-                    // close and delete defaultOutput
                     defaultOutput.close();
                 }
             }
     } else if (mode == CHECK_MULTIPLE) {
-        if (input[input.length() - 1] != '/') {
-            input += "/";
-        }
-        std::vector<std::string> files = getFilesInDirectory(input);
-        std::clog << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        std::cout << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        std::vector<std::string> files = getFilesInDirectory(input, recursive);
 #pragma omp parallel num_threads(num_threads)
         {
 #pragma omp for
             for (size_t i = 0; i < files.size(); i++) {
-                std::string inputFile = input + files[i];
-                std::ifstream input(inputFile, std::ios::binary);
+                std::ifstream input(files[i], std::ios::binary);
                 // Check if file is open
-                if (!input.is_open()) {
-                    std::cerr << "[Error] Could not open file " << inputFile << std::endl;
+                if (!input) {
+                    std::cerr << "[Error] Could not open file " << files[i] << std::endl;
                     continue;
                 }
-                check(input, inputFile);
+                check(input, files[i]);
                 input.close();
             }
         }
@@ -1095,7 +1092,7 @@ int main(int argc, char* const *argv) {
             std::cerr << "[Error] open tar " << input << " failed." << std::endl;
             return 1;
         }
-        std::clog << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
+        std::cout << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
         // TAR READING PART BY MARTIN STEINEGGER
 #pragma omp parallel shared(tar) num_threads(num_threads)
         {
@@ -1134,7 +1131,7 @@ int main(int argc, char* const *argv) {
                 } // end read in
                 if (proceed && writeEntry) {
                     std::istringstream input(std::string(dataBuffer, header.size));
-                    std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
+                    std::string name_clean = baseName(name);
                     check(input, name_clean);
                 }
             } // end while loop
@@ -1145,7 +1142,7 @@ int main(int argc, char* const *argv) {
         return 1;
     }    // Print log
     if (mode != RMSD) {
-        std::clog << "Done." << std::endl;
+        std::cout << "Done." << std::endl;
     }
     return flag;
 }
