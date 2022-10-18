@@ -22,28 +22,40 @@
 #include <dirent.h>
 #include <errno.h>
 // Get all files in a directory using dirent.h
-std::vector<std::string> getFilesInDirectory(std::string dir) {
-    std::vector<std::string> files;
+void getdir(const std::string& dir, bool recursive, std::vector<std::string>& files) {
     DIR* dp;
     struct dirent* dirp;
-    if ((dp = opendir(dir.c_str())) == nullptr) {
-        std::cout << "Error(" << errno << ") opening " << dir << std::endl;
-        return files;
+    if ((dp = opendir(dir.c_str())) == NULL) {
+        perror("error");
+        exit(errno);
     }
-
-    while ((dirp = readdir(dp)) != nullptr) {
-        // Skip directories
+    std::vector<std::string> dirs;
+    while ((dirp = readdir(dp)) != NULL) {
         if (dirp->d_type == DT_DIR) {
-            continue;
+            if (recursive && std::string(dirp->d_name) != "." && std::string(dirp->d_name) != "..") {
+                dirs.emplace_back(dir + "/" + dirp->d_name);
+            } else {
+                continue;
+            }
         }
-        files.push_back(std::string(dirp->d_name));
+        if (dirp->d_type == DT_REG || dirp->d_type == DT_LNK) {
+            files.emplace_back(dir + "/" + dirp->d_name);
+        }
     }
     closedir(dp);
+
+    for (std::vector<std::string>::const_iterator it = dirs.begin(); it != dirs.end(); ++it) {
+        getdir(*it, recursive, files);
+    }
+}
+std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recursive) {
+    std::vector<std::string> files;
+    getdir(dir, recursive, files);
     return files;
 }
 #endif
 
-std::string baseName(std::string const path) {
+std::string baseName(const std::string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
 }
 
