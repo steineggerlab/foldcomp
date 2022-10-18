@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-13 22:05:14
+ * Last Modified: 2022-10-18 11:57:45
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -103,6 +103,9 @@ int compress(std::string input, std::string output) {
             output_file = getFileWithoutExt(output) + fragments[i][0].chain + "_" + std::to_string(fragIndex) + ".fcz";
             // When there's only one fragment with a chain, ignore fragment index
             if (fragIndex == 0 && i != fragments.size() - 1 && fragments[i][0].chain != fragments[i + 1][0].chain) {
+                output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
+            }
+            if (i == fragments.size() - 1 && fragments[i][0].chain != fragments[i - 1][0].chain) {
                 output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
             }
             std::cout << "Compressing chain " << fragments[i][0].chain << ", fragment " << fragIndex << " to " << output_file << std::endl;
@@ -302,6 +305,7 @@ int main(int argc, char* const *argv) {
         COMPRESS,
         DECOMPRESS,
         COMPRESS_MULTIPLE,
+        COMPRESS_MULTIPLE_TAR,
         COMPRESS_MULTIPLE_GCS,
         DECOMPRESS_MULTIPLE,
         DECOMPRESS_MULTIPLE_TAR,
@@ -380,8 +384,11 @@ int main(int argc, char* const *argv) {
             fileExists = 0;
         } else
 #endif
+        char* end = strrchr(argv[optind + 1], '.');
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
+        } else if (strcmp(end, ".tar") == 0) {
+            mode = COMPRESS_MULTIPLE_TAR;
         } else {
             mode = COMPRESS;
         }
@@ -498,15 +505,19 @@ int main(int argc, char* const *argv) {
         // Calculate RMSD between two PDB files
         rmsd(input, output);
         flag = 0;
-    } else if (mode == COMPRESS_MULTIPLE) {
+    } else if (mode == COMPRESS_MULTIPLE || mode == COMPRESS_MULTIPLE_TAR) {
         // compress multiple files
         if (input[input.length() - 1] != '/') {
             input += "/";
         }
         if (!has_output) {
-            output = input.substr(0, input.length() - 1) + "_fcz/";
+            if (save_as_tar) {
+                output = input.substr(0, input.length() - 1) + ".fcz.tar";
+            } else {
+                output = input.substr(0, input.length() - 1) + "_fcz/";
+            }
         } else {
-            if (stringEndsWith(output, ".tar")) {
+            if (stringEndsWith(".tar", output)) {
                 save_as_tar = 1;
             }
         }
@@ -535,41 +546,128 @@ int main(int argc, char* const *argv) {
         } else {
             std::cout << "Output directory: " << output << std::endl;
         }
-        std::vector<std::string> files = getFilesInDirectory(input);
-        // Parallelize
-        if (!save_as_tar) {
+        if (mode == COMPRESS_MULTIPLE) {
+            std::vector<std::string> files = getFilesInDirectory(input);
+            // Parallelize
+            if (!save_as_tar) {
 #pragma omp parallel num_threads(num_threads)
-            {
-#pragma omp for
-                for (size_t i = 0; i < files.size(); i++) {
-                    std::string file = files[i];
-                    std::string inputFile = input + file;
-                    std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                    compress(inputFile, outputFile);
-                }
-            }
-        } else {
-            mtar_t tar;
-            std::string tarFile = output.substr(0, output.length() - 1) + ".tar";
-            mtar_open(&tar, tarFile.c_str(), "w");
-#pragma omp parallel num_threads(num_threads)
-            {
-#pragma omp for
-                for (size_t i = 0; i < files.size(); i++) {
-                    std::string file = files[i];
-                    std::string inputFile = input + file;
-                    std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
-                    Foldcomp compRes = Foldcomp();
-                    compressWithoutWriting(compRes, inputFile);
-#pragma omp critical
                 {
-                    compRes.writeTar(tar, outputFile, compRes.getSize());
+#pragma omp for
+                    for (size_t i = 0; i < files.size(); i++) {
+                        std::string file = files[i];
+                        std::string inputFile = input + file;
+                        std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
+                        compress(inputFile, outputFile);
+                    }
                 }
+            } else {
+                mtar_t tar;
+                std::string tarFile;
+                if (stringEndsWith(".tar", output)) {
+                    tarFile = output;
+                } else if (stringEndsWith("/", output)) {
+                    tarFile = output.substr(0, output.length() - 1) + ".tar";
+                } else {
+                    tarFile = output + ".tar";
                 }
+                mtar_open(&tar, tarFile.c_str(), "w");
+#pragma omp parallel num_threads(num_threads)
+                {
+#pragma omp for
+                    for (size_t i = 0; i < files.size(); i++) {
+                        std::string file = files[i];
+                        std::string inputFile = input + file;
+                        std::string outputFile = output + getFileWithoutExt(file) + ".fcz";
+                        Foldcomp compRes = Foldcomp();
+                        compressWithoutWriting(compRes, inputFile);
+#pragma omp critical
+                        {
+                            compRes.writeTar(tar, outputFile, compRes.getSize());
+                        }
+                    }
+                }
+                mtar_finalize(&tar);
+                mtar_close(&tar);
             }
-            mtar_finalize(&tar);
+        } else if (mode == COMPRESS_MULTIPLE_TAR) {
+            mtar_t tar;
+            mtar_t tar_out;
+            std::string tarOutStr;
+            if (mtar_open(&tar, argv[optind + 1], "r") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << argv[optind + 1] << " failed." << std::endl;
+                return 1;
+            }
+            if (save_as_tar) {
+                if (stringEndsWith(".tar", output)) {
+                    tarOutStr = output;
+                } else if (stringEndsWith("/", output)) {
+                    tarOutStr = output.substr(0, output.length() - 1) + ".tar";
+                } else {
+                    tarOutStr = output + ".tar";
+                }
+                mtar_open(&tar_out, tarOutStr.c_str(), "w");
+            }
+#pragma omp parallel shared(tar) num_threads(num_threads)
+            {
+                bool proceed = true;
+                mtar_header_t header;
+                size_t bufferSize = 1024 * 1024;
+                char* dataBuffer = (char*)malloc(bufferSize);
+                std::string name;
+                while (proceed) {
+                    bool writeEntry = true;
+#pragma omp critical
+                    {
+                        if (mtar_read_header(&tar, &header) != MTAR_ENULLRECORD) {
+                            //TODO GNU tar has special blocks for long filenames
+                            name = header.name;
+                            if (header.size > bufferSize) {
+                                bufferSize = header.size * 1.5;
+                                dataBuffer = (char*)realloc(dataBuffer, bufferSize);
+                            }
+                            if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                                std::cerr << "[Error] reading tar entry " << name << " failed." << std::endl;
+                                writeEntry = false;
+                                proceed = false;
+                            }
+                            else {
+                                writeEntry = true;
+                                proceed = true;
+                            }
+                            mtar_next(&tar);
+                            writeEntry = (header.type == MTAR_TREG) ? writeEntry : false;
+                        }
+                        else {
+                            proceed = false;
+                            writeEntry = false;
+                        }
+                    } // end read in
+                    if (proceed && writeEntry) {
+                        std::istringstream input(std::string(dataBuffer, header.size));
+                        std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
+                        std::string outputFile = output + name_clean + ".fcz";
+                        Foldcomp compRes = Foldcomp();
+                        compressFromBufferWithoutWriting(compRes, input.str(), name_clean);
+                        if (!save_as_tar) {
+                            compRes.write(outputFile);
+                        } else {
+#pragma omp critical
+                            {
+                                compRes.writeTar(tar_out, outputFile, compRes.getSize());
+                            }
+                        }
+                    }
+                } // end while loop
+                free(dataBuffer);
+            } // end openmp
+            if (save_as_tar) {
+                mtar_finalize(&tar_out);
+                mtar_close(&tar_out);
+            }
             mtar_close(&tar);
+            flag = 0;
         }
+
     } else if (mode == COMPRESS_MULTIPLE_GCS) {
         // compress multiple files from gcs
 #ifdef HAVE_GCS
@@ -751,6 +849,7 @@ int main(int argc, char* const *argv) {
                     }
                 } // end while loop
             } // end openmp
+            mtar_close(&tar);
             flag = 0;
         }
     } else if (mode == EXTRACT_MULTIPLE || mode == EXTRACT_MULTIPLE_TAR) {
@@ -935,7 +1034,9 @@ int main(int argc, char* const *argv) {
                             }
                         }
                     } // end while loop
+                    free(dataBuffer);
                 } // end openmp
+                mtar_close(&tar);
                 flag = 0;
                 if (ext_merge == 1) {
                     // close and delete defaultOutput
