@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-10-04 14:30:43
+ * Last Modified: 2022-11-11 14:54:53
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1253,6 +1253,21 @@ int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& dat
     outfile.close();
     return flag;
 }
+
+int Foldcomp::writeTorsionAngles(std::string filename) {
+    int flag = 0;
+    std::ofstream outfile(filename, std::ios::out);
+    // Write header
+    outfile << "index,phi,psi,omega" << std::endl;
+    // Write backbone torsion angles
+    for (size_t i = 0; i < this->phi.size(); i++) {
+        outfile << i << "," << this->phi[i] << "," << this->psi[i] << "," << this->omega[i] << std::endl;
+    }
+    // Done
+    outfile.close();
+    return flag;
+}
+
 
 #ifdef FOLDCOMP_EXECUTABLE
 int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
