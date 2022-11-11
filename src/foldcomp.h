@@ -8,7 +8,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-29 17:09:40
+ * Last Modified: 2022-11-11 14:51:14
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -391,6 +391,7 @@ public:
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
     int writeFASTALike(std::string filename, std::vector<std::string>& data);
+    int writeTorsionAngles(std::string filename);
 #ifdef FOLDCOMP_EXECUTABLE
     int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
 #endif
