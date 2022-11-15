@@ -2,7 +2,7 @@
 <p align="center">
 <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_strong_marv.png" max-height="300px" height="300" display="block" margin-left="auto" margin-right="auto" display="block"/>
 </p>
-Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~6kb. 
+Foldcomp compresses protein structures with torsion angles effectively. It compresses the backbone atoms to 8 bytes and the side chain to additionally 4-5 byes per residue, thus an averaged-sized protein of 350 residues requires ~6kb.
 
 Foldcomp efficient compressed format stores protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format (FCZ).
 
@@ -84,6 +84,11 @@ with open("test/compressed.fcz", "rb") as fcz:
   # Save to a pdb file
   with open(name, "w") as pdb_file:
     pdb_file.write(pdb)
+
+  # Get data as dictionary
+  # keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
+  data_dict = foldcomp.get_data(fcz_binary) # foldcomp.get_data(pdb) also works
+  data_dict["torsion_angles"] # torsion angles of the backbone as list
 
 # 02. Iterate over a database of FCZ files
 # Open a foldcomp database

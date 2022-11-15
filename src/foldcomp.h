@@ -8,7 +8,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-11 14:51:14
+ * Last Modified: 2022-11-15 17:43:52
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -268,7 +268,6 @@ private:
     /* data */
     std::string magicNumber;
     /* private methods */
-    std::vector< std::vector<float> > _calculateCoordinates();
     int _restoreDiscretizer(int angleType);
     int _restoreAtomCoordinate(float* coords);
     int _preprocessBackbone();
@@ -338,6 +337,8 @@ public:
     float3d OXT_coords;
 
     // Angles
+    std::vector<float> backboneTorsionAngles;
+    std::vector<float> backboneBondAngles;
     std::vector<float> psi;
     std::vector<float> omega;
     std::vector<float> phi;

@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-11 14:54:53
+ * Last Modified: 2022-11-15 17:43:30
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -486,6 +486,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     }
 
     std::vector<float> backboneTorsion = getTorsionFromXYZ(this->backbone, 1);
+    this->backboneTorsionAngles = backboneTorsion;
     // Split backbone into phi, psi, omega
     // Calculate phi, psi, omega
     for (size_t i = 0; i < backboneTorsion.size(); i += 3) {
@@ -495,6 +496,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     }
 
     std::vector<float> backboneBondAngles = this->nerf.getBondAngles(backbone);
+    this->backboneBondAngles = backboneBondAngles;
     // Split bond angles into three parts
     for (size_t i = 1; i < backboneBondAngles.size(); i++) {
         if (i % 3 == 0) {
@@ -589,6 +591,7 @@ std::vector<BackboneChain> Foldcomp::compress(
     for (int i = 0; i < (this->nResidue - 1); i++) {
         currN = this->backbone[i * 3];
         currResCode = getOneLetterCode(currN.residue);
+        this->residues.push_back(currResCode);
         res.residue = convertOneLetterCodeToInt(currResCode);
         res.psi = this->psiDiscretized[i];
         res.omega = this->omegaDiscretized[i];
@@ -600,6 +603,7 @@ std::vector<BackboneChain> Foldcomp::compress(
     }
     currN = this->backbone[(this->nResidue - 1) * 3];
     currResCode = getOneLetterCode(currN.residue);
+    this->residues.push_back(currResCode);
     res.residue = convertOneLetterCodeToInt(currResCode);
     res.psi = 0; res.omega = 0; res.phi = 0;
     res.n_ca_c_angle = 0; res.ca_c_n_angle = 0; res.c_n_ca_angle = 0;
@@ -610,27 +614,20 @@ std::vector<BackboneChain> Foldcomp::compress(
     return output;
 }
 
-std::vector< std::vector<float> > Foldcomp::_calculateCoordinates() {
-
-    // Iterate through the compressed backbone vector
-    std::vector< std::vector<float> > output;
-    // int total = this->compressedBackBone.size();
-
-    // NOT COMPLETED
-    //
-    return output;
-}
-
 int _restoreResidueNames(
     std::vector<BackboneChain>& compressedBackbone,
     CompressedFileHeader& /* header */,
+    std::vector<char>& residueOneLetter,
     std::vector<std::string>& residueThreeLetter
 ) {
     int success = 0;
     std::string threeLetterCode;
+    char oneLetterCode;
     residueThreeLetter.clear();
     for (size_t i = 0; i < compressedBackbone.size(); i++) {
+        oneLetterCode = convertIntToOneLetterCode(compressedBackbone[i].residue);
         threeLetterCode = convertIntToThreeLetterCode(compressedBackbone[i].residue);
+        residueOneLetter.push_back(oneLetterCode);
         residueThreeLetter.push_back(threeLetterCode);
     }
     return success;
@@ -787,10 +784,7 @@ std::vector<float> Foldcomp::checkTorsionReconstruction() {
 }
 
 int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
-    // TODO: convert the compressed residue back into a vector of atom coordinate
-    // CURRENT VERSION - 2022-02-24 19:12:51
-    std::vector<float> torsion_angles;
-    std::vector<float> bond_angles;
+    // 2022-11-15 11:47:49 - Removed defining new vectors for TAs & BAs
     int success;
 
     // Continuize torsion angles
@@ -800,10 +794,11 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
 
     // Append psi, omega, phi to torsion angles
     for (size_t i = 0; i < (this->phi.size() - 1); i++) {
-        torsion_angles.push_back(this->psi[i]);
-        torsion_angles.push_back(this->omega[i]);
-        torsion_angles.push_back(this->phi[i]);
+        this->backboneTorsionAngles.push_back(this->psi[i]);
+        this->backboneTorsionAngles.push_back(this->omega[i]);
+        this->backboneTorsionAngles.push_back(this->phi[i]);
     }
+
 
     // Continuize bond angles
     this->n_ca_c_angle = this->n_ca_c_angleDisc.continuize(this->n_ca_c_angleDiscretized);
@@ -811,14 +806,14 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     this->c_n_ca_angle = this->c_n_ca_angleDisc.continuize(this->c_n_ca_angleDiscretized);
     // Append n_ca_c_angle, ca_c_n_angle, c_n_ca_angle to bond angles
     for (size_t i = 0; i < this->n_ca_c_angle.size(); i++) {
-        bond_angles.push_back(this->ca_c_n_angle[i]);
-        bond_angles.push_back(this->c_n_ca_angle[i]);
-        bond_angles.push_back(this->n_ca_c_angle[i]);
+        this->backboneBondAngles.push_back(this->ca_c_n_angle[i]);
+        this->backboneBondAngles.push_back(this->c_n_ca_angle[i]);
+        this->backboneBondAngles.push_back(this->n_ca_c_angle[i]);
     }
 
     // Get the residue vector
     // TODO: EXTRACT RESIDUE NAMES FROM COMPRESSED BACKBONE
-    success = _restoreResidueNames(this->compressedBackBone, this->header, this->residueThreeLetter);
+    success = _restoreResidueNames(this->compressedBackBone, this->header, this->residues, this->residueThreeLetter);
 
     //TODO: FILL IN THIS FUNCTION
     // nerf.reconstruct();
@@ -844,15 +839,15 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         atomByAnchor = reconstructBackboneAtoms(prevForAnchor, subBackbone, this->header);
 
         // Subset torsion_angles
-        maxIndex = (int)torsion_angles.size() - 1;
+        maxIndex = (int)this->backboneTorsionAngles.size() - 1;
         firstIndex = std::min(this->anchorIndices[i] * 3, maxIndex);
         lastIndex = std::min(this->anchorIndices[i + 1] * 3, maxIndex);
         std::vector<float> subTorsionAngles(
-            &torsion_angles[firstIndex], &torsion_angles[lastIndex]
+            &this->backboneTorsionAngles[firstIndex], &this->backboneTorsionAngles[lastIndex]
         );
         // LAST ANGLE SHOULD BE APPENDED
         if (i == (this->nAllAnchor - 2)) {
-            subTorsionAngles.push_back(torsion_angles.back());
+            subTorsionAngles.push_back(this->backboneTorsionAngles.back());
         }
 
         success = reconstructBackboneReverse(
@@ -895,6 +890,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     atom.clear();
     // Prepare tempFactor
     std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+    this->tempFactors = tempFactors;
     // Iterate over each residue
     for (size_t i = 0; i < backBonePerResidue.size(); i++) {
         for (size_t j = 0; j < backBonePerResidue[i].size(); j++) {
