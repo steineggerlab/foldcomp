@@ -3,7 +3,7 @@ set(foldcomp_header_files
     src/atom_coordinate.h
     src/bond_info.h
     src/execution_timer.h
-    src/dbreader.h
+    src/database_reader.h
     src/discretizer.h
     src/float3d.h
     src/foldcomp.h
@@ -17,7 +17,7 @@ set(foldcomp_header_files
 set(foldcomp_source_files
     src/amino_acid.cpp
     src/atom_coordinate.cpp
-    src/dbreader.cpp
+    src/database_reader.cpp
     src/discretizer.cpp
     src/foldcomp.cpp
     src/nerf.cpp

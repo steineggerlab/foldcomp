@@ -11,7 +11,7 @@
 
 #include "atom_coordinate.h"
 #include "foldcomp.h"
-#include "dbreader.h"
+#include "database_reader.h"
 
 static PyObject *FoldcompError;
 
