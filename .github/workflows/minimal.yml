@@ -1,0 +1,23 @@
+name: Deploy minimal
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+         fetch-depth: 0
+      - uses: actions/setup-python@v1
+      - name: Filter Repository
+        run: |
+          pip install git-filter-repo
+          git-filter-repo --path src --path LICENSE.txt --path README.md --path CMakeLists.txt --force
+      - name: GitHub Push
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: minimal
