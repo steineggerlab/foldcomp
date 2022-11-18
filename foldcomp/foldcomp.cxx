@@ -199,6 +199,7 @@ struct OneShotReadBuf : public std::streambuf
     }
 };
 
+// Decompress
 int decompress(const char* input, size_t input_size, bool use_alt_order, std::ostream& oss, std::string& name) {
     OneShotReadBuf buf((char*)input, input_size);
     std::istream istr(&buf);
@@ -223,7 +224,7 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
 
     return 0;
 }
-
+// Python binding for decompress
 static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
     // Unpack a string from the arguments
     const char *strArg;
@@ -254,6 +255,7 @@ std::string trim(const std::string& str, const std::string& whitespace = " \t") 
     return str.substr(strBegin, strRange);
 }
 
+// Compress
 int compress(const std::string& name, const std::string& pdb_input, std::ostream& oss, int anchor_residue_threshold) {
     std::vector<AtomCoordinate> atomCoordinates;
     // parse ATOM lines from PDB file into atomCoordinates
@@ -286,7 +288,7 @@ int compress(const std::string& name, const std::string& pdb_input, std::ostream
 
     return 0;
 }
-
+// Python binding for compress
 static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObject* kwargs) {
     const char* name;
     const char* pdb_input;
@@ -378,6 +380,252 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     return (PyObject*)obj;
 }
 
+// C++ vector to Python list
+// Original code from https://gist.github.com/rjzak/5681680
+
+PyObject* vectorToList_Float(const std::vector<float>& data) {
+    PyObject* listObj = PyList_New(data.size());
+    if (!listObj) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+        return NULL;
+    }
+    for (size_t i = 0; i < data.size(); i++) {
+        PyObject* num = PyFloat_FromDouble((double)data[i]);
+        if (!num) {
+            Py_DECREF(listObj);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+            return NULL;
+        }
+        PyList_SET_ITEM(listObj, i, num);
+    }
+    return listObj;
+}
+
+PyObject* vector2DToList_Float(const std::vector<float3d>& data) {
+    PyObject* listObj = PyList_New(data.size());
+    if (!listObj) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+        return NULL;
+    }
+    for (size_t i = 0; i < data.size(); i++) {
+        PyObject* inner = Py_BuildValue("(f,f,f)", data[i].x, data[i].y, data[i].z);
+        if (!inner) {
+            Py_DECREF(listObj);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+            return NULL;
+        }
+        PyList_SET_ITEM(listObj, i, inner);
+    }
+    return listObj;
+}
+
+PyObject* getPyDictFromFoldcomp(Foldcomp* fcmp, const std::vector<float3d>& coords) {
+    // Output: Dictionary
+    PyObject* dict = PyDict_New();
+    if (dict == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Python dictionary");
+        return NULL;
+    }
+    PyObject* result = NULL;
+
+    // Dictionary keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
+    // Convert vectors to Python lists
+    PyObject* phi = vectorToList_Float(fcmp->phi);
+    if (phi == NULL) {
+        Py_XDECREF(dict);
+        return NULL;
+    }
+    PyObject* psi = vectorToList_Float(fcmp->psi);
+    if (psi == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        return NULL;
+    }
+    PyObject* omega = vectorToList_Float(fcmp->omega);
+    if (omega == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        return NULL;
+    }
+    PyObject* torsion_angles = vectorToList_Float(fcmp->backboneTorsionAngles);
+    if (torsion_angles == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        return NULL;
+    }
+    PyObject* bond_angles = vectorToList_Float(fcmp->backboneBondAngles);
+    if (bond_angles == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        Py_XDECREF(torsion_angles);
+        return NULL;
+    }
+    PyObject* residues = PyUnicode_FromStringAndSize(fcmp->residues.data(), fcmp->residues.size());
+    if (residues == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        Py_XDECREF(torsion_angles);
+        Py_XDECREF(bond_angles);
+        return NULL;
+    }
+    PyObject* b_factors = vectorToList_Float(fcmp->tempFactors);
+    if (b_factors == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        Py_XDECREF(torsion_angles);
+        Py_XDECREF(bond_angles);
+        Py_XDECREF(residues);
+        return NULL;
+    }
+
+    PyObject* coordinates = vector2DToList_Float(coords);
+    if (coordinates == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        Py_XDECREF(torsion_angles);
+        Py_XDECREF(bond_angles);
+        Py_XDECREF(residues);
+        Py_XDECREF(b_factors);
+        return NULL;
+    }
+
+    // Set dictionary keys and values
+    PyDict_SetItemString(dict, "phi", phi);
+    PyDict_SetItemString(dict, "psi", psi);
+    PyDict_SetItemString(dict, "omega", omega);
+    PyDict_SetItemString(dict, "torsion_angles", torsion_angles);
+    PyDict_SetItemString(dict, "bond_angles", bond_angles);
+    PyDict_SetItemString(dict, "residues", residues);
+    PyDict_SetItemString(dict, "b_factors", b_factors);
+    PyDict_SetItemString(dict, "coordinates", coordinates);
+
+    result = dict;
+
+    if (result == NULL) {
+        Py_XDECREF(dict);
+        Py_XDECREF(phi);
+        Py_XDECREF(psi);
+        Py_XDECREF(omega);
+        Py_XDECREF(torsion_angles);
+        Py_XDECREF(bond_angles);
+        Py_XDECREF(residues);
+        Py_XDECREF(b_factors);
+        Py_XDECREF(coordinates);
+        return NULL;
+    }
+
+    return result;
+}
+
+// Extract
+// Return a dictionary with the following keys:
+// phi, psi, omega, torsion_angles, residues, bond_angles, coordinates, b_factors
+// 01. Extract information starting from FCZ file
+PyObject* getDataFromFCZ(const char* input, size_t input_size) {
+    // Input
+    OneShotReadBuf buf((char*)input, input_size);
+    std::istream istr(&buf);
+
+    Foldcomp compRes;
+    int flag = compRes.read(istr);
+    if (flag != 0) {
+        PyErr_SetString(PyExc_ValueError, "Could not read FCZ file");
+        return NULL;
+    }
+    std::vector<AtomCoordinate> atomCoordinates;
+    flag = compRes.decompress(atomCoordinates);
+    if (flag != 0) {
+        PyErr_SetString(PyExc_ValueError, "Could not decompress FCZ file");
+        return NULL;
+    }
+
+    std::vector<float3d> coordsVector = extractCoordinates(atomCoordinates);
+
+    // Output
+    PyObject* dict = getPyDictFromFoldcomp(&compRes, coordsVector);
+    if (dict == NULL) {
+        return NULL;
+    }
+    // Return dictionary
+    return dict;
+}
+
+// 02. Extract information starting from PDB
+PyObject* getDataFromPDB(const std::string& pdb_input) {
+    std::vector<AtomCoordinate> atomCoordinates;
+    // parse ATOM lines from PDB file into atomCoordinates
+    std::istringstream iss(pdb_input);
+    std::string line;
+    // Read PDB string
+    while (std::getline(iss, line)) {
+        if (line.substr(0, 4) == "ATOM") {
+            atomCoordinates.emplace_back(
+                trim(line.substr(12, 4)), // atom
+                trim(line.substr(17, 3)), // residue
+                line.substr(21, 1), // chain
+                std::stoi(line.substr(6, 5)), // atom_index
+                std::stoi(line.substr(22, 4)), // residue_index
+                std::stof(line.substr(30, 8)), std::stof(line.substr(38, 8)), std::stof(line.substr(46, 8)), // coordinates
+                std::stof(line.substr(54, 6)), // occupancy
+                std::stof(line.substr(60, 6)) // tempFactor
+            );
+        }
+    }
+    if (atomCoordinates.size() == 0) {
+        PyErr_SetString(PyExc_ValueError, "No ATOM lines found in PDB file");
+        return NULL;
+    }
+
+    // compress
+    Foldcomp compRes;
+    compRes.compress(atomCoordinates);
+
+    std::vector<float3d> coordsVector = extractCoordinates(atomCoordinates);
+
+    // Output
+    PyObject* dict = getPyDictFromFoldcomp(&compRes, coordsVector);
+    if (dict == NULL) {
+        return NULL;
+    }
+    return dict;
+}
+
+static PyObject* foldcomp_get_data(PyObject* /* self */, PyObject* args, PyObject* kwargs) {
+    const char* input;
+    size_t input_size;
+    static const char* kwlist[] = { "input", NULL };
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#", (char**)kwlist, &input, &input_size)) {
+        return NULL;
+    }
+    // Check input
+    if (input_size == 0) {
+        PyErr_SetString(PyExc_ValueError, "Input is empty");
+        return NULL;
+    }
+    // Check the first 4 bytes of the input and if they are "FCMP" then it is a FCZ file
+    if (input_size >= 4 && strncmp(input, "FCMP", 4) == 0) {
+        return getDataFromFCZ(input, input_size);
+    } else if (input_size >= 4) {
+        std::string pdb_input(input, input_size);
+        return getDataFromPDB(pdb_input);
+    } else {
+        PyErr_SetString(PyExc_ValueError, "Input is not a FCZ file or PDB file");
+        return NULL;
+    }
+}
+
+// Method definitions
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wunknown-warning-option"
@@ -387,11 +635,11 @@ static PyMethodDef foldcomp_methods[] = {
     {"decompress", foldcomp_decompress, METH_VARARGS, "Decompress FCZ content to PDB."},
     {"compress", (PyCFunction)foldcomp_compress, METH_VARARGS | METH_KEYWORDS, "Compress PDB content to FCZ."},
     {"open", (PyCFunction)foldcomp_open, METH_VARARGS | METH_KEYWORDS, "Open a Foldcomp database."},
-
+    {"get_data", (PyCFunction)foldcomp_get_data, METH_VARARGS | METH_KEYWORDS, "Get data from FCZ or PDB content."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 #pragma GCC diagnostic pop
-
+// Module definition
 static struct PyModuleDef foldcomp_module_def = {
     PyModuleDef_HEAD_INIT,
     "foldcomp", /* m_name */
@@ -403,7 +651,7 @@ static struct PyModuleDef foldcomp_module_def = {
     0, /* m_clear */
     0, /* m_free */
 };
-
+// Module initialization
 PyMODINIT_FUNC PyInit_foldcomp(void) {
     if (PyType_Ready(&FoldcompDatabaseType) < 0) {
         return NULL;
