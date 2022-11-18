@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-10-06 19:59:30
+ * Last Modified: 2022-11-18 19:00:04
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -243,7 +243,7 @@ void writeAtomCoordinatesToPDB(
     std::string residue;
     for (int i = 0; i < total; i++) {
         pdb_stream << "ATOM  "; // 1-4 ATOM
-        pdb_stream << std::setw(5) << i + 1; // 7-11
+        pdb_stream << std::setw(5) << atoms[i].atom_index; // 7-11
         pdb_stream << " "; // 12
         if (atoms[i].atom.size() == 4) {
             pdb_stream << std::setw(4) << std::left << atoms[i].atom; // 13-16
@@ -278,7 +278,7 @@ void writeAtomCoordinatesToPDB(
             // 18-20 Residue name.
             // 22 Chain identifier.
             // 23-26 Residue sequence number.
-            pdb_stream << "TER   " << std::setw(5) << total + 1 << "      ";
+            pdb_stream << "TER   " << std::setw(5) << atoms[i].atom_index + 1 << "      ";
             pdb_stream << std::setw(3) << std::right << atoms[i].residue;
             pdb_stream << " " << atoms[i].chain;
             pdb_stream << std::setw(4) << atoms[i].residue_index << std::endl;
@@ -369,6 +369,30 @@ void removeAlternativePosition(std::vector<AtomCoordinate>& atoms) {
 }
 
 std::vector<AtomCoordinate> getAtomsWithResidueIndex(
+    std::vector<AtomCoordinate>& atoms, int residue_index
+) {
+    std::vector<AtomCoordinate> output;
+    for (const AtomCoordinate& curr_atm : atoms) {
+        if (curr_atm.residue_index == residue_index) {
+            output.emplace_back(curr_atm);
+        }
+    }
+    return output;
+}
+
+std::vector<AtomCoordinate> getAtomsWithResidueIndiceRange(
+    std::vector<AtomCoordinate>& atoms, int start, int end
+) {
+    std::vector<AtomCoordinate> output;
+    for (const AtomCoordinate& curr_atm : atoms) {
+        if (curr_atm.residue_index >= start && curr_atm.residue_index < end) {
+            output.emplace_back(curr_atm);
+        }
+    }
+    return output;
+}
+
+std::vector<AtomCoordinate> getAtomsWithResidueIndex(
     std::vector<AtomCoordinate>& atoms, int residue_index,
     std::vector<std::string> atomNames
 ) {
@@ -407,4 +431,59 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
         sum += pow(atoms1[i].coordinate.z - atoms2[i].coordinate.z, 2);
     }
     return sqrt(sum / atoms1.size());
+}
+
+#include <algorithm>
+
+std::vector<int> identifyFragments(std::vector<AtomCoordinate>& atoms, int mode) {
+    // mode: 3: all conditions
+    //       1: split by chain
+    //       2: split by discontinuous residue index
+    std::vector<int> breaks;
+    std::vector<AtomCoordinate> backbone = filterBackbone(atoms);
+    if (mode & 1) {
+        // Split by chain
+        for (size_t i = 1; i < backbone.size(); i++) {
+            if (backbone[i].chain != backbone[i - 1].chain) {
+                breaks.push_back(backbone[i].residue_index);
+            }
+        }
+    }
+    if (mode & 2) {
+        // Split by discontinuous residue index
+        int prevN_residue_index = -1;
+        for (size_t i = 0; i < backbone.size(); i++) {
+            if (backbone[i].atom == "N") {
+                if (prevN_residue_index != -1) {
+                    if (backbone[i].residue_index - prevN_residue_index != 1) {
+                        breaks.push_back(backbone[i].residue_index);
+                    }
+                    prevN_residue_index = backbone[i].residue_index;
+                } else {
+                    prevN_residue_index = backbone[i].residue_index;
+                }
+            }
+        }
+    }
+
+    return breaks;
+}
+
+std::vector< std::vector<AtomCoordinate> > splitFragments(std::vector<AtomCoordinate>& atoms, std::vector<int> br) {
+    std::vector< std::vector<AtomCoordinate> > output;
+    std::vector<AtomCoordinate> currentFragment;
+    // Iterate through all atoms
+    if (br.size() == 0) {
+        output.emplace_back(atoms);
+    } else {
+        // Generate ranges with br
+        // add 0 to the front of br and add the last residue index to the end of br
+        br.insert(br.begin(), 0);
+        br.push_back(atoms.back().residue_index + 1);
+        for (size_t i = 0; i < br.size() - 1; i++) {
+            std::vector<AtomCoordinate> currFragment = getAtomsWithResidueIndiceRange(atoms, br[i], br[i + 1]);
+            output.push_back(currFragment);
+        }
+    }
+    return output;
 }

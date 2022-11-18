@@ -8,7 +8,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-09-29 17:09:40
+ * Last Modified: 2022-11-18 19:01:03
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -268,7 +268,6 @@ private:
     /* data */
     std::string magicNumber;
     /* private methods */
-    std::vector< std::vector<float> > _calculateCoordinates();
     int _restoreDiscretizer(int angleType);
     int _restoreAtomCoordinate(float* coords);
     int _preprocessBackbone();
@@ -331,13 +330,14 @@ public:
 
     std::vector<BackboneChain> compressedBackBone;
     std::vector<unsigned int> compressedSideChain;
-    std::vector<int> backboneBreaks;
     std::vector<char> residues;
     std::vector<std::string> residueThreeLetter;
     AtomCoordinate OXT;
     float3d OXT_coords;
 
     // Angles
+    std::vector<float> backboneTorsionAngles;
+    std::vector<float> backboneBondAngles;
     std::vector<float> psi;
     std::vector<float> omega;
     std::vector<float> phi;
@@ -391,6 +391,7 @@ public:
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
     int writeFASTALike(std::string filename, std::vector<std::string>& data);
+    int writeTorsionAngles(std::string filename);
 #ifdef FOLDCOMP_EXECUTABLE
     int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
 #endif
