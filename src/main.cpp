@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-11-18 18:53:36
+ * Last Modified: 2022-11-18 22:18:21
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -47,6 +47,7 @@
 static int use_alt_order = 0;
 static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
+static int split_fragment = 0; // NOT AVAILABLE YET - WORK IN PROGRESS
 static int ext_mode = 0;
 static int ext_merge = 1;
 
@@ -66,6 +67,7 @@ int print_usage(void) {
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
+    // std::cout << " -s, --split          split fragments [default=false]" << std::endl; // NOT AVAILABLE YET - WORK IN PROGRESS
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
@@ -116,13 +118,16 @@ int compress(std::string input, std::string output) {
     std::string title = reader.title;
 
     // Prototyping for multiple chain support - 2022-10-13 22:01:53
-    // TODO: Integrate this to COMPRESS_MULTIPLE mode
     removeAlternativePosition(atomCoordinates);
     // Identify multiple chains or regions with discontinous residue indices
     std::vector<int> fr = identifyFragments(atomCoordinates);
     if (fr.size() > 0) {
-        int flag = compressFragment(atomCoordinates, fr, output, title);
-        return flag;
+        if (split_fragment) {
+            return compressFragment(atomCoordinates, fr, output, title);
+        } else {
+            std::cout << "[Error] Multiple chains or discontinous residue indices found in the input file: " << input << std::endl;
+            return 1;
+        }
     }
 
     std::vector<BackboneChain> compData;
