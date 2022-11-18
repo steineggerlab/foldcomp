@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-15 17:43:30
+ * Last Modified: 2022-11-18 18:56:30
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -556,9 +556,6 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     // Get header
     this->header = this->get_header();
 
-    // Identify breaks
-    this->backboneBreaks = this->nerf.identifyBreaks(backbone);
-
     // Mark as processed
     this->isPreprocessed = true;
 
@@ -715,16 +712,18 @@ int Foldcomp::_restoreAtomCoordinate(float* coords) {
     // 2022-03-04 14:30:58
     // IMPORTANT: WARNING: TODO: Atom indexing is not correct right now
     // SIDE CHAIN ATOMS SHOULD GE CONSIDERED WHEN INDEXING
+    // convert char to string
+    std::string chain = std::string(1, this->header.chain);
     AtomCoordinate prevN = AtomCoordinate(
-        "N", firstResidue, "A", this->header.idxAtom, this->header.idxResidue,
+        "N", firstResidue, chain, this->header.idxAtom, this->header.idxResidue,
         coords[0], coords[1], coords[2]
     );
     AtomCoordinate prevCA = AtomCoordinate(
-        "CA", firstResidue, "A", this->header.idxAtom + 1, this->header.idxResidue,
+        "CA", firstResidue, chain, this->header.idxAtom + 1, this->header.idxResidue,
         coords[3], coords[4], coords[5]
     );
     AtomCoordinate prevC = AtomCoordinate(
-        "C", firstResidue, "A", this->header.idxAtom + 2, this->header.idxResidue,
+        "C", firstResidue, chain, this->header.idxAtom + 2, this->header.idxResidue,
         coords[6], coords[7], coords[8]
     );
 
@@ -798,7 +797,6 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         this->backboneTorsionAngles.push_back(this->omega[i]);
         this->backboneTorsionAngles.push_back(this->phi[i]);
     }
-
 
     // Continuize bond angles
     this->n_ca_c_angle = this->n_ca_c_angleDisc.continuize(this->n_ca_c_angleDiscretized);
@@ -1325,7 +1323,6 @@ CompressedFileHeader Foldcomp::get_header() {
     header.firstResidue = this->firstResidue;
     header.lastResidue = this->lastResidue;
     header.lenTitle = this->lenTitle;
-    //
     header.chain = this->chain;
     // discretizer parameters
     header.mins[0] = this->phiDisc.min;

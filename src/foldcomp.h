@@ -8,7 +8,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-15 17:43:52
+ * Last Modified: 2022-11-18 19:01:03
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -330,7 +330,6 @@ public:
 
     std::vector<BackboneChain> compressedBackBone;
     std::vector<unsigned int> compressedSideChain;
-    std::vector<int> backboneBreaks;
     std::vector<char> residues;
     std::vector<std::string> residueThreeLetter;
     AtomCoordinate OXT;
