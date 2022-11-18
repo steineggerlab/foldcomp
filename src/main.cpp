@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-10-18 19:32:59
+ * Last Modified: 2022-11-18 18:53:36
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -75,7 +75,6 @@ int print_usage(void) {
 int compressFragment(std::vector<AtomCoordinate>& atoms, std::vector<int>& fragIndices, std::string& output, std::string& name) {
     // Split
     std::vector<std::vector<AtomCoordinate>> fragments = splitFragments(atoms, fragIndices);
-    // Variables for naming output files
     int fragIndex = 0;
     std::string prevChain = fragments[0][0].chain;
     std::string output_file;
