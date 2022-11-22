@@ -86,9 +86,15 @@ with open("test/compressed.fcz", "rb") as fcz:
     pdb_file.write(pdb)
 
   # Get data as dictionary (v0.0.3)
-  # keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
   data_dict = foldcomp.get_data(fcz_binary) # foldcomp.get_data(pdb) also works
-  data_dict["torsion_angles"] # torsion angles of the backbone as list
+  # Keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
+  data_dict["phi"] # phi angles (C-N-CA-C)
+  data_dict["psi"] # psi angles (N-CA-C-N)
+  data_dict["omega"] # omega angles (CA-C-N-CA)
+  data_dict["torsion_angles"] # torsion angles of the backbone as list (phi + psi + omega)
+  data_dict["bond_angles"] # bond angles of the backbone as list
+  data_dict["residues"] # amino acid residues as string
+  data_dict["coordinates"] # coordinates of the backbone as list
 
 # 02. Iterate over a database of FCZ files
 # Open a foldcomp database
