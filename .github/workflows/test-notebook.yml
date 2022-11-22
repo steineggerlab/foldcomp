@@ -1,0 +1,23 @@
+name: Test notebook
+
+on:
+  push:
+    branches: [ "master", "dev" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+
+jobs:
+  notebook:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Python
+      uses: actions/setup-python@v2.3.3
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        pip install papermill notebook
+    - name: Run notebook
+      run: |
+        (cd test; papermill ../foldcomp-py-examples.ipynb ../foldcomp-py-examples-out.ipynb)
