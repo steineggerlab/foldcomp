@@ -6,7 +6,7 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-11-18 19:00:04
+ * Last Modified: 2022-11-29 16:31:08
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -433,57 +433,114 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
     return sqrt(sum / atoms1.size());
 }
 
-#include <algorithm>
-
-std::vector<int> identifyFragments(std::vector<AtomCoordinate>& atoms, int mode) {
-    // mode: 3: all conditions
-    //       1: split by chain
-    //       2: split by discontinuous residue index
-    std::vector<int> breaks;
-    std::vector<AtomCoordinate> backbone = filterBackbone(atoms);
-    if (mode & 1) {
-        // Split by chain
-        for (size_t i = 1; i < backbone.size(); i++) {
-            if (backbone[i].chain != backbone[i - 1].chain) {
-                breaks.push_back(backbone[i].residue_index);
-            }
-        }
+std::vector<AtomCoordinate> _subsetAtomVectorWithIndices(
+    std::vector<AtomCoordinate>& atoms,
+    std::pair<size_t, size_t>& indices
+) {
+    std::vector<AtomCoordinate> output;
+    for (size_t i = indices.first; i < indices.second; i++) {
+        output.push_back(atoms[i]);
     }
-    if (mode & 2) {
-        // Split by discontinuous residue index
-        int prevN_residue_index = -1;
-        for (size_t i = 0; i < backbone.size(); i++) {
-            if (backbone[i].atom == "N") {
-                if (prevN_residue_index != -1) {
-                    if (backbone[i].residue_index - prevN_residue_index != 1) {
-                        breaks.push_back(backbone[i].residue_index);
-                    }
-                    prevN_residue_index = backbone[i].residue_index;
-                } else {
-                    prevN_residue_index = backbone[i].residue_index;
-                }
-            }
-        }
-    }
-
-    return breaks;
+    return output;
 }
 
-std::vector< std::vector<AtomCoordinate> > splitFragments(std::vector<AtomCoordinate>& atoms, std::vector<int> br) {
-    std::vector< std::vector<AtomCoordinate> > output;
-    std::vector<AtomCoordinate> currentFragment;
-    // Iterate through all atoms
-    if (br.size() == 0) {
-        output.emplace_back(atoms);
+void _splitAtomVectorWithIndices(
+    std::vector<AtomCoordinate>& atoms,
+    std::vector< std::pair<size_t, size_t> >& indices,
+    std::vector< std::vector<AtomCoordinate> >& output
+) {
+    if (indices.size() == 0) {
+        output.push_back(atoms);
     } else {
-        // Generate ranges with br
-        // add 0 to the front of br and add the last residue index to the end of br
-        br.insert(br.begin(), 0);
-        br.push_back(atoms.back().residue_index + 1);
-        for (size_t i = 0; i < br.size() - 1; i++) {
-            std::vector<AtomCoordinate> currFragment = getAtomsWithResidueIndiceRange(atoms, br[i], br[i + 1]);
-            output.push_back(currFragment);
+        for (size_t i = 0; i < indices.size(); i++) {
+            output.push_back(_subsetAtomVectorWithIndices(atoms, indices[i]));
         }
+    }
+}
+
+/**
+ * @brief Identify discontinuous regions in atom coordinate vector and return
+ *        vector of indices of the start and end of each region.
+ *        start: inclusive, end: exclusive [start, end)
+ * @param atoms
+ * @param mode
+ * @return std::vector<std::pair<size_t, size_t>>
+ */
+std::vector< std::pair<size_t, size_t> > identifyChains(std::vector<AtomCoordinate>& atoms) {
+    std::vector< std::pair<size_t, size_t> > output;
+    size_t start = 0;
+    // Split by chain
+    for (size_t i = 1; i < atoms.size(); i++) {
+        if (atoms[i].chain != atoms[i - 1].chain) {
+            // Ensure that the new fragment starts with "N"
+            if (atoms[i].atom == "N") {
+                output.push_back(std::make_pair(start, i));
+                start = i;
+            } else {
+                // Find the first "N" atom
+                for (size_t j = i; j < atoms.size(); j++) {
+                    if (atoms[j].atom == "N") {
+                        // Ignore fragment between i and j
+                        output.push_back(std::make_pair(start, i));
+                        start = j;
+                        break;
+                    }
+                }
+                // Set i to j
+                i = start;
+            }
+        }
+    }
+    // Add the last fragment
+    output.push_back(std::make_pair(start, atoms.size()));
+    return output;
+
+}
+
+/**
+ * @brief Identify discontinuous residue indices in atom coordinate vector and return
+ *        atoms are expected to have the same chain
+ * @param atoms
+ * @return std::vector< std::pair<size_t, size_t> >
+ */
+std::vector< std::pair<size_t, size_t> > identifyDiscontinousResInd(
+    std::vector<AtomCoordinate>& atoms
+) {
+    std::vector< std::pair<size_t, size_t> > output;
+    // Extract N atoms
+    std::vector< std::pair<size_t, int> > N_indices;
+    for (size_t i = 0; i < atoms.size(); i++) {
+        if (atoms[i].atom == "N") {
+            N_indices.push_back(std::make_pair(i, atoms[i].residue_index));
+        }
+    }
+    // Identify discontinuous regions
+    size_t start = 0;
+    for (size_t i = 1; i < N_indices.size(); i++) {
+        if (N_indices[i].second - N_indices[i - 1].second > 1) {
+            output.push_back(std::make_pair(start, N_indices[i].first));
+            start = N_indices[i].first;
+        }
+    }
+    // Add the last fragment
+    output.push_back(std::make_pair(start, atoms.size()));
+    return output;
+}
+
+std::vector< std::vector< std::vector<AtomCoordinate> > > splitAtomsByChainAndDiscontinuity(
+    std::vector<AtomCoordinate>& atoms
+) {
+    std::vector< std::vector< std::vector<AtomCoordinate> > > output;
+    // Split by chain
+    std::vector< std::pair<size_t, size_t> > chain_indices = identifyChains(atoms);
+    std::vector< std::vector<AtomCoordinate> > chain_atoms;
+    _splitAtomVectorWithIndices(atoms, chain_indices, chain_atoms);
+    // Split by discontinuity
+    for (size_t i = 0; i < chain_atoms.size(); i++) {
+        std::vector< std::pair<size_t, size_t> > discon_indices = identifyDiscontinousResInd(chain_atoms[i]);
+        std::vector< std::vector<AtomCoordinate> > discon_atoms;
+        output.push_back(discon_atoms);
+        _splitAtomVectorWithIndices(chain_atoms[i], discon_indices, output[i]);
     }
     return output;
 }
