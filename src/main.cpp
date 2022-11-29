@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-11-18 22:18:21
+ * Last Modified: 2022-11-29 16:44:07
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -47,7 +47,7 @@
 static int use_alt_order = 0;
 static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
-static int split_fragment = 0; // NOT AVAILABLE YET - WORK IN PROGRESS
+static int split_out = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
 
@@ -67,41 +67,33 @@ int print_usage(void) {
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
-    // std::cout << " -s, --split          split fragments [default=false]" << std::endl; // NOT AVAILABLE YET - WORK IN PROGRESS
+    std::cout << " --split              split fragments [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
     return 0;
 }
 
-int compressFragment(std::vector<AtomCoordinate>& atoms, std::vector<int>& fragIndices, std::string& output, std::string& name) {
-    // Split
-    std::vector<std::vector<AtomCoordinate>> fragments = splitFragments(atoms, fragIndices);
-    int fragIndex = 0;
-    std::string prevChain = fragments[0][0].chain;
-    std::string output_file;
-    for (size_t i = 0; i < fragments.size(); i++) {
-        // New chain observed. Update frageIndex and prevChain
-        if (fragments[i][0].chain != prevChain) {
-            fragIndex = 0;
-            prevChain = fragments[i][0].chain;
+int compressFragment(std::vector< std::vector< std::vector<AtomCoordinate> > >& atomFragments, std::string& output, std::string& name) {
+    // Compress each fragment
+    for (size_t chInd = 0; chInd < atomFragments.size(); chInd++) {
+        std::string chain = atomFragments[chInd][0][0].chain;
+        for (size_t fragInd = 0; fragInd < atomFragments[chInd].size(); fragInd++) {
+            std::vector<AtomCoordinate>& atomFragment = atomFragments[chInd][fragInd];
+            std::string fragmentOutput = getFileWithoutExt(output);
+            if (atomFragments[chInd].size() > 1) {
+                fragmentOutput += chain +"_" +std::to_string(fragInd + 1);
+            } else {
+                fragmentOutput += chain;
+            }
+            fragmentOutput += ".fcz";
+            std::cout << "Compressing " << name << " chain " << chain << " fragment " << (fragInd + 1) << " to " << fragmentOutput << std::endl;
+            Foldcomp foldcomp;
+            foldcomp.anchorThreshold = anchor_residue_threshold;
+            foldcomp.strTitle = name;
+            foldcomp.compress(atomFragment);
+            foldcomp.write(fragmentOutput);
         }
-        output_file = getFileWithoutExt(output) + fragments[i][0].chain + "_" + std::to_string(fragIndex) + ".fcz";
-        // When there's only one fragment with a chain, ignore fragment index
-        if (fragIndex == 0 && i != fragments.size() - 1 && fragments[i][0].chain != fragments[i + 1][0].chain) {
-            output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
-        }
-        if (i == fragments.size() - 1 && fragments[i][0].chain != fragments[i - 1][0].chain) {
-            output_file = getFileWithoutExt(output) + fragments[i][0].chain + ".fcz";
-        }
-        std::cout << "Compressing chain " << fragments[i][0].chain << ", fragment " << fragIndex << " to " << output_file << std::endl;
-        // Compress
-        Foldcomp foldcomp;
-        foldcomp.anchorThreshold = anchor_residue_threshold;
-        foldcomp.strTitle = name;
-        foldcomp.compress(fragments[i]);
-        foldcomp.write(output_file);
-        fragIndex++;
     }
     return 0;
 }
@@ -120,10 +112,18 @@ int compress(std::string input, std::string output) {
     // Prototyping for multiple chain support - 2022-10-13 22:01:53
     removeAlternativePosition(atomCoordinates);
     // Identify multiple chains or regions with discontinous residue indices
-    std::vector<int> fr = identifyFragments(atomCoordinates);
-    if (fr.size() > 0) {
-        if (split_fragment) {
-            return compressFragment(atomCoordinates, fr, output, title);
+    std::vector< std::vector< std::vector<AtomCoordinate> > > atomFragments = splitAtomsByChainAndDiscontinuity(atomCoordinates);
+    // Check if there are multiple chains or regions with discontinous residue indices
+    size_t numChain = atomFragments.size();
+    size_t numFrag = 0;
+    for (size_t i = 0; i < numChain; i++) {
+        numFrag += atomFragments[i].size();
+    }
+
+    if (numChain > 1 || numFrag > 1) {
+        if (split_out) {
+            std::cout << "Found " << numChain << " chain(s) and " << numFrag << " fragments" << std::endl;
+            return compressFragment(atomFragments, output, title);
         } else {
             std::cout << "[Error] Multiple chains or discontinous residue indices found in the input file: " << input << std::endl;
             return 1;
@@ -141,12 +141,6 @@ int compress(std::string input, std::string output) {
         std::cout << "[Error] Writing file: " << output << std::endl;
         return -1;
     }
-    // DEBUGGING
-    // Nerf nerf;
-    // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
-    // clear memory
-    // atomCoordinates.clear();
-    // compData.clear();
     return 0;
 }
 
@@ -169,12 +163,6 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
     compData = compRes.compress(atomCoordinates);
     // Write compressed data to file
     compRes.write(output + "/" + name + ".fcz");
-    // DEBUGGING
-    // Nerf nerf;
-    // nerf.writeInfoForChecking(atomCoordinates, "BEFORE_COMPRESSION.csv");
-    // clear memory
-    // atomCoordinates.clear();
-    // compData.clear();
     return 0;
 }
 
@@ -352,6 +340,7 @@ int main(int argc, char* const *argv) {
             {"alt",           no_argument,          0, 'a'},
             {"tar",           no_argument,          0, 'z'},
             {"recursive",     no_argument,          0, 'r'},
+            {"split",         no_argument, &split_out,  1 },
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
