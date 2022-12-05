@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-11-29 16:44:07
+ * Last Modified: 2022-12-05 22:50:47
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -23,6 +23,7 @@
 #include "foldcomp.h"
 #include "structure_reader.h"
 #include "utility.h"
+#include "execution_timer.h"
 
 // Standard libraries
 #include <cstring>
@@ -50,6 +51,7 @@ static int save_as_tar = 0;
 static int split_out = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
+static int measure_time = 0;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -71,6 +73,7 @@ int print_usage(void) {
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
+    std::cout << " --time               measure time for compression/decompression" << std::endl;
     return 0;
 }
 
@@ -111,22 +114,19 @@ int compress(std::string input, std::string output) {
 
     // Prototyping for multiple chain support - 2022-10-13 22:01:53
     removeAlternativePosition(atomCoordinates);
-    // Identify multiple chains or regions with discontinous residue indices
-    std::vector< std::vector< std::vector<AtomCoordinate> > > atomFragments = splitAtomsByChainAndDiscontinuity(atomCoordinates);
-    // Check if there are multiple chains or regions with discontinous residue indices
-    size_t numChain = atomFragments.size();
-    size_t numFrag = 0;
-    for (size_t i = 0; i < numChain; i++) {
-        numFrag += atomFragments[i].size();
-    }
 
-    if (numChain > 1 || numFrag > 1) {
-        if (split_out) {
+    if (split_out) {
+        // Identify multiple chains or regions with discontinous residue indices
+        std::vector< std::vector< std::vector<AtomCoordinate> > > atomFragments = splitAtomsByChainAndDiscontinuity(atomCoordinates);
+        // Check if there are multiple chains or regions with discontinous residue indices
+        size_t numChain = atomFragments.size();
+        size_t numFrag = 0;
+        for (size_t i = 0; i < numChain; i++) {
+            numFrag += atomFragments[i].size();
+        }
+        if (numChain > 1 || numFrag > 1) {
             std::cout << "Found " << numChain << " chain(s) and " << numFrag << " fragments" << std::endl;
             return compressFragment(atomFragments, output, title);
-        } else {
-            std::cout << "[Error] Multiple chains or discontinous residue indices found in the input file: " << input << std::endl;
-            return 1;
         }
     }
 
@@ -165,7 +165,6 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
     compRes.write(output + "/" + name + ".fcz");
     return 0;
 }
-
 
 int compressWithoutWriting(Foldcomp& compRes, std::string input) {
     StructureReader reader;
@@ -336,17 +335,18 @@ int main(int argc, char* const *argv) {
 
     // Define command line options
     static struct option long_options[] = {
-            {"help",          no_argument,          0, 'h'},
-            {"alt",           no_argument,          0, 'a'},
-            {"tar",           no_argument,          0, 'z'},
-            {"recursive",     no_argument,          0, 'r'},
-            {"split",         no_argument, &split_out,  1 },
-            {"plddt",         no_argument,  &ext_mode,  0 },
-            {"fasta",         no_argument,  &ext_mode,  1 },
-            {"no-merge",      no_argument, &ext_merge,  0 },
-            {"threads", required_argument,          0, 't'},
-            {"break",   required_argument,          0, 'b'},
-            {0,                         0,          0,  0 }
+            {"help",          no_argument,             0, 'h'},
+            {"alt",           no_argument,             0, 'a'},
+            {"tar",           no_argument,             0, 'z'},
+            {"recursive",     no_argument,             0, 'r'},
+            {"split",         no_argument,    &split_out,  1 },
+            {"plddt",         no_argument,     &ext_mode,  0 },
+            {"fasta",         no_argument,     &ext_mode,  1 },
+            {"no-merge",      no_argument,    &ext_merge,  0 },
+            {"time",          no_argument, &measure_time,  1 },
+            {"threads", required_argument,             0, 't'},
+            {"break",   required_argument,             0, 'b'},
+            {0,                         0,             0,  0 }
     };
 
     // Parse command line options with getopt_long
@@ -575,7 +575,18 @@ int main(int argc, char* const *argv) {
 #pragma omp for
                     for (size_t i = 0; i < files.size(); i++) {
                         std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".fcz";
-                        compress(files[i], outputFile);
+                        if (measure_time) {
+                            double elapsed = 0.0;
+                            ExecutionTimer timer;
+                            compress(files[i], outputFile);
+                            elapsed = timer.getElapsed();
+#pragma omp critical
+                            {
+                                std::cout << files[i] << "\t" << elapsed << std::endl;
+                            }
+                        } else {
+                            compress(files[i], outputFile);
+                        }
                     }
                 }
             } else {
@@ -806,7 +817,18 @@ int main(int argc, char* const *argv) {
                         continue;
                     }
                     std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".pdb";
-                    decompress(input, outputFile);
+                    if (measure_time) {
+                        double elapsed = 0.0;
+                        ExecutionTimer timer;
+                        decompress(input, outputFile);
+                        elapsed = timer.getElapsed();
+#pragma omp critical
+                        {
+                            std::cout << files[i] << "\t" << elapsed << std::endl;
+                        }
+                    } else {
+                        decompress(input, outputFile);
+                    }
                     input.close();
                 }
             }

@@ -6,13 +6,13 @@
  * Description:
  *     This code is written as part of project "foldcomp".
  * ---
- * Last Modified: 2022-09-29 16:58:55
+ * Last Modified: 2022-12-04 16:23:52
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  */
 #include <chrono>
 #include <type_traits>
-
+#include <sstream>
 /**
  * @brief General function to measure the running time of a function
  * https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
@@ -43,22 +43,20 @@ private:
 
 public:
     ExecutionTimer() = default;
-    ~ExecutionTimer() {
-        const auto end = Clock::now();
-        std::ostringstream strStream;
-        strStream << "Destructor Elapsed: "
-            << std::chrono::duration_cast<Resolution>(end - mStart).count()
-            << std::endl;
-        std::cout << strStream.str() << std::endl;
-    }
+    ~ExecutionTimer() {}
 
     inline void stop() {
         const auto end = Clock::now();
         std::ostringstream strStream;
         strStream << "Stop Elapsed: "
-            << std::chrono::duration_cast<Resolution>(end - mStart).count()
+            << std::chrono::duration<double>(end - mStart).count()
             << std::endl;
         std::cout << strStream.str() << std::endl;
+    }
+
+    inline double getElapsed() const {
+        const auto end = Clock::now();
+        return std::chrono::duration<double>(end - mStart).count();
     }
 
 }; // ExecutionTimer
