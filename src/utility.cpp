@@ -21,6 +21,8 @@
 #ifdef FOLDCOMP_EXECUTABLE
 #include <dirent.h>
 #include <errno.h>
+#include <sys/stat.h>
+
 // Get all files in a directory using dirent.h
 void getdir(const std::string& dir, bool recursive, std::vector<std::string>& files) {
     DIR* dp;
@@ -31,14 +33,31 @@ void getdir(const std::string& dir, bool recursive, std::vector<std::string>& fi
     }
     std::vector<std::string> dirs;
     while ((dirp = readdir(dp)) != NULL) {
-        if (dirp->d_type == DT_DIR) {
+        unsigned char type = dirp->d_type;
+        if (type == DT_UNKNOWN) {
+            // stat the file to determine its real type
+            struct stat st;
+            std::string path = dir + "/" + dirp->d_name;
+            if (stat(path.c_str(), &st) == 0) {
+                if (S_ISDIR(st.st_mode)) {
+                    type = DT_DIR;
+                } else if (S_ISREG(st.st_mode)) {
+                    type = DT_REG;
+                } else if (S_ISLNK(st.st_mode)) {
+                    type = DT_LNK;
+                } else {
+                    continue;
+                }
+            }
+        }
+        if (type == DT_DIR) {
             if (recursive && std::string(dirp->d_name) != "." && std::string(dirp->d_name) != "..") {
                 dirs.emplace_back(dir + "/" + dirp->d_name);
             } else {
                 continue;
             }
         }
-        if (dirp->d_type == DT_REG || dirp->d_type == DT_LNK) {
+        if (type == DT_REG || type == DT_LNK) {
             files.emplace_back(dir + "/" + dirp->d_name);
         }
     }
