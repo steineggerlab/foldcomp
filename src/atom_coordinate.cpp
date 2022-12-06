@@ -132,7 +132,7 @@ void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option) {
     }
 }
 
-std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms) {
+std::vector<AtomCoordinate> filterBackbone(const tcb::span<AtomCoordinate>& atoms) {
     std::vector<AtomCoordinate> output;
     for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.isBackbone()) {
@@ -301,7 +301,7 @@ int writeAtomCoordinatesToPDBFile(
 }
 
 std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(
-    const std::vector<AtomCoordinate>& atomCoordinates
+    const tcb::span<AtomCoordinate>& atomCoordinates
 ) {
     std::vector< std::vector<AtomCoordinate> > output;
     std::vector<AtomCoordinate> currentResidue;
@@ -327,7 +327,7 @@ std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(
 }
 
 std::vector<std::string> getResidueNameVector(
-    const std::vector<AtomCoordinate>& atomCoordinates
+    const tcb::span<AtomCoordinate>& atomCoordinates
 ) {
     std::vector<std::string> output;
     // Unique residue names
@@ -393,7 +393,7 @@ std::vector<AtomCoordinate> getAtomsWithResidueIndiceRange(
 }
 
 std::vector<AtomCoordinate> getAtomsWithResidueIndex(
-    std::vector<AtomCoordinate>& atoms, int residue_index,
+    const tcb::span<AtomCoordinate>& atoms, int residue_index,
     std::vector<std::string> atomNames
 ) {
     std::vector<AtomCoordinate> output;
@@ -410,13 +410,12 @@ std::vector<AtomCoordinate> getAtomsWithResidueIndex(
 }
 
 std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
-    std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
+    const tcb::span<AtomCoordinate>& atoms, std::vector<int> residue_index,
     std::vector<std::string> atomNames
 ) {
-    std::vector< std::vector<AtomCoordinate> > output;
+    std::vector<std::vector<AtomCoordinate>> output;
     for (int curr_index : residue_index) {
-        std::vector<AtomCoordinate> curr_atoms = getAtomsWithResidueIndex(atoms, curr_index, atomNames);
-        output.push_back(curr_atoms);
+        output.emplace_back(getAtomsWithResidueIndex(atoms, curr_index, atomNames));
     }
     return output;
 }
@@ -466,7 +465,7 @@ void _splitAtomVectorWithIndices(
  * @param mode
  * @return std::vector<std::pair<size_t, size_t>>
  */
-std::vector< std::pair<size_t, size_t> > identifyChains(std::vector<AtomCoordinate>& atoms) {
+std::vector< std::pair<size_t, size_t> > identifyChains(const std::vector<AtomCoordinate>& atoms) {
     std::vector< std::pair<size_t, size_t> > output;
     size_t start = 0;
     // Split by chain
@@ -474,14 +473,14 @@ std::vector< std::pair<size_t, size_t> > identifyChains(std::vector<AtomCoordina
         if (atoms[i].chain != atoms[i - 1].chain) {
             // Ensure that the new fragment starts with "N"
             if (atoms[i].atom == "N") {
-                output.push_back(std::make_pair(start, i));
+                output.emplace_back(start, i);
                 start = i;
             } else {
                 // Find the first "N" atom
                 for (size_t j = i; j < atoms.size(); j++) {
                     if (atoms[j].atom == "N") {
                         // Ignore fragment between i and j
-                        output.push_back(std::make_pair(start, i));
+                        output.emplace_back(start, i);
                         start = j;
                         break;
                     }
@@ -492,55 +491,39 @@ std::vector< std::pair<size_t, size_t> > identifyChains(std::vector<AtomCoordina
         }
     }
     // Add the last fragment
-    output.push_back(std::make_pair(start, atoms.size()));
+    output.emplace_back(start, atoms.size());
     return output;
 
 }
 
 /**
  * @brief Identify discontinuous residue indices in atom coordinate vector and return
- *        atoms are expected to have the same chain
+ *        coordinates that have the same chain
  * @param atoms
  * @return std::vector< std::pair<size_t, size_t> >
  */
-std::vector< std::pair<size_t, size_t> > identifyDiscontinousResInd(
-    std::vector<AtomCoordinate>& atoms
+std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
+    const std::vector<AtomCoordinate>& atoms,
+    size_t chain_start,
+    size_t chain_end
 ) {
-    std::vector< std::pair<size_t, size_t> > output;
-    // Extract N atoms
-    std::vector< std::pair<size_t, int> > N_indices;
-    for (size_t i = 0; i < atoms.size(); i++) {
+    std::vector<std::pair<size_t, size_t>> output;
+    // Extract N atoms only within chain
+    std::vector<std::pair<size_t, int>> N_indices;
+    for (size_t i = chain_start; i < chain_end; i++) {
         if (atoms[i].atom == "N") {
-            N_indices.push_back(std::make_pair(i, atoms[i].residue_index));
+            N_indices.emplace_back(i, atoms[i].residue_index);
         }
     }
     // Identify discontinuous regions
     size_t start = 0;
     for (size_t i = 1; i < N_indices.size(); i++) {
         if (N_indices[i].second - N_indices[i - 1].second > 1) {
-            output.push_back(std::make_pair(start, N_indices[i].first));
+            output.emplace_back(start, N_indices[i].first);
             start = N_indices[i].first;
         }
     }
     // Add the last fragment
-    output.push_back(std::make_pair(start, atoms.size()));
-    return output;
-}
-
-std::vector< std::vector< std::vector<AtomCoordinate> > > splitAtomsByChainAndDiscontinuity(
-    std::vector<AtomCoordinate>& atoms
-) {
-    std::vector< std::vector< std::vector<AtomCoordinate> > > output;
-    // Split by chain
-    std::vector< std::pair<size_t, size_t> > chain_indices = identifyChains(atoms);
-    std::vector< std::vector<AtomCoordinate> > chain_atoms;
-    _splitAtomVectorWithIndices(atoms, chain_indices, chain_atoms);
-    // Split by discontinuity
-    for (size_t i = 0; i < chain_atoms.size(); i++) {
-        std::vector< std::pair<size_t, size_t> > discon_indices = identifyDiscontinousResInd(chain_atoms[i]);
-        std::vector< std::vector<AtomCoordinate> > discon_atoms;
-        output.push_back(discon_atoms);
-        _splitAtomVectorWithIndices(chain_atoms[i], discon_indices, output[i]);
-    }
+    output.emplace_back(start, atoms.size());
     return output;
 }

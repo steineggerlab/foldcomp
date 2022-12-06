@@ -13,6 +13,7 @@
  */
 #pragma once
 #include "float3d.h"
+#include "tcbspan.h"
 
 #include <cstdint>
 #include <fstream>
@@ -70,7 +71,7 @@ std::vector<AtomCoordinate> extractChain(
     std::vector<AtomCoordinate>& atoms, std::string chain
 );
 
-std::vector<AtomCoordinate> filterBackbone(const std::vector<AtomCoordinate>& atoms);
+std::vector<AtomCoordinate> filterBackbone(const tcb::span<AtomCoordinate>& atoms);
 
 void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option = 0);
 
@@ -85,12 +86,12 @@ int writeAtomCoordinatesToPDBFile(
     std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
 );
 
-std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(
-    const std::vector<AtomCoordinate>& atomCoordinates
+std::vector<std::vector<AtomCoordinate>> splitAtomByResidue(
+    const tcb::span<AtomCoordinate>& atomCoordinates
 );
 
 std::vector<std::string> getResidueNameVector(
-    const std::vector<AtomCoordinate>& atomCoordinates
+    const tcb::span<AtomCoordinate>& atomCoordinates
 );
 
 AtomCoordinate findFirstAtom(const std::vector<AtomCoordinate>& atoms, std::string atom_name);
@@ -98,12 +99,12 @@ void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start);
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms);
 
 std::vector<AtomCoordinate> getAtomsWithResidueIndex(
-    std::vector<AtomCoordinate>& atoms, int residue_index,
+    const tcb::span<AtomCoordinate>& atoms, int residue_index,
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
 
-std::vector< std::vector<AtomCoordinate> > getAtomsWithResidueIndex(
-    std::vector<AtomCoordinate>& atoms, std::vector<int> residue_index,
+std::vector<std::vector<AtomCoordinate>> getAtomsWithResidueIndex(
+    const tcb::span<AtomCoordinate>& atoms, std::vector<int> residue_index,
     std::vector<std::string> atomNames = {"N", "CA", "C"}
 );
 float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& atoms2);
@@ -111,6 +112,5 @@ float RMSD(std::vector<AtomCoordinate>& atoms1, std::vector<AtomCoordinate>& ato
 template <int32_t T, int32_t P>
 void ftoa(float n, char* s);
 
-std::vector< std::pair<size_t, size_t> > identifyChains(std::vector<AtomCoordinate>& atoms);
-std::vector< std::pair<size_t, size_t> > identifyDiscontinousResInd(std::vector<AtomCoordinate>& atoms);
-std::vector< std::vector< std::vector<AtomCoordinate> > > splitAtomsByChainAndDiscontinuity(std::vector<AtomCoordinate>& atoms);
+std::vector<std::pair<size_t, size_t>> identifyChains(const std::vector<AtomCoordinate>& atoms);
+std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(const std::vector<AtomCoordinate>& atoms, size_t chain_start, size_t chain_end);

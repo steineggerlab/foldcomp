@@ -447,14 +447,10 @@ void printCompressedResidue(BackboneChain& res) {
     std::cout << std::endl;
 }
 
-int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
+int Foldcomp::preprocess(const tcb::span<AtomCoordinate>& atoms) {
     int success = 0;
-    this->rawAtoms = atoms;
     this->compressedBackBone.resize(atoms.size());
     this->compressedSideChain.resize(atoms.size());
-
-    // Remove duplicated atoms
-    removeAlternativePosition(atoms);
 
     // Discretize
     // Extract backbone
@@ -473,7 +469,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
     this->lastResidue = getOneLetterCode(atoms[atoms.size() - 1].residue);
 
     // Anchor atoms
-    this->_setAnchor();
+    this->_setAnchor(atoms);
 
     if (atoms[atoms.size() - 1].atom == "OXT") {
         this->hasOXT = 1;
@@ -563,9 +559,7 @@ int Foldcomp::preprocess(std::vector<AtomCoordinate>& atoms) {
 }
 
 
-std::vector<BackboneChain> Foldcomp::compress(
-    std::vector<AtomCoordinate>& atoms
-) {
+std::vector<BackboneChain> Foldcomp::compress(const tcb::span<AtomCoordinate>& atoms) {
     std::vector<BackboneChain> output;
     // TODO: convert the atom coordinate vector into a vector of compressed residue
     // CURRENT VERSION - 2022-01-10 15:34:21
@@ -748,7 +742,7 @@ int Foldcomp::_getAnchorNum(int threshold) {
     return nAnchor;
 }
 
-void Foldcomp::_setAnchor() {
+void Foldcomp::_setAnchor(const tcb::span<AtomCoordinate>& atomCoordinates) {
     this->nInnerAnchor = this->_getAnchorNum(this->anchorThreshold);
     this->nAllAnchor = this->nInnerAnchor + 2; // Start and end
     // Set the anchor points - residue index
@@ -763,7 +757,7 @@ void Foldcomp::_setAnchor() {
     for (size_t i = 0; i < this->anchorIndices.size(); i++) {
         anchorResidueIndices.push_back(this->anchorIndices[i] + this->idxResidue);
     }
-    this->anchorAtoms = getAtomsWithResidueIndex(this->rawAtoms, anchorResidueIndices);
+    this->anchorAtoms = getAtomsWithResidueIndex(atomCoordinates, anchorResidueIndices);
 }
 
 std::vector<float> Foldcomp::checkTorsionReconstruction() {
@@ -864,7 +858,7 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     }
 
     // Reconstruct sidechain
-    std::vector< std::vector<AtomCoordinate> > backBonePerResidue = splitAtomByResidue(atom);
+    std::vector<std::vector<AtomCoordinate>> backBonePerResidue = splitAtomByResidue(atom);
     std::string currResidue = getThreeLetterCode(this->header.firstResidue);
     std::vector<AtomCoordinate> fullResidue;
 
@@ -901,8 +895,6 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
         atom.push_back(this->OXT);
     }
     setAtomIndexSequentially(atom, this->header.idxAtom);
-
-    this->rawAtoms = atom;
 
     return success;
 }
@@ -1417,6 +1409,7 @@ void Foldcomp::print(int length) {
     }
 }
 
+/*
 void Foldcomp::printSideChainTorsion(std::string filename) {
     std::ofstream outfile;
     outfile.open(filename);
@@ -1455,6 +1448,7 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
     }
     outfile.close();
 }
+*/
 
 /**
  * @brief Checks the input file read is valid or not.

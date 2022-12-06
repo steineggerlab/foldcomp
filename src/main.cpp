@@ -23,6 +23,7 @@
 #include "foldcomp.h"
 #include "structure_reader.h"
 #include "utility.h"
+#include "tcbspan.h"
 
 // Standard libraries
 #include <cstring>
@@ -47,7 +48,6 @@
 static int use_alt_order = 0;
 static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
-static int split_out = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
 
@@ -67,34 +67,9 @@ int print_usage(void) {
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
-    std::cout << " --split              split fragments [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
-    return 0;
-}
-
-int compressFragment(std::vector< std::vector< std::vector<AtomCoordinate> > >& atomFragments, std::string& output, std::string& name) {
-    // Compress each fragment
-    for (size_t chInd = 0; chInd < atomFragments.size(); chInd++) {
-        std::string chain = atomFragments[chInd][0][0].chain;
-        for (size_t fragInd = 0; fragInd < atomFragments[chInd].size(); fragInd++) {
-            std::vector<AtomCoordinate>& atomFragment = atomFragments[chInd][fragInd];
-            std::string fragmentOutput = getFileWithoutExt(output);
-            if (atomFragments[chInd].size() > 1) {
-                fragmentOutput += chain +"_" +std::to_string(fragInd + 1);
-            } else {
-                fragmentOutput += chain;
-            }
-            fragmentOutput += ".fcz";
-            std::cout << "Compressing " << name << " chain " << chain << " fragment " << (fragInd + 1) << " to " << fragmentOutput << std::endl;
-            Foldcomp foldcomp;
-            foldcomp.anchorThreshold = anchor_residue_threshold;
-            foldcomp.strTitle = name;
-            foldcomp.compress(atomFragment);
-            foldcomp.write(fragmentOutput);
-        }
-    }
     return 0;
 }
 
@@ -112,34 +87,41 @@ int compress(std::string input, std::string output) {
     // Prototyping for multiple chain support - 2022-10-13 22:01:53
     removeAlternativePosition(atomCoordinates);
     // Identify multiple chains or regions with discontinous residue indices
-    std::vector< std::vector< std::vector<AtomCoordinate> > > atomFragments = splitAtomsByChainAndDiscontinuity(atomCoordinates);
+    std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
     // Check if there are multiple chains or regions with discontinous residue indices
-    size_t numChain = atomFragments.size();
-    size_t numFrag = 0;
-    for (size_t i = 0; i < numChain; i++) {
-        numFrag += atomFragments[i].size();
-    }
-
-    if (numChain > 1 || numFrag > 1) {
-        if (split_out) {
-            std::cout << "Found " << numChain << " chain(s) and " << numFrag << " fragments" << std::endl;
-            return compressFragment(atomFragments, output, title);
-        } else {
-            std::cout << "[Error] Multiple chains or discontinous residue indices found in the input file: " << input << std::endl;
-            return 1;
-        }
-    }
-
+    std::pair<std::string, std::string> outputParts = getFileParts(output);
     std::vector<BackboneChain> compData;
-    Foldcomp compRes = Foldcomp();
-    // Convert title to char
-    compRes.strTitle = title;
-    compRes.anchorThreshold = anchor_residue_threshold;
-    compData = compRes.compress(atomCoordinates);
-    // Write compressed data to file
-    if (compRes.write(output) != 0) {
-        std::cout << "[Error] Writing file: " << output << std::endl;
-        return -1;
+    for (size_t i = 0; i < chain_indices.size(); i++) {
+        std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+        for (size_t j = 0; j < frag_indices.size(); j++) {
+            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+            Foldcomp compRes;
+            compRes.strTitle = title;
+            compRes.anchorThreshold = anchor_residue_threshold;
+            compData = compRes.compress(frag_span);
+
+            std::string filename;
+            if (chain_indices.size() > 1) {
+                std::string chain = atomCoordinates[chain_indices[i].first].chain;
+                filename = outputParts.first + chain;
+            } else {
+                filename = outputParts.first;
+            }
+
+            if (frag_indices.size() > 1) {
+                filename += "_" + std::to_string(j);
+            }
+
+            if (outputParts.second != "") {
+                filename += "." + outputParts.second;
+            }
+
+            // Write compressed data to file
+            if (compRes.write(filename) != 0) {
+                std::cout << "[Error] Writing file: " << filename << std::endl;
+                return -1;
+            }
+        }
     }
     return 0;
 }
@@ -155,8 +137,10 @@ int compressFromBuffer(const std::string& content, const std::string& output, st
     }
     std::string title = reader.title;
 
+    removeAlternativePosition(atomCoordinates);
+
     std::vector<BackboneChain> compData;
-    Foldcomp compRes = Foldcomp();
+    Foldcomp compRes;
     // Convert title to char
     compRes.strTitle = name;
     compRes.anchorThreshold = anchor_residue_threshold;
@@ -178,6 +162,8 @@ int compressWithoutWriting(Foldcomp& compRes, std::string input) {
     }
     std::string title = reader.title;
 
+    removeAlternativePosition(atomCoordinates);
+
     std::vector<BackboneChain> compData;
     // Convert title to char
     compRes.strTitle = title;
@@ -196,6 +182,9 @@ int compressFromBufferWithoutWriting(Foldcomp& compRes, const std::string& conte
         return 1;
     }
     std::string title = name;
+
+    removeAlternativePosition(atomCoordinates);
+
     std::vector<BackboneChain> compData;
     // Convert title to char
     compRes.strTitle = name;
@@ -214,6 +203,9 @@ int compressMultipleTarInner(Foldcomp& compRes, const char* buffer, size_t size,
         return 1;
     }
     std::string title = name;
+
+    removeAlternativePosition(atomCoordinates);
+
     std::vector<BackboneChain> compData;
     // Convert title to char
     compRes.strTitle = name;
@@ -224,7 +216,7 @@ int compressMultipleTarInner(Foldcomp& compRes, const char* buffer, size_t size,
 
 int decompress(std::istream &file, std::string output) {
     int flag = 0;
-    Foldcomp compRes = Foldcomp();
+    Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
         std::cerr << "[Error] Reading" << std::endl;
@@ -245,7 +237,7 @@ int decompress(std::istream &file, std::string output) {
 
 int extract(std::istream& file, std::string output) {
     int flag = 0;
-    Foldcomp compRes = Foldcomp();
+    Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
         std::cerr << "[Error] reading" << std::endl;
@@ -259,7 +251,7 @@ int extract(std::istream& file, std::string output) {
 
 int check(std::istream& file, std::string& filename) {
     int flag = 0;
-    Foldcomp compRes = Foldcomp();
+    Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
         std::cerr << "[Error] reading file: " << filename << std::endl;
@@ -340,7 +332,6 @@ int main(int argc, char* const *argv) {
             {"alt",           no_argument,          0, 'a'},
             {"tar",           no_argument,          0, 'z'},
             {"recursive",     no_argument,          0, 'r'},
-            {"split",         no_argument, &split_out,  1 },
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
@@ -667,7 +658,7 @@ int main(int argc, char* const *argv) {
                         } else {
                             outputFile = output + "/" + name_clean + ".fcz";
                         }
-                        Foldcomp compRes = Foldcomp();
+                        Foldcomp compRes;
                         compressMultipleTarInner(compRes, dataBuffer, header.size, name);
                         if (!save_as_tar) {
                             compRes.write(output + "/" + outputFile);
@@ -752,7 +743,7 @@ int main(int argc, char* const *argv) {
                         } else {
 
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
-                            Foldcomp compRes = Foldcomp();
+                            Foldcomp compRes;
                             std::string outputFile = output + "/" + getFileWithoutExt(obj_name) + ".fcz";
                             compressFromBufferWithoutWriting(compRes, contents, obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
@@ -1024,7 +1015,7 @@ int main(int argc, char* const *argv) {
                             std::istringstream input(std::string(dataBuffer, header.size));
                             if (ext_merge == 1) {
                                 std::vector<std::string> data;
-                                Foldcomp compRes = Foldcomp();
+                                Foldcomp compRes;
                                 compRes.read(input);
                                 compRes.extract(data, ext_mode);
                                 buffer.append(1, '>');

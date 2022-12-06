@@ -83,6 +83,14 @@ std::string getFileWithoutExt(std::string& file) {
     return extStart == std::string::npos ? file : file.substr(0, extStart);
 }
 
+std::pair<std::string, std::string> getFileParts(const std::string& file) {
+    size_t extStart = file.find_last_of('.');
+    if (extStart == std::string::npos) {
+        return std::make_pair(file, "");
+    }
+    return std::make_pair(file.substr(0, extStart), file.substr(extStart + 1));
+}
+
 bool stringEndsWith(const std::string& suffix, const std::string& str) {
     if (str.length() < suffix.length()) {
         return false;

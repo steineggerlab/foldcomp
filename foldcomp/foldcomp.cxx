@@ -279,6 +279,8 @@ int compress(const std::string& name, const std::string& pdb_input, std::ostream
         return 1;
     }
 
+    removeAlternativePosition(atomCoordinates);
+
     // compress
     Foldcomp compRes;
     compRes.strTitle = name;

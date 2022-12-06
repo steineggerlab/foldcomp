@@ -19,6 +19,7 @@
 #include "atom_coordinate.h"
 #include "discretizer.h"
 #include "nerf.h"
+#include "tcbspan.h"
 
 #ifdef FOLDCOMP_EXECUTABLE
 // TAR format handling - only for executable
@@ -265,8 +266,6 @@ struct FloatArrayWithDisc {
 
 class Foldcomp {
 private:
-    /* data */
-    std::string magicNumber;
     /* private methods */
     int _restoreDiscretizer(int angleType);
     int _restoreAtomCoordinate(float* coords);
@@ -275,7 +274,7 @@ private:
 
     // Anchor
     int _getAnchorNum(int threshold);
-    void _setAnchor();
+    void _setAnchor(const tcb::span<AtomCoordinate>& atomCoordinates);
     std::vector<AtomCoordinate> _getAnchorAtoms(bool includeStartAndEnd = true);
 
     int _discretizeSideChainTorsionAngles(
@@ -318,7 +317,6 @@ public:
     CompressedFileHeader header;
 
     // Vectors for atoms
-    std::vector<AtomCoordinate> rawAtoms;
     std::vector<AtomCoordinate> prevAtoms; // 3 atoms
     std::vector<AtomCoordinate> lastAtoms; // 3 atoms
     std::vector< std::vector<float> > lastAtomCoordinates; // 3 atoms
@@ -371,8 +369,8 @@ public:
     Discretizer tempFactorsDisc;
 
      // methods
-    int preprocess(std::vector<AtomCoordinate>& atoms);
-    std::vector<BackboneChain> compress(std::vector<AtomCoordinate>& atoms);
+    int preprocess(const tcb::span<AtomCoordinate>& atoms);
+    std::vector<BackboneChain> compress(const tcb::span<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
     int read(std::istream & filename);
     int writeStream(std::ostream& os);
@@ -400,7 +398,7 @@ public:
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
     void print(int length = 5);
-    void printSideChainTorsion(std::string filename);
+    // void printSideChainTorsion(std::string filename);
     // Check validity
     ValidityError checkValidity();
 };
