@@ -9,6 +9,7 @@ set(foldcomp_header_files
     src/foldcomp.h
     src/nerf.h
     src/sidechain.h
+    src/tcbspan.h
     src/torsion_angle.h
     src/utility.h
     PARENT_SCOPE
