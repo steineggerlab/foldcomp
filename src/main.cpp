@@ -23,6 +23,7 @@
 #include "foldcomp.h"
 #include "structure_reader.h"
 #include "utility.h"
+#include "database_writer.h"
 #include "tcbspan.h"
 
 // Standard libraries
@@ -67,6 +68,7 @@ int print_usage(void) {
     std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
+    std::cout << " -d, --db             save as database [default=false]" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
@@ -126,31 +128,6 @@ int compress(std::string input, std::string output) {
     return 0;
 }
 
-int compressFromBuffer(const std::string& content, const std::string& output, std::string& name) {
-    StructureReader reader;
-    reader.loadFromBuffer(content.c_str(), content.size(), name);
-    std::vector<AtomCoordinate> atomCoordinates;
-    reader.readAllAtoms(atomCoordinates);
-    if (atomCoordinates.size() == 0) {
-        std::cout << "[Error] No atoms found in the input" << std::endl;
-        return 1;
-    }
-    std::string title = reader.title;
-
-    removeAlternativePosition(atomCoordinates);
-
-    std::vector<BackboneChain> compData;
-    Foldcomp compRes;
-    // Convert title to char
-    compRes.strTitle = name;
-    compRes.anchorThreshold = anchor_residue_threshold;
-    compData = compRes.compress(atomCoordinates);
-    // Write compressed data to file
-    compRes.write(output + "/" + name + ".fcz");
-    return 0;
-}
-
-
 int compressWithoutWriting(Foldcomp& compRes, std::string input) {
     StructureReader reader;
     reader.load(input);
@@ -172,30 +149,9 @@ int compressWithoutWriting(Foldcomp& compRes, std::string input) {
     return 0;
 }
 
-int compressFromBufferWithoutWriting(Foldcomp& compRes, const std::string& content, std::string& name) {
+int compressFromBufferWithoutWriting(Foldcomp& compRes, const char* data, size_t length, std::string& name) {
     StructureReader reader;
-    reader.loadFromBuffer(content.c_str(), content.size(), name);
-    std::vector<AtomCoordinate> atomCoordinates;
-    reader.readAllAtoms(atomCoordinates);
-    if (atomCoordinates.size() == 0) {
-        std::cout << "[Error] No atoms found in the input" << std::endl;
-        return 1;
-    }
-    std::string title = name;
-
-    removeAlternativePosition(atomCoordinates);
-
-    std::vector<BackboneChain> compData;
-    // Convert title to char
-    compRes.strTitle = name;
-    compRes.anchorThreshold = anchor_residue_threshold;
-    compData = compRes.compress(atomCoordinates);
-    return 0;
-}
-
-int compressMultipleTarInner(Foldcomp& compRes, const char* buffer, size_t size, std::string& name) {
-    StructureReader reader;
-    reader.loadFromBuffer(buffer, size, name);
+    reader.loadFromBuffer(data, length, name);
     std::vector<AtomCoordinate> atomCoordinates;
     reader.readAllAtoms(atomCoordinates);
     if (atomCoordinates.size() == 0) {
@@ -306,6 +262,7 @@ int main(int argc, char* const *argv) {
     int num_threads = 1;
     int has_output = 0;
     int recursive = 0;
+    int db_output = 0;
 
     // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
@@ -315,6 +272,7 @@ int main(int argc, char* const *argv) {
         COMPRESS_MULTIPLE,
         COMPRESS_MULTIPLE_TAR,
         COMPRESS_MULTIPLE_GCS,
+        COMPRESS_MULTIPLE_DB,
         DECOMPRESS_MULTIPLE,
         DECOMPRESS_MULTIPLE_TAR,
         EXTRACT,
@@ -335,6 +293,7 @@ int main(int argc, char* const *argv) {
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
+            {"db",            no_argument,          0, 'd' },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
             {0,                         0,          0,  0 }
@@ -361,6 +320,9 @@ int main(int argc, char* const *argv) {
                 break;
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
+                break;
+            case 'd':
+                db_output = 1;
                 break;
             case '?':
                 return print_usage();
@@ -397,7 +359,9 @@ int main(int argc, char* const *argv) {
         } else
 #endif
         char* end = strrchr(argv[optind + 1], '.');
-        if (st.st_mode & S_ISDIR(st.st_mode)) {
+        if (db_output) {
+            mode = COMPRESS_MULTIPLE_DB;
+        } else if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
         } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = COMPRESS_MULTIPLE_TAR;
@@ -659,7 +623,7 @@ int main(int argc, char* const *argv) {
                             outputFile = output + "/" + name_clean + ".fcz";
                         }
                         Foldcomp compRes;
-                        compressMultipleTarInner(compRes, dataBuffer, header.size, name);
+                        compressFromBufferWithoutWriting(compRes, dataBuffer, header.size, name);
                         if (!save_as_tar) {
                             compRes.write(output + "/" + outputFile);
                         } else {
@@ -679,7 +643,70 @@ int main(int argc, char* const *argv) {
             mtar_close(&tar);
             flag = 0;
         }
+    } else if (mode == COMPRESS_MULTIPLE_DB) {
+        std::cout << "Compressing files in " << input;
+        std::cout << " using " << num_threads << " threads" << std::endl;
+        std::cout << "Output database: " << output << std::endl;
+        std::vector<std::string> files = getFilesInDirectory(input, recursive);
+        void* handle = make_writer(output.c_str(), (output + ".index").c_str());
+        unsigned int key = 0;
+#pragma omp parallel num_threads(num_threads)
+        {
+            std::vector<AtomCoordinate> atomCoordinates;
+            std::vector<BackboneChain> compData;
+            StructureReader reader;
+#pragma omp for
+            for (size_t i = 0; i < files.size(); ++i) {
+                reader.load(files[i]);
+                reader.readAllAtoms(atomCoordinates);
+                if (atomCoordinates.size() == 0) {
+                    std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
+                    continue;
+                }
+                std::string title = reader.title;
 
+                removeAlternativePosition(atomCoordinates);
+
+                std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
+                // Check if there are multiple chains or regions with discontinous residue indices
+                std::string output = baseName(getFileWithoutExt(files[i]));
+                std::vector<BackboneChain> compData;
+                for (size_t i = 0; i < chain_indices.size(); i++) {
+                    std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                    for (size_t j = 0; j < frag_indices.size(); j++) {
+                        tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+                        Foldcomp compRes;
+                        compRes.strTitle = title;
+                        compRes.anchorThreshold = anchor_residue_threshold;
+                        compData = compRes.compress(frag_span);
+
+                        std::string filename;
+                        if (chain_indices.size() > 1) {
+                            std::string chain = atomCoordinates[chain_indices[i].first].chain;
+                            filename = output + chain;
+                        } else {
+                            filename = output;
+                        }
+
+                        if (frag_indices.size() > 1) {
+                            filename += "_" + std::to_string(j);
+                        }
+
+                        std::ostringstream oss;
+                        compRes.writeStream(oss);
+        #pragma omp critical
+                        {
+                            writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
+                            key++;
+                        }
+                    }
+                }
+
+                atomCoordinates.clear();
+                compData.clear();
+            }
+        }
+        free_writer(handle);
     } else if (mode == COMPRESS_MULTIPLE_GCS) {
         // compress multiple files from gcs
 #ifdef HAVE_GCS
@@ -745,7 +772,7 @@ int main(int argc, char* const *argv) {
                             std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
                             Foldcomp compRes;
                             std::string outputFile = output + "/" + getFileWithoutExt(obj_name) + ".fcz";
-                            compressFromBufferWithoutWriting(compRes, contents, obj_name);
+                            compressFromBufferWithoutWriting(compRes, contents.c_str(), contents.length(), obj_name);
                             //compRes.writeTar(tar, outputFile, compRes.getSize());
                             int tar_id = 0;
 #ifdef OPENMP
