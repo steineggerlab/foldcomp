@@ -399,7 +399,7 @@ int main(int argc, char* const *argv) {
         char* end = strrchr(argv[optind + 1], '.');
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
-        } else if (strcmp(end, ".tar") == 0) {
+        } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = COMPRESS_MULTIPLE_TAR;
         } else {
             mode = COMPRESS;
@@ -411,7 +411,7 @@ int main(int argc, char* const *argv) {
         char *end = strrchr(argv[optind + 1], '.');
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = DECOMPRESS_MULTIPLE;
-        } else if (strcmp(end, ".tar") == 0) {
+        } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = DECOMPRESS_MULTIPLE_TAR;
         } else {
             mode = DECOMPRESS;
@@ -423,7 +423,7 @@ int main(int argc, char* const *argv) {
         char* end = strrchr(argv[optind + 1], '.');
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = EXTRACT_MULTIPLE;
-        } else if (strcmp(end, ".tar") == 0) {
+        } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = EXTRACT_MULTIPLE_TAR;
         } else {
             mode = EXTRACT;
@@ -433,7 +433,7 @@ int main(int argc, char* const *argv) {
         if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = CHECK_MULTIPLE;
         }
-        else if (strcmp(end, ".tar") == 0) {
+        else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = CHECK_MULTIPLE_TAR;
         }
         else {
