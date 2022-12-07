@@ -166,7 +166,9 @@ jobs:
 
     - name: SCP to server
       run: |
+        set -x
         ssh-keyscan -t rsa uniclust.mmseqs.com >> ~/.ssh/known_hosts
+        cat ~/.ssh/known_hosts
         ssh codeship@uniclust.mmseqs.com "mkdir -p \"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}\""
         scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz \
           codeship@uniclust.mmseqs.com:"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}"
