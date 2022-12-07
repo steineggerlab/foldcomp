@@ -52,7 +52,7 @@ jobs:
         arch: [ {name: 'arm64', prefix: 'aarch64-linux-gnu-'}, {name: 'x86_64', prefix: ''} ]
       fail-fast: false
     needs: sanitizer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
 
