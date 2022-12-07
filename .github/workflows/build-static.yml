@@ -21,7 +21,7 @@ jobs:
       run: |
         if [ "$CC" = "clang" ]; then
           CLANG_MAJOR=$(echo | clang -dM -E - | grep __clang_major__ | awk '{ print $3; }')
-          sudo apt-get install libc++-${CLANG_MAJOR}-dev libc++abi-${CLANG_MAJOR}-dev
+          sudo apt-get install libc++-${CLANG_MAJOR}-dev libc++abi-${CLANG_MAJOR}-dev libomp-${CLANG_MAJOR}-dev
         fi
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.type}} -DHAVE_SANITIZER=1
       env:
