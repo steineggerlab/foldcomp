@@ -64,6 +64,7 @@ jobs:
     - name: "Install foreign arch dependencies"
       if: matrix.arch.name != 'x86_64'
       run: |
+        sudo apt update
         sudo apt install -y crossbuild-essential-${{ matrix.arch.name }} gcc-10-aarch64-linux-gnu  g++-10-aarch64-linux-gnu
         DIST=$(lsb_release -cs)
         cat << HEREDOC | sudo tee /etc/apt/sources.list
