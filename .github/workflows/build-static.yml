@@ -146,7 +146,7 @@ jobs:
 
   upload_all:
     needs: [compile, compile_macos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     steps:
     - uses: actions/download-artifact@v3
@@ -167,7 +167,6 @@ jobs:
     - name: SCP to server
       run: |
         ssh-keyscan -t rsa uniclust.mmseqs.com >> ~/.ssh/known_hosts
-        echo -e "Host uniclust.mmseqs.com\n    PubkeyAcceptedAlgorithms +ssh-rsa\n    HostkeyAlgorithms +ssh-rsa\n" > ~/.ssh/config
         ssh codeship@uniclust.mmseqs.com "mkdir -p \"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}\""
         scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz \
           codeship@uniclust.mmseqs.com:"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}"
