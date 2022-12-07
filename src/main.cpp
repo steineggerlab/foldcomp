@@ -297,7 +297,6 @@ int main(int argc, char* const *argv) {
         COMPRESS_MULTIPLE,
         COMPRESS_MULTIPLE_TAR,
         COMPRESS_MULTIPLE_GCS,
-        COMPRESS_MULTIPLE_DB,
         DECOMPRESS_MULTIPLE,
         DECOMPRESS_MULTIPLE_TAR,
         EXTRACT,
@@ -385,9 +384,7 @@ int main(int argc, char* const *argv) {
         } else
 #endif
         char* end = strrchr(argv[optind + 1], '.');
-        if (db_output) {
-            mode = COMPRESS_MULTIPLE_DB;
-        } else if (st.st_mode & S_ISDIR(st.st_mode)) {
+        if (st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
         } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = COMPRESS_MULTIPLE_TAR;
@@ -518,7 +515,9 @@ int main(int argc, char* const *argv) {
     } else if (mode == COMPRESS_MULTIPLE || mode == COMPRESS_MULTIPLE_TAR) {
         // compress multiple files
         if (!has_output) {
-            if (save_as_tar) {
+            if (db_output) {
+                output = input + "_db";
+            } else if (save_as_tar) {
                 output = input + ".fcz.tar";
             } else {
                 output = input + "_fcz/";
@@ -529,8 +528,26 @@ int main(int argc, char* const *argv) {
             }
         }
 
-        // Check output directory exists or not
-        if (!save_as_tar) {
+        // input variants
+        std::vector<std::string> files;
+        mtar_t tar_in;
+        if (mode == COMPRESS_MULTIPLE_TAR) {
+            if (mtar_open(&tar_in, input.c_str(), "r") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << input << " failed." << std::endl;
+                return 1;
+            }
+        } else {
+            files = getFilesInDirectory(input, recursive);
+        }
+
+        // output variants
+        void* handle;
+        mtar_t tar_out;
+        if (save_as_tar) {
+            mtar_open(&tar_out, output.c_str(), "w");
+        } else if (db_output) {
+            handle = make_writer(output.c_str(), (output + ".index").c_str());
+        } else {
             if (stat(output.c_str(), &st) == -1) {
 #if defined(_WIN32) || defined(_WIN64)
                 _mkdir(output.c_str());
@@ -539,73 +556,25 @@ int main(int argc, char* const *argv) {
 #endif
             }
         }
-        // Get all files in input directory
+
         std::cout << "Compressing files in " << input;
         std::cout << " using " << num_threads << " threads" << std::endl;
-        if (save_as_tar) {
+        if (db_output) {
+            std::cout << "Output database: " << output << std::endl;
+        } else if (save_as_tar) {
             std::cout << "Output tar file: " << output << std::endl;
         } else {
             std::cout << "Output directory: " << output << std::endl;
         }
-        if (mode == COMPRESS_MULTIPLE) {
-            std::vector<std::string> files = getFilesInDirectory(input, recursive);
-            // Parallelize
-            if (!save_as_tar) {
-#pragma omp parallel num_threads(num_threads)
-                {
-#pragma omp for
-                    for (size_t i = 0; i < files.size(); i++) {
-                        TimerGuard guard(files[i], measure_time);
-                        std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".fcz";
-                        compress(files[i], outputFile);
-                    }
-                }
-            } else {
-                mtar_t tar;
-                std::string tarFile;
-                if (stringEndsWith(".tar", output)) {
-                    tarFile = output;
-                } else {
-                    tarFile = output + ".tar";
-                }
-                mtar_open(&tar, tarFile.c_str(), "w");
-#pragma omp parallel num_threads(num_threads)
-                {
-#pragma omp for
-                    for (size_t i = 0; i < files.size(); i++) {
-                        try {
-                            Foldcomp compRes;
-                            compressWithoutWriting(compRes, files[i]);
-    #pragma omp critical
-                            {
-                                compRes.writeTar(tar, baseName(getFileWithoutExt(files[i])) + ".fcz", compRes.getSize());
-                            }
-                        } catch (...) {
-                            std::cerr << "Failed compressing " << files[i] << std::endl;
-                        }
-                    }
-                }
-                mtar_finalize(&tar);
-                mtar_close(&tar);
-            }
-        } else if (mode == COMPRESS_MULTIPLE_TAR) {
-            mtar_t tar;
-            if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
-                std::cerr << "[Error] open tar " << input << " failed." << std::endl;
-                return 1;
-            }
-            std::string tarOutStr;
-            mtar_t tar_out;
-            if (save_as_tar) {
-                if (stringEndsWith(".tar", output)) {
-                    tarOutStr = output;
-                } else {
-                    tarOutStr = output + ".tar";
-                }
-                mtar_open(&tar_out, tarOutStr.c_str(), "w");
-            }
-#pragma omp parallel shared(tar) num_threads(num_threads)
+
+        unsigned int key = 0;
+        if (mode == COMPRESS_MULTIPLE_TAR) {
+#pragma omp parallel shared(tar_in) num_threads(num_threads)
             {
+                std::vector<AtomCoordinate> atomCoordinates;
+                std::vector<BackboneChain> compData;
+                StructureReader reader;
+
                 bool proceed = true;
                 mtar_header_t header;
                 size_t bufferSize = 1024 * 1024;
@@ -615,14 +584,14 @@ int main(int argc, char* const *argv) {
                     bool writeEntry = true;
 #pragma omp critical
                     {
-                        if (mtar_read_header(&tar, &header) != MTAR_ENULLRECORD) {
+                        if (mtar_read_header(&tar_in, &header) != MTAR_ENULLRECORD) {
                             //TODO GNU tar has special blocks for long filenames
                             name = header.name;
                             if (header.size > bufferSize) {
                                 bufferSize = header.size * 1.5;
                                 dataBuffer = (char*)realloc(dataBuffer, bufferSize);
                             }
-                            if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                            if (mtar_read_data(&tar_in, dataBuffer, header.size) != MTAR_ESUCCESS) {
                                 std::cerr << "[Error] reading tar entry " << name << " failed." << std::endl;
                                 writeEntry = false;
                                 proceed = false;
@@ -631,7 +600,7 @@ int main(int argc, char* const *argv) {
                                 writeEntry = true;
                                 proceed = true;
                             }
-                            mtar_next(&tar);
+                            mtar_next(&tar_in);
                             writeEntry = (header.type == MTAR_TREG) ? writeEntry : false;
                         }
                         else {
@@ -640,100 +609,155 @@ int main(int argc, char* const *argv) {
                         }
                     } // end read in
                     if (proceed && writeEntry) {
-                        const std::string name_clean = name.substr(name.find_last_of("/\\") + 1);
+                        TimerGuard guard(name, measure_time);
+                        std::pair<std::string, std::string> outputParts = getFileParts(baseName(name));
                         std::string outputFile;
-                        if (stringEndsWith(".tar", output)) {
-                            outputFile = name_clean + ".fcz";
+                        if (save_as_tar || db_output) {
+                            outputFile = outputParts.first;
                         } else if (stringEndsWith("/", output)) {
-                            outputFile = output + name_clean + ".fcz";
+                            outputFile = output + outputParts.first;
                         } else {
-                            outputFile = output + "/" + name_clean + ".fcz";
+                            outputFile = output + "/" + outputParts.first;
                         }
-                        Foldcomp compRes;
-                        compressFromBufferWithoutWriting(compRes, dataBuffer, header.size, name);
-                        if (!save_as_tar) {
-                            compRes.write(output + "/" + outputFile);
-                        } else {
+                        reader.loadFromBuffer(dataBuffer, header.size, outputParts.first);
+                        reader.readAllAtoms(atomCoordinates);
+                        if (atomCoordinates.size() == 0) {
+                            std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
+                            continue;
+                        }
+                        std::string title = reader.title;
+
+                        removeAlternativePosition(atomCoordinates);
+
+                        std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
+                        // Check if there are multiple chains or regions with discontinous residue indices
+                        for (size_t i = 0; i < chain_indices.size(); i++) {
+                            std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                            for (size_t j = 0; j < frag_indices.size(); j++) {
+                                tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+                                Foldcomp compRes;
+                                compRes.strTitle = title;
+                                compRes.anchorThreshold = anchor_residue_threshold;
+                                compData = compRes.compress(frag_span);
+
+                                std::string filename;
+                                if (chain_indices.size() > 1) {
+                                    std::string chain = atomCoordinates[chain_indices[i].first].chain;
+                                    filename = outputFile + chain;
+                                } else {
+                                    filename = outputFile;
+                                }
+
+                                if (frag_indices.size() > 1) {
+                                    filename += "_" + std::to_string(j);
+                                }
+
+                                if (outputParts.second != "") {
+                                    filename += "." + outputParts.second;
+                                } else if (!save_as_tar && !db_output) {
+                                    filename += ".fcz";
+                                }
+
+                                if (db_output) {
+                                    std::ostringstream oss;
+                                    compRes.writeStream(oss);
 #pragma omp critical
-                            {
-                                compRes.writeTar(tar_out, outputFile, compRes.getSize());
+                                    {
+                                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
+                                        key++;
+                                    }
+                                } else if (save_as_tar) {
+#pragma omp critical
+                                    {
+                                        compRes.writeTar(tar_out, baseName(filename), compRes.getSize());
+                                    }
+                                } else {
+                                    compRes.write(filename);
+                                }
+                                compData.clear();
                             }
                         }
+                        atomCoordinates.clear();
                     }
                 } // end while loop
                 free(dataBuffer);
-            } // end openmp
-            if (save_as_tar) {
-                mtar_finalize(&tar_out);
-                mtar_close(&tar_out);
             }
-            mtar_close(&tar);
-            flag = 0;
-        }
-    } else if (mode == COMPRESS_MULTIPLE_DB) {
-        std::cout << "Compressing files in " << input;
-        std::cout << " using " << num_threads << " threads" << std::endl;
-        std::cout << "Output database: " << output << std::endl;
-        std::vector<std::string> files = getFilesInDirectory(input, recursive);
-        void* handle = make_writer(output.c_str(), (output + ".index").c_str());
-        unsigned int key = 0;
+        } else {
 #pragma omp parallel num_threads(num_threads)
-        {
-            std::vector<AtomCoordinate> atomCoordinates;
-            std::vector<BackboneChain> compData;
-            StructureReader reader;
-#pragma omp for
-            for (size_t i = 0; i < files.size(); ++i) {
-                reader.load(files[i]);
-                reader.readAllAtoms(atomCoordinates);
-                if (atomCoordinates.size() == 0) {
-                    std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
-                    continue;
-                }
-                std::string title = reader.title;
-
-                removeAlternativePosition(atomCoordinates);
-
-                std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
-                // Check if there are multiple chains or regions with discontinous residue indices
-                std::string output = baseName(getFileWithoutExt(files[i]));
+            {
+                std::vector<AtomCoordinate> atomCoordinates;
                 std::vector<BackboneChain> compData;
-                for (size_t i = 0; i < chain_indices.size(); i++) {
-                    std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
-                    for (size_t j = 0; j < frag_indices.size(); j++) {
-                        tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
-                        Foldcomp compRes;
-                        compRes.strTitle = title;
-                        compRes.anchorThreshold = anchor_residue_threshold;
-                        compData = compRes.compress(frag_span);
+                StructureReader reader;
+#pragma omp for
+                for (size_t i = 0; i < files.size(); i++) {
+                    TimerGuard guard(files[i], measure_time);
+                    reader.load(files[i]);
+                    reader.readAllAtoms(atomCoordinates);
+                    if (atomCoordinates.size() == 0) {
+                        std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
+                        continue;
+                    }
+                    std::string title = reader.title;
 
-                        std::string filename;
-                        if (chain_indices.size() > 1) {
-                            std::string chain = atomCoordinates[chain_indices[i].first].chain;
-                            filename = output + chain;
-                        } else {
-                            filename = output;
-                        }
+                    removeAlternativePosition(atomCoordinates);
 
-                        if (frag_indices.size() > 1) {
-                            filename += "_" + std::to_string(j);
-                        }
+                    std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
+                    // Check if there are multiple chains or regions with discontinous residue indices
+                    std::string output = baseName(getFileWithoutExt(files[i]));
+                    for (size_t i = 0; i < chain_indices.size(); i++) {
+                        std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                        for (size_t j = 0; j < frag_indices.size(); j++) {
+                            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+                            Foldcomp compRes;
+                            compRes.strTitle = title;
+                            compRes.anchorThreshold = anchor_residue_threshold;
+                            compData = compRes.compress(frag_span);
 
-                        std::ostringstream oss;
-                        compRes.writeStream(oss);
-        #pragma omp critical
-                        {
-                            writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
-                            key++;
+                            std::string filename;
+                            if (chain_indices.size() > 1) {
+                                std::string chain = atomCoordinates[chain_indices[i].first].chain;
+                                filename = output + chain;
+                            } else {
+                                filename = output;
+                            }
+
+                            if (frag_indices.size() > 1) {
+                                filename += "_" + std::to_string(j);
+                            }
+
+                            if (db_output) {
+                                std::ostringstream oss;
+                                compRes.writeStream(oss);
+#pragma omp critical
+                                {
+                                    writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
+                                    key++;
+                                }
+                            } else if (save_as_tar) {
+#pragma omp critical
+                                {
+                                    compRes.writeTar(tar_out, baseName(filename), compRes.getSize());
+                                }
+                            } else {
+                                compRes.write(filename);
+                            }
+                            compData.clear();
                         }
                     }
+                    atomCoordinates.clear();
                 }
-
-                atomCoordinates.clear();
-                compData.clear();
             }
         }
-        free_writer(handle);
+        if (db_output) {
+            free_writer(handle);
+        } else if (save_as_tar) {
+            mtar_finalize(&tar_out);
+            mtar_close(&tar_out);
+        }
+        if (mode == COMPRESS_MULTIPLE_TAR) {
+            mtar_close(&tar_in);
+        }
+        flag = 0;
     } else if (mode == COMPRESS_MULTIPLE_GCS) {
         // compress multiple files from gcs
 #ifdef HAVE_GCS
