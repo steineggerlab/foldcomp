@@ -908,7 +908,6 @@ int Foldcomp::read(std::istream & file) {
     file.read(mNum, MAGICNUMBER_LENGTH);
     for (int i = 0; i < MAGICNUMBER_LENGTH; i++) {
         if (mNum[i] != MAGICNUMBER[i]) {
-            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
             return -1;
         }
     }
@@ -1025,8 +1024,7 @@ int Foldcomp::read(std::istream & file) {
 
     success = _restoreAtomCoordinate(prevAtomCoords);
     if (success != 0) {
-        std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
-        return -1;
+        return -2;
     }
     for (int i = 0; i < 6; i++) {
         success = _restoreDiscretizer(i);

@@ -177,7 +177,13 @@ int decompress(std::istream &file, std::string output) {
     Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
-        std::cerr << "[Error] Reading" << std::endl;
+        if (flag == -1) {
+            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+        } else if (flag == -2) {
+            std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+        } else {
+            std::cerr << "[Error] Unknown read error" << std::endl;
+        }
         return 1;
     }
     std::vector<AtomCoordinate> atomCoordinates;
@@ -189,6 +195,10 @@ int decompress(std::istream &file, std::string output) {
     }
     // Write decompressed data to file
     flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, output);
+    if (flag != 0) {
+        std::cerr << "[Error] Writing decompressed data to file: " << output << std::endl;
+        return 1;
+    }
 
     return flag;
 }
@@ -198,7 +208,13 @@ int extract(std::istream& file, std::string output) {
     Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
-        std::cerr << "[Error] reading" << std::endl;
+        if (flag == -1) {
+            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+        } else if (flag == -2) {
+            std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+        } else {
+            std::cerr << "[Error] Unknown read error" << std::endl;
+        }
         return 1;
     }
     std::vector<std::string> data;
@@ -212,7 +228,13 @@ int check(std::istream& file, std::string& filename) {
     Foldcomp compRes;
     flag = compRes.read(file);
     if (flag != 0) {
-        std::cerr << "[Error] reading file: " << filename << std::endl;
+        if (flag == -1) {
+            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+        } else if (flag == -2) {
+            std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+        } else {
+            std::cerr << "[Error] Unknown read error" << std::endl;
+        }
         return 1;
     }
     ValidityError err;
@@ -931,7 +953,17 @@ int main(int argc, char* const *argv) {
                         }
                         if (ext_merge == 1) {
                             Foldcomp compRes;
-                            compRes.read(input);
+                            int flag = compRes.read(input);
+                            if (flag != 0) {
+                                if (flag == -1) {
+                                    std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+                                } else if (flag == -2) {
+                                    std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+                                } else {
+                                    std::cerr << "[Error] Unknown read error" << std::endl;
+                                }
+                                continue;
+                            }
                             compRes.extract(data, ext_mode);
                             buffer.append(1, '>');
                             buffer.append(compRes.strTitle);
@@ -1048,7 +1080,17 @@ int main(int argc, char* const *argv) {
                             if (ext_merge == 1) {
                                 std::vector<std::string> data;
                                 Foldcomp compRes;
-                                compRes.read(input);
+                                int flag = compRes.read(input);
+                                if (flag != 0) {
+                                    if (flag == -1) {
+                                        std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+                                    } else if (flag == -2) {
+                                        std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+                                    } else {
+                                        std::cerr << "[Error] Unknown read error" << std::endl;
+                                    }
+                                    continue;
+                                }
                                 compRes.extract(data, ext_mode);
                                 buffer.append(1, '>');
                                 buffer.append(compRes.strTitle);
