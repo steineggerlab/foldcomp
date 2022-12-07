@@ -289,14 +289,11 @@ void writeAtomCoordinatesToPDB(
 int writeAtomCoordinatesToPDBFile(
     std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
 ) {
-    std::ofstream pdb_file;
-    pdb_file.open(pdb_path);
-    if (!pdb_file.is_open()) {
-        std::cout << "Error: Cannot open file: " << pdb_path << std::endl;
+    std::ofstream pdb_file(pdb_path);
+    if (!pdb_file) {
         return 1;
     }
     writeAtomCoordinatesToPDB(atoms, title, pdb_file);
-    pdb_file.close();
     return 0;
 }
 
