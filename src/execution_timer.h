@@ -76,7 +76,6 @@ public:
         if (!enabled) {
             return;
         }
-        mTimer->stop();
         std::string elapsed = prefix;
         elapsed.append(1, '\t');
         elapsed.append(std::to_string(mTimer->getElapsed()));

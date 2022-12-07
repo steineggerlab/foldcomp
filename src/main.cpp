@@ -52,7 +52,6 @@ static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
-static int measure_time = 0;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -266,6 +265,7 @@ int main(int argc, char* const *argv) {
     int has_output = 0;
     int recursive = 0;
     int db_output = 0;
+    int measure_time = 0;
 
     // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
@@ -296,6 +296,7 @@ int main(int argc, char* const *argv) {
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
+            {"time",          no_argument, &measure_time, 1 },
             {"db",            no_argument,          0, 'd' },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
