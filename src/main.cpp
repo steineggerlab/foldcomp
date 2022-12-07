@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-11-29 16:44:07
+ * Last Modified: 2022-12-05 22:50:47
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -25,6 +25,7 @@
 #include "utility.h"
 #include "database_writer.h"
 #include "tcbspan.h"
+#include "execution_timer.h"
 
 // Standard libraries
 #include <cstring>
@@ -51,6 +52,7 @@ static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
+static int measure_time = 0;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -72,6 +74,7 @@ int print_usage(void) {
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
+    std::cout << " --time               measure time for compression/decompression" << std::endl;
     return 0;
 }
 
@@ -529,6 +532,7 @@ int main(int argc, char* const *argv) {
                 {
 #pragma omp for
                     for (size_t i = 0; i < files.size(); i++) {
+                        TimerGuard guard(files[i], measure_time);
                         std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".fcz";
                         compress(files[i], outputFile);
                     }
@@ -817,6 +821,7 @@ int main(int argc, char* const *argv) {
             {
 #pragma omp for
                 for (size_t i = 0; i < files.size(); i++) {
+                    TimerGuard guard(files[i], measure_time);
                     std::ifstream input(files[i], std::ios::binary);
                     // Check if file is open
                     if (!input) {
@@ -825,7 +830,6 @@ int main(int argc, char* const *argv) {
                     }
                     std::string outputFile = output + "/" + baseName(getFileWithoutExt(files[i])) + ".pdb";
                     decompress(input, outputFile);
-                    input.close();
                 }
             }
             flag = 0;
