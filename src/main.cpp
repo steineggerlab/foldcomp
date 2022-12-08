@@ -610,7 +610,8 @@ int main(int argc, char* const *argv) {
                     } // end read in
                     if (proceed && writeEntry) {
                         TimerGuard guard(name, measure_time);
-                        std::pair<std::string, std::string> outputParts = getFileParts(baseName(name));
+                        std::string base = baseName(name);
+                        std::pair<std::string, std::string> outputParts = getFileParts(base);
                         std::string outputFile;
                         if (save_as_tar || db_output) {
                             outputFile = outputParts.first;
@@ -622,7 +623,7 @@ int main(int argc, char* const *argv) {
                         reader.loadFromBuffer(dataBuffer, header.size, outputParts.first);
                         reader.readAllAtoms(atomCoordinates);
                         if (atomCoordinates.size() == 0) {
-                            std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
+                            std::cout << "[Error] No atoms found in the input file: " << base << std::endl;
                             continue;
                         }
                         std::string title = reader.title;
@@ -634,7 +635,7 @@ int main(int argc, char* const *argv) {
                         for (size_t i = 0; i < chain_indices.size(); i++) {
                             std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
                             for (size_t j = 0; j < frag_indices.size(); j++) {
-                                tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+                                tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
                                 Foldcomp compRes;
                                 compRes.strTitle = title;
                                 compRes.anchorThreshold = anchor_residue_threshold;
@@ -694,7 +695,7 @@ int main(int argc, char* const *argv) {
                     reader.load(files[i]);
                     reader.readAllAtoms(atomCoordinates);
                     if (atomCoordinates.size() == 0) {
-                        std::cout << "[Error] No atoms found in the input file: " << input << std::endl;
+                        std::cout << "[Error] No atoms found in the input file: " << files[i] << std::endl;
                         continue;
                     }
                     std::string title = reader.title;
@@ -707,7 +708,7 @@ int main(int argc, char* const *argv) {
                     for (size_t i = 0; i < chain_indices.size(); i++) {
                         std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
                         for (size_t j = 0; j < frag_indices.size(); j++) {
-                            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], frag_indices[j].second - frag_indices[j].first + 1);
+                            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
                             Foldcomp compRes;
                             compRes.strTitle = title;
                             compRes.anchorThreshold = anchor_residue_threshold;
