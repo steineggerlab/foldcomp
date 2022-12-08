@@ -70,6 +70,7 @@ int print_usage(void) {
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " -d, --db             save as database [default=false]" << std::endl;
+    std::cout << " --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
@@ -90,9 +91,9 @@ int compress(std::string input, std::string output) {
 
     // Prototyping for multiple chain support - 2022-10-13 22:01:53
     removeAlternativePosition(atomCoordinates);
-    // Identify multiple chains or regions with discontinous residue indices
+    // Identify multiple chains or regions with discontinuous residue indices
     std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
-    // Check if there are multiple chains or regions with discontinous residue indices
+    // Check if there are multiple chains or regions with discontinuous residue indices
     std::pair<std::string, std::string> outputParts = getFileParts(output);
     std::vector<BackboneChain> compData;
     for (size_t i = 0; i < chain_indices.size(); i++) {
@@ -288,6 +289,7 @@ int main(int argc, char* const *argv) {
     int recursive = 0;
     int db_output = 0;
     int measure_time = 0;
+    int skip_discontinuous = 0;
 
     // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
@@ -318,6 +320,7 @@ int main(int argc, char* const *argv) {
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
             {"time",          no_argument, &measure_time, 1 },
+            {"skip-discontinuous", no_argument, &skip_discontinuous, 1 },
             {"db",            no_argument,          0, 'd' },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
@@ -634,6 +637,10 @@ int main(int argc, char* const *argv) {
                         // Check if there are multiple chains or regions with discontinous residue indices
                         for (size_t i = 0; i < chain_indices.size(); i++) {
                             std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                            if (skip_discontinuous && frag_indices.size() > 1) {
+                                std::cout << "[Warning] Skipping discontinuous chain: " << base << std::endl;
+                                continue;
+                            }
                             for (size_t j = 0; j < frag_indices.size(); j++) {
                                 tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
                                 Foldcomp compRes;
@@ -707,6 +714,10 @@ int main(int argc, char* const *argv) {
                     std::string output = baseName(getFileWithoutExt(files[i]));
                     for (size_t i = 0; i < chain_indices.size(); i++) {
                         std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                        if (skip_discontinuous && frag_indices.size() > 1) {
+                            std::cout << "[Warning] Skipping discontinuous chain: " << files[i] << std::endl;
+                            continue;
+                        }
                         for (size_t j = 0; j < frag_indices.size(); j++) {
                             tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
                             Foldcomp compRes;
