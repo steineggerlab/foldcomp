@@ -10,7 +10,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-09-29 17:56:31
+ * Last Modified: 2022-12-08 04:40:17
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -114,3 +114,8 @@ public:
     );
 
 };
+
+int writeSplittedResidues(
+    std::vector< std::vector<AtomCoordinate> >& splittedResidues,
+    std::string output, std::string mode
+);

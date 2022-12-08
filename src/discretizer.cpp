@@ -6,7 +6,7 @@
  * Description:
  *     Functions for discretizing float values and restoring them
  * ---
- * Last Modified: 2022-07-20 01:56:31
+ * Last Modified: 2022-12-08 06:27:42
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -42,8 +42,14 @@ std::vector<unsigned int> Discretizer::discretize(const std::vector<float>& cont
     unsigned int tmp_disc_value;
     std::vector<unsigned int> discretizedValues;
     discretizedValues.reserve(continuous_values.size());
+    float diff;
     for (it = continuous_values.cbegin(); it != continuous_values.cend(); it++) {
-        tmp_disc_value = (*it - min) * (this->disc_f);
+        // fastest rounding
+        tmp_disc_value = (unsigned int) ((*it - this->min) * (this->disc_f));
+        diff = (tmp_disc_value * this->cont_f) + this->min - *it;
+        if (abs(diff) > 0.5 * this->disc_f) {
+            tmp_disc_value += 1;
+        } 
         discretizedValues.push_back(tmp_disc_value);
     }
     return discretizedValues;
@@ -58,6 +64,7 @@ std::vector<float> Discretizer::continuize(const std::vector<unsigned int>& disc
     std::vector<float> output;
     output.reserve(discrete_values.size());
     for (it = discrete_values.cbegin(); it != discrete_values.cend(); it++) {
+        // 
         float tmp_cont_value = (*it * this->cont_f) + this->min;
         output.push_back(tmp_cont_value);
     }

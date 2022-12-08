@@ -9,7 +9,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-09-29 17:47:07
+ * Last Modified: 2022-12-08 04:40:06
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -18,7 +18,7 @@
 
 #include "amino_acid.h"
 #include "atom_coordinate.h"
-
+#include "torsion_angle.h"
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
@@ -556,3 +556,48 @@ std::vector<int> Nerf::identifyBreaks(const std::vector<AtomCoordinate>& origina
 //     std::vector<float> output {0.0, 0.0};
 //     return output;
 // }
+
+
+int writeSplittedResidues(
+    std::vector< std::vector<AtomCoordinate> >& splittedResidues,
+    std::string output,
+    std::string mode
+) {
+    std::ofstream ofs(output);
+    if (!ofs.is_open()) {
+        return 1;
+    }
+    // Write header
+    ofs << "AtomIndex,Atom,ResidueIndex,Residue,Chain,X,Y,Z,Dihedral,TorsionAngle,BondAngle,BondLength,type" << std::endl;
+    AminoAcid aa = AminoAcid();
+    std::map<std::string, AminoAcid> AAS = aa.AminoAcids();
+
+    // Get torsion angles, bond angles, and bond lengths for each residue
+    // Iterate on each residue
+    for (size_t i = 0; i < splittedResidues.size(); i++) {
+        std::vector<AtomCoordinate> residue = splittedResidues[i];
+        // Iterate on each atom
+        // Get previous atom for each atom
+        for (size_t j = 0; j < residue.size(); j++) {
+            AtomCoordinate atom = residue[j];
+            if (atom.atom == "N" || atom.atom == "CA" || atom.atom == "C") {
+                continue;
+            }
+            std::vector<std::string> prev_atom_names = AAS[atom.residue].sideChain[atom.atom];
+            AtomCoordinate prev1 = findFirstAtom(residue, prev_atom_names[0]);
+            AtomCoordinate prev2 = findFirstAtom(residue, prev_atom_names[1]);
+            AtomCoordinate prev3 = findFirstAtom(residue, prev_atom_names[2]);
+            // Calculate torsion angle
+            std::vector<AtomCoordinate> currentDihedral = {prev1, prev2, prev3, atom};
+            float currentTorsion = getTorsionFromXYZ(currentDihedral, 1)[0];
+            // Calculate bond angle
+            float currentAngle = angle(prev2.coordinate, prev3.coordinate, atom.coordinate);
+            // Calculate bond length
+            float currentLength = distance(prev3.coordinate, atom.coordinate);
+            std::string dihedralName = prev1.atom + "-" + prev2.atom + "-" + prev3.atom + "-" + atom.atom;
+            // Write to file
+            ofs << atom.atom_index << "," << atom.atom << "," << atom.residue_index << "," << atom.residue << "," << atom.chain << "," << atom.coordinate.x << "," << atom.coordinate.y << "," << atom.coordinate.z << "," << dihedralName << "," << currentTorsion << "," << currentAngle << "," << currentLength << "," << mode << std::endl;
+        }
+    }
+    return 0;
+}

@@ -6,7 +6,7 @@
  * Description:
  *     Geometric information of amino acids.
  * ---
- * Last Modified: 2022-09-13 15:14:30
+ * Last Modified: 2022-12-08 05:40:05
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -72,7 +72,7 @@ public:
             {"N", "CA", "C", "O", "CB",}, // atoms
             {{"O", {"N", "CA", "C"}}, {"CB", {"O", "C", "CA"}}}, // sidechain
             {"N", "CA", "C", "CB", "O"}));
-        output["ALA"].bondLengths = {{"CA_CB", 1.52}, {"C_O", 1.23}};
+        output["ALA"].bondLengths = {{"CA_CB", 1.525}, {"C_O", 1.236}};
         output["ALA"].bondAngles = {{"CA_C_O", 120.31}, {"C_CA_CB", 110.852}};
         // Arginine (R/ARG)
         output.emplace("ARG", AminoAcid(
@@ -85,9 +85,9 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD", "NE", "NH1", "NH2", "CZ"}
         ));
         output["ARG"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.53},
-            {"CG_CD", 1.52}, {"CD_NE", 1.46}, {"NE_CZ", 1.32},
-            {"CZ_NH1", 1.31}, {"CZ_NH2", 1.31}
+            {"CA_CB", 1.525}, {"C_O", 1.236}, {"CB_CG", 1.525},
+            {"CG_CD", 1.525}, {"CD_NE", 1.46}, {"NE_CZ", 1.33},
+            {"CZ_NH1", 1.325}, {"CZ_NH2", 1.325}
         };
         output["ARG"].bondAngles = {
             {"CA_C_O", 119.745}, {"C_CA_CB", 110.579}, {"CA_CB_CG", 113.233},
@@ -104,7 +104,7 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "ND2", "OD1"}
         ));
         output["ASN"].bondLengths = {
-            {"CA_CB", 1.52}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_OD1", 1.23}, {"CG_ND2", 1.325}
+            {"CA_CB", 1.525}, {"C_O", 1.236}, {"CB_CG", 1.52}, {"CG_OD1", 1.236}, {"CG_ND2", 1.325}
         };
         output["ASN"].bondAngles = {
             {"CA_C_O", 120.313}, {"C_CA_CB", 110.852}, {"CA_CB_CG", 113.232},
@@ -150,8 +150,8 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD", "NE2", "OE1"}
         ));
         output["GLN"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
-            {"CD_OE1", 1.23}, {"CD_NE2", 1.32}
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
+            {"CD_OE1", 1.23}, {"CD_NE2", 1.328}
         };
         output["GLN"].bondAngles = {
             {"CA_C_O", 120.211}, {"C_CA_CB", 109.5}, {"CA_CB_CG", 113.292},
@@ -167,7 +167,7 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD", "OE1", "OE2"}
         ));
         output["GLU"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
             {"CD_OE1", 1.25}, {"CD_OE2", 1.25}
         };
         output["GLU"].bondAngles = {
@@ -181,7 +181,7 @@ public:
             {{"O", {"N", "CA", "C"}}}, // sidechain
             { "N", "CA", "C", "O"}
         ));
-        output["GLY"].bondLengths = {{"C_O", 1.23}};
+        output["GLY"].bondLengths = {{"C_O", 1.236}};
         output["GLY"].bondAngles = {{"CA_C_O", 120.522}};
         // Histidine (H/HIS)
         output.emplace("HIS", AminoAcid(
@@ -194,7 +194,7 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD2", "ND1", "CE1", "NE2" }
         ));
         output["HIS"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.5}, {"CG_ND1", 1.38},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.5}, {"CG_ND1", 1.38},
             {"CG_CD2", 1.36}, {"ND1_CE1", 1.33}, {"CD2_NE2", 1.38}
         };
         output["HIS"].bondAngles = {
@@ -212,7 +212,7 @@ public:
              { "N", "CA", "C", "CB", "O", "CG1", "CG2", "CD1" }
         ));
         output["ILE"].bondLengths = {
-            {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.53}, {"CB_CG2", 1.52},
+            {"CA_CB", 1.54}, {"C_O", 1.236}, {"CB_CG1", 1.53}, {"CB_CG2", 1.52},
             {"CG1_CD1", 1.51}
         };
         output["ILE"].bondAngles = {
@@ -247,12 +247,12 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD", "CE", "NZ" }
         ));
         output["LYS"].bondLengths = {
-            {"C_O", 1.23}, {"CA_CB", 1.53}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
+            {"C_O", 1.236}, {"CA_CB", 1.53}, {"CB_CG", 1.52}, {"CG_CD", 1.52},
             {"CD_CE", 1.52}, {"CE_NZ", 1.49} // sidechain
         };
         output["LYS"].bondAngles = {
-            {"CA_C_O", 120.54}, {"C_CA_CB", 109.5}, {"CA_CB_CG", 113.83},
-            {"CB_CG_CD", 111.79}, {"CG_CD_CE", 111.79}, {"CD_CE_NZ", 112.25}
+            {"CA_C_O", 120.54}, {"C_CA_CB", 110.5}, {"CA_CB_CG", 113.83},
+            {"CB_CG_CD", 111.79}, {"CG_CD_CE", 111.5}, {"CD_CE_NZ", 112.25}
         };
         // Methionine (M/MET)
         output.emplace("MET", AminoAcid(
@@ -264,11 +264,11 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "SD", "CE" }
         ));
         output["MET"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.52}, {"CG_SD", 1.8},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.52}, {"CG_SD", 1.8},
             {"SD_CE", 1.79}
         };
         output["MET"].bondAngles = {
-            {"CA_C_O", 120.148}, {"C_CA_CB", 110.833}, {"CA_CB_CG", 113.68},
+            {"CA_C_O", 120.148}, {"C_CA_CB", 110.833}, {"CA_CB_CG", 114},
             {"CB_CG_SD", 112.773}, {"CG_SD_CE", 100.61}
         };
         // Phenylalanine (F/PHE)
@@ -282,14 +282,14 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD1", "CD2", "CE1", "CE2", "CZ" }
         ));
         output["PHE"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.51}, {"CG_CD1", 1.385},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.51}, {"CG_CD1", 1.385},
             {"CG_CD2", 1.385}, {"CD1_CE1", 1.385}, {"CD2_CE2", 1.385},
             {"CE1_CZ", 1.385}
         };
         output["PHE"].bondAngles = {
-            {"CA_C_O", 120.283}, {"C_CA_CB", 110.846}, {"CA_CB_CG", 114.0},
-            {"CB_CG_CD1", 120.0}, {"CB_CG_CD2", 120.0}, {"CG_CD1_CE1", 120.0},
-            {"CG_CD2_CE2", 120.0}, {"CD1_CE1_CZ", 120.0}
+            {"CA_C_O", 120.283}, {"C_CA_CB", 110.5}, {"CA_CB_CG", 114.0},
+            {"CB_CG_CD1", 120.5}, {"CB_CG_CD2", 120.5}, {"CG_CD1_CE1", 120.5},
+            {"CG_CD2_CE2", 120.5}, {"CD1_CE1_CZ", 120.0}
         };
         // Proline (P/PRO)
         output.emplace("PRO", AminoAcid(
@@ -300,11 +300,11 @@ public:
             { "N", "CA", "C", "CB", "O", "CG", "CD" } // atoms
         ));
         output["PRO"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.49}, {"CG_CD", 1.50}
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.49}, {"CG_CD", 1.50}
         };
         output["PRO"].bondAngles = {
             {"CA_C_O", 120.6}, {"C_CA_CB", 111.372}, {"CA_CB_CG", 104.21},
-            {"CB_CG_CD", 105.0}
+            {"CB_CG_CD", 105.5}
         };
         // Serine (S/SER)
         output.emplace("SER", AminoAcid(
@@ -315,7 +315,7 @@ public:
             { "N", "CA", "C", "CB", "O", "OG" }
         ));
         output["SER"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG", 1.417}
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_OG", 1.417}
         };
         output["SER"].bondAngles = {
             {"CA_C_O", 120.475}, {"C_CA_CB", 110.248}, {"CA_CB_OG", 111.132}
@@ -329,11 +329,11 @@ public:
             { "N", "CA", "C", "CB", "O", "CG2", "OG1" }
         ));
         output["THR"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_OG1", 1.43}, {"CB_CG2", 1.52}
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_OG1", 1.433}, {"CB_CG2", 1.52}
         };
         output["THR"].bondAngles = {
             {"CA_C_O", 120.252}, {"C_CA_CB", 110.075}, {"CA_CB_OG1", 109.442},
-            {"CA_CB_CG2", 111.457}
+            {"CA_CB_CG2", 110.075}
         };
         // Tryptophan (W/TRP)
         output.emplace("TRP", AminoAcid(
@@ -350,16 +350,16 @@ public:
               "CE2", "CE3", "NE1", "CH2", "CZ2", "CZ3" }
         ));
         output["TRP"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.23}, {"CB_CG", 1.50},
-            {"CG_CD1", 1.36}, {"CG_CD2", 1.44}, {"CD1_NE1", 1.38},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.50},
+            {"CG_CD1", 1.363}, {"CG_CD2", 1.44}, {"CD1_NE1", 1.38},
             {"CD2_CE2", 1.41}, {"CD2_CE3", 1.40}, {"CE2_CZ2", 1.40},
             {"CE3_CZ3", 1.384}, {"CZ2_CH2", 1.367}
         };
         output["TRP"].bondAngles = {
-            {"CA_C_O", 120.178}, {"C_CA_CB", 110.852}, {"CA_CB_CG", 114.10},
+            {"CA_C_O", 120.178}, {"C_CA_CB", 110.2}, {"CA_CB_CG", 113.10},
             {"CB_CG_CD1", 126.712}, {"CB_CG_CD2", 126.712}, {"CG_CD1_NE1", 109.959},
-            {"CG_CD2_CE2", 107.842}, {"CG_CD2_CE3", 133.975}, {"CD2_CE2_CZ2", 120.0},
-            {"CD2_CE3_CZ3", 120.0}, {"CE2_CZ2_CH2", 120.0}
+            {"CG_CD2_CE2", 107.2}, {"CG_CD2_CE3", 133.975}, {"CD2_CE2_CZ2", 122.4},
+            {"CD2_CE3_CZ3", 118.65}, {"CE2_CZ2_CH2", 117.46}
         };
         // Tyrosine (Y/TYR)
         output.emplace("TYR", AminoAcid(
@@ -375,14 +375,14 @@ public:
               "CE1", "CE2", "OH", "CZ" }
         ));
         output["TYR"].bondLengths = {
-            {"CA_CB", 1.53}, {"C_O", 1.235}, {"CB_CG", 1.51},
+            {"CA_CB", 1.53}, {"C_O", 1.236}, {"CB_CG", 1.512},
             {"CG_CD1", 1.39}, {"CG_CD2", 1.39}, {"CD1_CE1", 1.38},
             {"CD2_CE2", 1.38}, {"CE1_CZ", 1.378}, {"CZ_OH", 1.375}
         };
         output["TYR"].bondAngles = {
-            {"CA_C_O", 120.608}, {"C_CA_CB", 110.852}, {"CA_CB_CG", 113.744},
-            {"CB_CG_CD1", 120.937}, {"CB_CG_CD2", 120.937}, {"CG_CD1_CE1", 120.0},
-            {"CG_CD2_CE2", 120.0}, {"CD1_CE1_CZ", 120.0}, {"CE1_CZ_OH", 120.0}
+            {"CA_C_O", 120.608}, {"C_CA_CB", 110.5}, {"CA_CB_CG", 113.744},
+            {"CB_CG_CD1", 120.937}, {"CB_CG_CD2", 120.937}, {"CG_CD1_CE1", 121.10},
+            {"CG_CD2_CE2", 121.1}, {"CD1_CE1_CZ", 119.6}, {"CE1_CZ_OH", 120.0}
         };
         // Valine (V/VAL)
         output.emplace("VAL", AminoAcid(
@@ -393,10 +393,10 @@ public:
             { "N", "CA", "C", "CB", "O", "CG1", "CG2" }
         ));
         output["VAL"].bondLengths = {
-            {"CA_CB", 1.54}, {"C_O", 1.235}, {"CB_CG1", 1.52}, {"CB_CG2", 1.52}
+            {"CA_CB", 1.54}, {"C_O", 1.236}, {"CB_CG1", 1.52}, {"CB_CG2", 1.52}
         };
         output["VAL"].bondAngles = {
-            {"CA_C_O", 120.472}, {"C_CA_CB", 111.381},
+            {"CA_C_O", 120.9}, {"C_CA_CB", 111.381},
             {"CA_CB_CG1", 110.7}, {"CA_CB_CG2", 110.4}
         };
         // output.emplace("ASX", AminoAcid('B', "ASX", "Asparagine/aspartic acid"));

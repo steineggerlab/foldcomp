@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-18 18:56:30
+ * Last Modified: 2022-12-08 03:32:53
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -1442,14 +1442,15 @@ void Foldcomp::printSideChainTorsion(std::string filename) {
             outfile << ba.first << "," << ba.second << ",NA,NA,NA," << this->AAS.at(this->residueThreeLetter[i]).bondAngles.at(ba.first) << ",";
             outfile << ba.second - this->AAS.at(this->residueThreeLetter[i]).bondAngles.at(ba.first) << "\n";
         }
+        FixedAngleDiscretizer disc(pow(2, NUM_BITS_TEMP) - 1);
         for (size_t j = 0; j < this->sideChainAnglesPerResidue[i].size(); j++) {
             outfile << i << "," << this->residueThreeLetter[i] << ",TorsionAngle,";
             outfile << j << "," << this->sideChainAnglesPerResidue[i][j] << ",";
             outfile << this->sideChainAnglesDiscretized[movingIndex] << ",";
-            outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].min << ",";
-            outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].cont_f << ",";
-            outfile << this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << ",";
-            outfile << this->sideChainAnglesPerResidue[i][j] - this->sideChainDiscMap[this->residueThreeLetter[i]][j].continuize(this->sideChainAnglesDiscretized[movingIndex]) << "\n";
+            outfile << disc.min << ",";
+            outfile << disc.cont_f << ",";
+            outfile << disc.continuize(this->sideChainAnglesDiscretized[movingIndex]) << ",";
+            outfile << this->sideChainAnglesPerResidue[i][j] - disc.continuize(this->sideChainAnglesDiscretized[movingIndex]) << "\n";
             movingIndex++;
         }
     }

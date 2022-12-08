@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-12-05 22:50:47
+ * Last Modified: 2022-12-08 05:49:00
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -136,6 +136,9 @@ int compress(std::string input, std::string output) {
     compRes.strTitle = title;
     compRes.anchorThreshold = anchor_residue_threshold;
     compData = compRes.compress(atomCoordinates);
+    compRes.printSideChainTorsion(input + ".sideChain.csv");
+    std::vector< std::vector<AtomCoordinate> > residueAtoms = splitAtomByResidue(atomCoordinates);
+    writeSplittedResidues(residueAtoms, output + ".comp.csv", "orig");
     // Write compressed data to file
     if (compRes.write(output) != 0) {
         std::cout << "[Error] Writing file: " << output << std::endl;
@@ -238,7 +241,9 @@ int decompress(std::istream &file, std::string output) {
     }
     // Write decompressed data to file
     flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, output);
-
+    
+    std::vector< std::vector<AtomCoordinate> > residueAtoms = splitAtomByResidue(atomCoordinates);
+    writeSplittedResidues(residueAtoms, output + ".decomp.csv", "recon");
     return flag;
 }
 
