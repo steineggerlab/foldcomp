@@ -36,6 +36,7 @@ void* make_writer(const char *data_name, const char *index_name) {
     writer->entries = (writer_index*)malloc(1000 * sizeof(writer_index));
     writer->size = 0;
     writer->capacity = 1000;
+    writer->is_sorted = 1;
     // std::string source_name = std::string(data_name) + ".source";
     // FILE* source = fopen(source_name.c_str(), "w");
     // fprintf(source, "0\t%s", data_name);
@@ -83,7 +84,7 @@ bool writer_append(void *writer, const char* data, size_t length, uint32_t key, 
         w->entries = (writer_index*)realloc(w->entries, w->capacity * sizeof(writer_index));
     }
     w->entries[w->size] = entry;
-    w->is_sorted = w->is_sorted && (w->size == 1 || w->entries[w->size - 1].id < key);
+    w->is_sorted = w->is_sorted && (w->size <= 1 || w->entries[w->size - 1].id < key);
     w->size++;
     return true;
 }
