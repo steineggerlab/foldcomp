@@ -9,7 +9,7 @@
  *     with three preceding atoms and bond information.
  *     Reference: https://benjamin.computer/posts/2018-03-16-mres-part2.html
  * ---
- * Last Modified: 2022-12-08 04:40:06
+ * Last Modified: 2022-12-08 11:49:52
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -580,7 +580,7 @@ int writeSplittedResidues(
         // Get previous atom for each atom
         for (size_t j = 0; j < residue.size(); j++) {
             AtomCoordinate atom = residue[j];
-            if (atom.atom == "N" || atom.atom == "CA" || atom.atom == "C") {
+            if (atom.atom == "N" || atom.atom == "CA" || atom.atom == "C" || atom.atom == "OXT") {
                 continue;
             }
             std::vector<std::string> prev_atom_names = AAS[atom.residue].sideChain[atom.atom];

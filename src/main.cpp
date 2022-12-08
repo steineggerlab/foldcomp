@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-12-08 05:49:00
+ * Last Modified: 2022-12-08 11:47:59
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -241,7 +241,7 @@ int decompress(std::istream &file, std::string output) {
     }
     // Write decompressed data to file
     flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, output);
-    
+
     std::vector< std::vector<AtomCoordinate> > residueAtoms = splitAtomByResidue(atomCoordinates);
     writeSplittedResidues(residueAtoms, output + ".decomp.csv", "recon");
     return flag;
