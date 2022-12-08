@@ -21,6 +21,9 @@
 
 Discretizer::Discretizer(const std::vector<float>& values, unsigned int nb):
     n_bin(nb) {
+    if (values.size() == 0) {
+        return;
+    }
     // Get min & max
     this->min = *std::min_element(values.begin(), values.end());
     this->max = *std::max_element(values.begin(), values.end());
