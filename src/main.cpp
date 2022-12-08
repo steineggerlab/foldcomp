@@ -386,14 +386,14 @@ int main(int argc, char* const *argv) {
         // If gcs URI, mode = COMPRESS_MULTIPLE_GCS
         // If directory, mode = COMPRESS_MULTIPLE
         // If file, mode = COMPRESS
+        char* end = strrchr(argv[optind + 1], '.');
 #ifdef HAVE_GCS
         if ((optind + 1) < argc && stringStartsWith("gcs://", argv[optind + 1])) {
             mode = COMPRESS_MULTIPLE_GCS;
             fileExists = 0;
         } else
 #endif
-        char* end = strrchr(argv[optind + 1], '.');
-        if (st.st_mode & S_ISDIR(st.st_mode)) {
+        if (file_input || st.st_mode & S_ISDIR(st.st_mode)) {
             mode = COMPRESS_MULTIPLE;
         } else if (end != NULL && strcmp(end, ".tar") == 0) {
             mode = COMPRESS_MULTIPLE_TAR;
@@ -580,10 +580,11 @@ int main(int argc, char* const *argv) {
         }
 
         for (const std::string& input : inputs) {
+            const bool is_tar = stringEndsWith(".tar", input);
             // input variants
             std::vector<std::string> files;
             mtar_t tar_in;
-            if (mode == COMPRESS_MULTIPLE_TAR) {
+            if (is_tar) {
                 if (mtar_open(&tar_in, input.c_str(), "r") != MTAR_ESUCCESS) {
                     if (file_input) {
                         std::cerr << "[Warning] open tar " << input << " failed." << std::endl;
@@ -598,7 +599,7 @@ int main(int argc, char* const *argv) {
             }
 
             unsigned int key = 0;
-            if (mode == COMPRESS_MULTIPLE_TAR) {
+            if (is_tar) {
 #pragma omp parallel shared(tar_in) num_threads(num_threads)
                 {
                     std::vector<AtomCoordinate> atomCoordinates;
@@ -787,7 +788,7 @@ int main(int argc, char* const *argv) {
                     }
                 }
             }
-            if (mode == COMPRESS_MULTIPLE_TAR) {
+            if (is_tar) {
                 mtar_close(&tar_in);
             }
         }
