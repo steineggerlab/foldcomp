@@ -688,10 +688,12 @@ int main(int argc, char* const *argv) {
                                         filename += "_" + std::to_string(j);
                                     }
 
-                                    if (outputParts.second != "") {
-                                        filename += "." + outputParts.second;
-                                    } else if (!save_as_tar && !db_output) {
-                                        filename += ".fcz";
+                                    if (!save_as_tar && !db_output) {
+                                        if (outputParts.second != "") {
+                                            filename += "." + outputParts.second;
+                                        } else {
+                                            filename += ".fcz";
+                                        }
                                     }
 
                                     if (db_output) {
@@ -719,6 +721,7 @@ int main(int argc, char* const *argv) {
                     free(dataBuffer);
                 }
             } else {
+                std::string orig_output = output;
 #pragma omp parallel num_threads(num_threads)
                 {
                     std::vector<AtomCoordinate> atomCoordinates;
@@ -739,7 +742,15 @@ int main(int argc, char* const *argv) {
 
                         std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
                         // Check if there are multiple chains or regions with discontinous residue indices
-                        std::string output = baseName(getFileWithoutExt(files[i]));
+                        std::pair<std::string, std::string> outputParts = getFileParts(baseName(files[i]));
+                        std::string outputFile;
+                        if (save_as_tar || db_output) {
+                            outputFile = outputParts.first;
+                        } else if (stringEndsWith("/", output)) {
+                            outputFile = output + outputParts.first;
+                        } else {
+                            outputFile = output + "/" + outputParts.first;
+                        }
                         for (size_t i = 0; i < chain_indices.size(); i++) {
                             std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
                             if (skip_discontinuous && frag_indices.size() > 1) {
@@ -756,13 +767,21 @@ int main(int argc, char* const *argv) {
                                 std::string filename;
                                 if (chain_indices.size() > 1) {
                                     std::string chain = atomCoordinates[chain_indices[i].first].chain;
-                                    filename = output + chain;
+                                    filename = outputFile + chain;
                                 } else {
-                                    filename = output;
+                                    filename = outputFile;
                                 }
 
                                 if (frag_indices.size() > 1) {
                                     filename += "_" + std::to_string(j);
+                                }
+
+                                if (!save_as_tar && !db_output) {
+                                    if (outputParts.second != "") {
+                                        filename += "." + outputParts.second;
+                                    } else {
+                                        filename += ".fcz";
+                                    }
                                 }
 
                                 if (db_output) {
