@@ -30,7 +30,13 @@
 // Standard libraries
 #include <cstring>
 #include <fstream> // IWYU pragma: keep
+#ifdef _WIN32
+#include <direct.h>
+#include "windows/getopt.h"
+#include "windows/dirent.h"
+#else
 #include <getopt.h>
+#endif
 #include <iostream>
 #include <sstream> // IWYU pragma: keep
 #include <string>
@@ -546,7 +552,7 @@ int main(int argc, char* const *argv) {
             handle = make_writer(output.c_str(), (output + ".index").c_str());
         } else {
             if (stat(output.c_str(), &st) == -1) {
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _WIN32
                 _mkdir(output.c_str());
 #else
                 mkdir(output.c_str(), 0755);

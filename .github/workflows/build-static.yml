@@ -143,9 +143,34 @@ jobs:
       with:
         path: foldcomp-macos-universal.tar.gz
 
+  compile_windows:
+    needs: sanitizer
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build x64
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=amd64 -no_logo
+        vcpkg install zlib:x64-windows-static
+        vcpkg integrate install
+        set VCPKG_TOOLCHAIN=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+        cmake -G Ninja -B build ^
+          "-DVCPKG_TARGET_TRIPLET=x64-windows-static" ^
+          "-DCMAKE_TOOLCHAIN_FILE=%VCPKG_TOOLCHAIN%" ^
+          "-DCMAKE_C_COMPILER:FILEPATH=%VCINSTALLDIR%\Tools\Llvm\x64\bin\clang.exe" ^
+          "-DCMAKE_CXX_COMPILER:FILEPATH=%VCINSTALLDIR%\Tools\Llvm\x64\bin\clang.exe" ^
+          "-DCMAKE_LINKER:FILEPATH=%VCINSTALLDIR%\Tools\Llvm\x64\bin\lld-link.exe"
+        cmake --build build --config Release --parallel %NUMBER_OF_PROCESSORS%
+        copy /Y "%VCINSTALLDIR%\Tools\Llvm\x64\bin\libomp.dll" build/libomp.dll
+        tar.exe -C build -acvf foldcomp-windows-x64.zip foldcomp.exe libomp.dll
+    - uses: actions/upload-artifact@v3
+      with:
+        path: foldcomp-windows-x64.zip
 
   upload_all:
-    needs: [compile, compile_macos]
+    needs: [compile, compile_macos, compile_windows]
     runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     steps:
@@ -168,6 +193,6 @@ jobs:
       run: |
         ssh-keyscan -t rsa uniclust.mmseqs.com >> ~/.ssh/known_hosts
         ssh codeship@uniclust.mmseqs.com "mkdir -p \"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}\""
-        scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz \
+        scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz foldcomp-windows-x64.zip \
           codeship@uniclust.mmseqs.com:"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}"
         ssh codeship@uniclust.mmseqs.com "update-latest-foldcomp.sh \"${GITHUB_SHA}\""
