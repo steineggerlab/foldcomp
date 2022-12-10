@@ -19,7 +19,11 @@
 #include <string>
 
 #ifdef FOLDCOMP_EXECUTABLE
+#ifdef _WIN32
+#include "windows/dirent.h"
+#else
 #include <dirent.h>
+#endif
 #include <errno.h>
 #include <sys/stat.h>
 
