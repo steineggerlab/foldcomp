@@ -93,7 +93,7 @@ std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recurs
 #endif
 std::string baseName(const std::string& path);
 
-std::string getFileWithoutExt(std::string& file);
+std::string getFileWithoutExt(const std::string& file);
 std::pair<std::string, std::string> getFileParts(const std::string& file);
 bool stringStartsWith(const std::string& prefix, const std::string& str, const size_t offset = 0);
 bool stringEndsWith(const std::string& suffix, const std::string& str);
