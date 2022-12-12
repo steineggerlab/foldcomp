@@ -82,17 +82,21 @@ std::string baseName(const std::string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
 }
 
-std::string getFileWithoutExt(std::string& file) {
-    size_t extStart = file.find_last_of('.');
-    return extStart == std::string::npos ? file : file.substr(0, extStart);
+std::string getFileWithoutExt(const std::string& file) {
+    size_t basePos = file.find_last_of("/\\");
+    basePos = basePos == std::string::npos ? 0 : basePos + 1;
+    size_t extStart = file.substr(basePos).find_last_of(".");
+    return extStart == std::string::npos ? file : file.substr(0, basePos + extStart);
 }
 
 std::pair<std::string, std::string> getFileParts(const std::string& file) {
-    size_t extStart = file.find_last_of('.');
+    size_t basePos = file.find_last_of("/\\");
+    basePos = basePos == std::string::npos ? 0 : basePos + 1;
+    size_t extStart = file.substr(basePos).find_last_of(".");
     if (extStart == std::string::npos) {
         return std::make_pair(file, "");
     }
-    return std::make_pair(file.substr(0, extStart), file.substr(extStart + 1));
+    return std::make_pair(file.substr(0, basePos + extStart), file.substr(basePos + extStart + 1));
 }
 
 bool stringEndsWith(const std::string& suffix, const std::string& str) {
