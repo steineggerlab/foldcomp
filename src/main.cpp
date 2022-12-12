@@ -106,7 +106,7 @@ int compress(std::string input, std::string output) {
     for (size_t i = 0; i < chain_indices.size(); i++) {
         std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
         for (size_t j = 0; j < frag_indices.size(); j++) {
-            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
+            tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second - 1]);
             Foldcomp compRes;
             compRes.strTitle = title;
             compRes.anchorThreshold = anchor_residue_threshold;
@@ -676,7 +676,7 @@ int main(int argc, char* const *argv) {
                                     continue;
                                 }
                                 for (size_t j = 0; j < frag_indices.size(); j++) {
-                                    tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
+                                    tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second - 1]);
                                     Foldcomp compRes;
                                     compRes.strTitle = title;
                                     compRes.anchorThreshold = anchor_residue_threshold;
@@ -764,7 +764,7 @@ int main(int argc, char* const *argv) {
                                 continue;
                             }
                             for (size_t j = 0; j < frag_indices.size(); j++) {
-                                tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second]);
+                                tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], &atomCoordinates[frag_indices[j].second - 1]);
                                 Foldcomp compRes;
                                 compRes.strTitle = title;
                                 compRes.anchorThreshold = anchor_residue_threshold;
