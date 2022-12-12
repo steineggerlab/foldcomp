@@ -695,7 +695,7 @@ int main(int argc, char* const *argv) {
                                     }
 
                                     if (!save_as_tar && !db_output) {
-                                        if (outputParts.second != "") {
+                                        if (outputParts.second != "" && (outputParts.second != "pdb" || outputParts.second != "cif")) {
                                             filename += "." + outputParts.second;
                                         } else {
                                             filename += ".fcz";
@@ -783,7 +783,7 @@ int main(int argc, char* const *argv) {
                                 }
 
                                 if (!save_as_tar && !db_output) {
-                                    if (outputParts.second != "") {
+                                    if (outputParts.second != "" && (outputParts.second != "pdb" || outputParts.second != "cif")) {
                                         filename += "." + outputParts.second;
                                     } else {
                                         filename += ".fcz";
