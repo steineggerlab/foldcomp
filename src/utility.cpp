@@ -37,7 +37,7 @@ void getdir(const std::string& dir, bool recursive, std::vector<std::string>& fi
     }
     std::vector<std::string> dirs;
     while ((dirp = readdir(dp)) != NULL) {
-        unsigned char type = dirp->d_type;
+        unsigned int type = dirp->d_type;
         if (type == DT_UNKNOWN) {
             // stat the file to determine its real type
             struct stat st;
