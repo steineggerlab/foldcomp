@@ -1,4 +1,11 @@
 # Foldcomp
+
+```diff
++ 2022/12/13: We are currently in the process of uploading the AFDBv4, 
++             and have removed the AFDBv3 in the meantime.
++             We expect the upload to finish today.
+```
+
 <p align="center">
 <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/foldcomp_strong_marv.png" max-height="300px" height="300" display="block" margin-left="auto" margin-right="auto" display="block"/>
 </p>
