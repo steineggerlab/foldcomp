@@ -39,6 +39,9 @@ wget https://mmseqs.com/foldcomp/foldcomp-linux-arm64.tar.gz
 
 # Download binary for macOS
 wget https://mmseqs.com/foldcomp/foldcomp-macos-universal.tar.gz
+
+# Download binary for Windows (x64)
+wget https://mmseqs.com/foldcomp/foldcomp-windows-x64.zip
 ```
 
 ### Executable
@@ -72,6 +75,23 @@ foldcomp rmsd <pdb1|cif1> <pdb2|cif2>
  --fasta              extract amino acid sequence (only for extraction mode)
  --no-merge           do not merge output files (only for extraction mode)
 ```
+
+### Downloading Databases
+We offer prebuilt databases for multiple large sets of predicted protein structures and a Python helper to download the database files.
+
+You can download the AlphaFoldDB Swiss-Prot with the following command:
+```
+python -c "import foldcomp; foldcomp.setup('afdb_swissprot_v4');
+```
+
+Currently we offer the following databases:
+* ESMAtlas high-quality: `foldcomp.setup('highquality_clust30')`
+* AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
+* AlphaFoldDB Uniprot: `foldcomp.setup('afdb_uniprot_v4')`
+
+If you want other prebuilt datasets, please get in touch with us through our [GitHub issues](https://github.com/steineggerlab/foldcomp/issues).
+
+If you have issues downloading the databases you can navigate directly to our [download server](https://foldcomp.steineggerlab.workers.dev/) and download the required files. E.g. `afdb_uniprot_v4`, `afdb_uniprot_v4.index`, `afdb_uniprot_v4.dbtype`, `afdb_uniprot_v4.lookup`, and optionally `afdb_uniprot_v4.source`.
 
 ### Python API
 
