@@ -134,6 +134,9 @@ with foldcomp.open("test/example_db", ids=ids) as db:
         pdb_file.write(pdb)
 ```
 
+## Community Contributions
+* [PyMOL Plugin for reading Foldcomp files](https://github.com/yakomaxa/load_fcz_PyMOL) by @yakomaxa
+
 ## Contributor
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
   <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
