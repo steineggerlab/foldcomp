@@ -20,4 +20,5 @@ jobs:
         pip install papermill notebook
     - name: Run notebook
       run: |
+        sed -i -E 's|foldcomp==\d\.\d\.\d|@ git+https://github.com/steineggerlab/foldcomp|g' foldcomp-py-examples.ipynb
         (cd test; papermill ../foldcomp-py-examples.ipynb ../foldcomp-py-examples-out.ipynb)
