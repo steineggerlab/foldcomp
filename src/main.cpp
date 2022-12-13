@@ -657,13 +657,13 @@ int main(int argc, char* const *argv) {
                             } else {
                                 outputFile = output + "/" + outputParts.first;
                             }
-                            reader.loadFromBuffer(dataBuffer, header.size, outputParts.first);
+                            reader.loadFromBuffer(dataBuffer, header.size, base);
                             reader.readAllAtoms(atomCoordinates);
                             if (atomCoordinates.size() == 0) {
                                 std::cout << "[Error] No atoms found in the input file: " << base << std::endl;
                                 continue;
                             }
-                            std::string title = reader.title;
+                            std::string title = outputParts.first;
 
                             removeAlternativePosition(atomCoordinates);
 
