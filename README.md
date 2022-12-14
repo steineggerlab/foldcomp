@@ -80,6 +80,10 @@ python -c "import foldcomp; foldcomp.setup('afdb_swissprot_v4');
 
 Currently we offer the following databases:
 * ESMAtlas high-quality: `foldcomp.setup('highquality_clust30')`
+
+  **Note:** We skipped all structures with discontinous residues or other issues.
+   [Here](https://foldcomp.steineggerlab.workers.dev/highquality_clust30_issues.txt) is a list with the affected predictions (~100k).
+  
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
 * AlphaFoldDB Uniprot: `foldcomp.setup('afdb_uniprot_v4')`
 
