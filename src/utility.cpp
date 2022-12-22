@@ -21,14 +21,25 @@
 #ifdef FOLDCOMP_EXECUTABLE
 #ifdef _WIN32
 #include "windows/dirent.h"
+#include <io.h>
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
 #else
 #include <dirent.h>
+#include <sys/mman.h>
 #endif
 #include <errno.h>
 #include <sys/stat.h>
 
 // Get all files in a directory using dirent.h
 void getdir(const std::string& dir, bool recursive, std::vector<std::string>& files) {
+    struct stat st;
+    if (stat(dir.c_str(), &st) == 0) {
+        if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
+            files.emplace_back(dir);
+            return;
+        }
+    }
     DIR* dp;
     struct dirent* dirp;
     if ((dp = opendir(dir.c_str())) == NULL) {
@@ -75,6 +86,31 @@ std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recurs
     std::vector<std::string> files;
     getdir(dir, recursive, files);
     return files;
+}
+
+char *file_map(FILE *file, ssize_t *size, int extra_flags) {
+    struct stat sb;
+    fstat(fileno(file), &sb);
+    *size = sb.st_size;
+
+    int fd = fileno(file);
+#ifdef _MSC_VER
+    HANDLE handle = (HANDLE)_get_osfhandle(fd);
+    void* mapping = CreateFileMapping(handle, NULL, PAGE_READONLY, 0, 0, NULL);
+    DWORD offsetLow  = DWORD(0 & 0xFFFFFFFF);
+    DWORD offsetHigh = DWORD(0 >> 32);
+    return (char *)MapViewOfFile(mapping, FILE_MAP_READ, offsetHigh, offsetLow, sb.st_size);
+#else
+    return (char *)mmap(NULL, (size_t)(*size), PROT_READ, MAP_PRIVATE | extra_flags, fd, 0);
+#endif
+}
+
+int file_unmap(char *mem, ssize_t size) {
+#ifdef _MSC_VER
+    return UnmapViewOfFile(mem);
+#else
+    return munmap(mem, size);
+#endif
 }
 #endif
 

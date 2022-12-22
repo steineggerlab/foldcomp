@@ -90,6 +90,8 @@ void printVector(std::vector<T> v) {
 #ifdef FOLDCOMP_EXECUTABLE
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recursive);
+char *file_map(FILE *file, ssize_t *size, int extra_flags = 0);
+int file_unmap(char* mem, ssize_t size);
 #endif
 std::string baseName(const std::string& path);
 
