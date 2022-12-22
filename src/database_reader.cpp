@@ -1,4 +1,5 @@
 #include "database_reader.h"
+#include "utility.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -9,16 +10,6 @@
 #include <vector>
 
 #include <sys/stat.h>
-
-
-#ifdef _MSC_VER
-#include <windows.h>
-#include <io.h>
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#else
-#include <sys/mman.h>
-#endif
 
 struct reader_index_s {
     uint32_t id;
@@ -44,8 +35,6 @@ struct DBReader_s {
 };
 typedef struct DBReader_s DBReader;
 
-char *file_map(FILE *file, ssize_t *size, int extra_flags);
-int file_unmap(char* mem, ssize_t size);
 ssize_t count_lines(char *data, ssize_t size);
 struct compare_by_id {
     bool operator()(const reader_index &a, const reader_index &b) const {
@@ -217,30 +206,6 @@ int64_t reader_get_size(void *r) {
         return -1;
     }
     return reader->size;
-}
-char *file_map(FILE *file, ssize_t *size, int extra_flags = 0) {
-    struct stat sb;
-    fstat(fileno(file), &sb);
-    *size = sb.st_size;
-
-    int fd = fileno(file);
-#ifdef _MSC_VER
-    HANDLE handle = (HANDLE)_get_osfhandle(fd);
-    void* mapping = CreateFileMapping(handle, NULL, PAGE_READONLY, 0, 0, NULL);
-    DWORD offsetLow  = DWORD(0 & 0xFFFFFFFF);
-    DWORD offsetHigh = DWORD(0 >> 32);
-    return (char *)MapViewOfFile(mapping, FILE_MAP_READ, offsetHigh, offsetLow, sb.st_size);
-#else
-    return (char *)mmap(NULL, (size_t)(*size), PROT_READ, MAP_PRIVATE | extra_flags, fd, 0);
-#endif
-}
-
-int file_unmap(char *mem, ssize_t size) {
-#ifdef _MSC_VER
-    return UnmapViewOfFile(mem);
-#else
-    return munmap(mem, size);
-#endif
 }
 
 ssize_t count_lines(char *data, ssize_t size) {
