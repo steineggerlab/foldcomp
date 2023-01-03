@@ -16,9 +16,7 @@
 #include <omp.h>
 #endif
 
-//typedef bool (*process_entry_func)(const char* name, const char* content, size_t size);
 using process_entry_func = std::function<bool(const char* name, const char* content, size_t size)>;
-// static std::function<bool(const char* name, const char* content, size_t size)> init;
 
 class Processor {
 public:
