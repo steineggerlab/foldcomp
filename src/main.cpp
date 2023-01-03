@@ -635,7 +635,7 @@ int main(int argc, char* const *argv) {
                     }
                     return false;
                 }
-                std::vector<std::string> data;
+                std::string data;
                 compRes.extract(data, ext_mode);
                 std::string base = baseName(name);
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
@@ -649,8 +649,6 @@ int main(int argc, char* const *argv) {
                 }
 
                 if (isMergedOutput) {
-                    std::ostringstream oss;
-                    compRes.writeFASTALike(oss, data);
 #pragma omp critical
                     {
                         compRes.writeFASTALike(default_out, data);

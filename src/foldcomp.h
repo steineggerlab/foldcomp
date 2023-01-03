@@ -388,12 +388,9 @@ public:
     size_t getSize();
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
-    int writeFASTALike(std::ostream& os, const std::vector<std::string>& data);
+    int writeFASTALike(std::ostream& os, const std::string& data);
     int writeTorsionAngles(std::string filename);
-#ifdef FOLDCOMP_EXECUTABLE
-    int writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data);
-#endif
-    int extract(std::vector<std::string>& data, int type);
+    int extract(std::string& data, int type);
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
