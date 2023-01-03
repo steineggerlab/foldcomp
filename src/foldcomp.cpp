@@ -1218,24 +1218,19 @@ int Foldcomp::continuizeTempFactors() {
     return 0;
 }
 
-int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& data) {
-    int flag = 0;
-    // outfile is a text file
-    std::ofstream outfile(filename, std::ios::out);
+int Foldcomp::writeFASTALike(std::ostream& os, const std::vector<std::string>& data) {
     // Output format
     // >title
     // 95461729... 889 // plddt of all residues converted to 1 decimal place or
     // MKLLSKPR... YVK // amino acid sequence
     // Write title
-    outfile << ">" << this->strTitle << std::endl;
+    os << ">" << this->strTitle << "\n";
     // Write data
     for (const auto& s : data) {
-        outfile << s;
+        os << s;
     }
-    outfile << std::endl;
-    // Close file
-    outfile.close();
-    return flag;
+    os << "\n";
+    return 0;
 }
 
 int Foldcomp::writeTorsionAngles(std::string filename) {

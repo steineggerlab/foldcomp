@@ -82,16 +82,14 @@ int print_usage(void) {
     return 0;
 }
 
-int rmsd(std::string pdb1, std::string pdb2) {
-    // Read
-    StructureReader reader1;
-    reader1.load(pdb1);
+int rmsd(const std::string& pdb1, const std::string& pdb2) {
+    StructureReader reader;
+    reader.load(pdb1);
     std::vector<AtomCoordinate> atomCoordinates1;
-    reader1.readAllAtoms(atomCoordinates1);
-    StructureReader reader2;
-    reader2.load(pdb2);
+    reader.readAllAtoms(atomCoordinates1);
+    reader.load(pdb2);
     std::vector<AtomCoordinate> atomCoordinates2;
-    reader2.readAllAtoms(atomCoordinates2);
+    reader.readAllAtoms(atomCoordinates2);
     // Check
     if (atomCoordinates1.size() == 0) {
         std::cerr << "[Error] No atoms found in the input file: " << pdb1 << std::endl;
@@ -120,7 +118,6 @@ int main(int argc, char* const *argv) {
         return print_usage();
     }
 
-    int flag = 0;
     int option_index = 0;
     int num_threads = 1;
     int has_output = 0;
@@ -130,7 +127,6 @@ int main(int argc, char* const *argv) {
     int measure_time = 0;
     int skip_discontinuous = 0;
 
-    // TODO: NEED COMPRESS_MULTIPLE_TAR
     // Mode - non-optional argument
     enum {
         COMPRESS,
@@ -159,8 +155,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    flag = getopt_long(argc, argv, "hazrft:b:", long_options, &option_index);
-
+    int flag = getopt_long(argc, argv, "hazrft:b:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -198,7 +193,6 @@ int main(int argc, char* const *argv) {
     // argv[optind]: MODE
     // argv[optind + 1]: INPUT
     // argv[optind + 2]: OUTPUT (optional)
-
     if ((optind + 1) >= argc) {
         std::cerr << "[Error] Not enough arguments." << std::endl;
         return print_usage();
@@ -208,7 +202,6 @@ int main(int argc, char* const *argv) {
     int inputExists = stat(argv[optind + 1], &inputStat);
     const char* outputSuffix = "";
     bool mayHaveOutput = false;
-    const bool isSingleFileInput = !file_input && (S_ISREG(inputStat.st_mode) || S_ISLNK(inputStat.st_mode))
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
         mode = COMPRESS;
@@ -242,7 +235,7 @@ int main(int argc, char* const *argv) {
     // Error if no input file given
     if (inputExists == -1) {
         std::cerr << "[Error] " << argv[optind + 1] << " does not exist." << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
     std::string input = argv[optind + 1];
@@ -254,7 +247,7 @@ int main(int argc, char* const *argv) {
         std::ifstream inputFile(input);
         if (!inputFile) {
             std::cerr << "[Error] Could not open file " << input << std::endl;
-            return -1;
+            return EXIT_FAILURE;
         }
         std::string line;
         while (std::getline(inputFile, line)) {
@@ -271,6 +264,21 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", output)) {
             save_as_tar = 1;
         }
+    }
+
+    bool isSingleFileInput = !file_input && (S_ISREG(inputStat.st_mode) || S_ISLNK(inputStat.st_mode));
+    if (!file_input) {
+        struct stat st;
+        if (stringEndsWith(".tar", input)) {
+            isSingleFileInput = false;
+        } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+            isSingleFileInput = false;
+        }
+#ifdef HAVE_GCS
+        else if (stringStartsWith("gcs://", input)) {
+            isSingleFileInput = false;
+        }
+#endif
     }
 
     while (has_output && output.back() == '/') {
@@ -294,7 +302,6 @@ int main(int argc, char* const *argv) {
     if (mode == RMSD) {
         // Calculate RMSD between two PDB files
         rmsd(input, output);
-        flag = 0;
     } else if (mode == COMPRESS) {
         // output variants
         void* handle;
@@ -357,14 +364,15 @@ int main(int argc, char* const *argv) {
                 if (save_as_tar || db_output) {
                     outputFile = outputParts.first;
                 } else if (isSingleFileInput) {
-                    outputFile = output;
+                    outputParts = getFileParts(output);
+                    outputFile = outputParts.first;
                 } else {
                     outputFile = output + "/" + outputParts.first;
                 }
                 reader.loadFromBuffer(dataBuffer, size, base);
                 reader.readAllAtoms(atomCoordinates);
                 if (atomCoordinates.size() == 0) {
-                    std::cout << "[Error] No atoms found in the input file: " << base << std::endl;
+                    std::cerr << "[Error] No atoms found in the input file: " << base << std::endl;
                     return false;
                 }
                 std::string title = outputParts.first;
@@ -376,7 +384,7 @@ int main(int argc, char* const *argv) {
                 for (size_t i = 0; i < chain_indices.size(); i++) {
                     std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
                     if (skip_discontinuous && frag_indices.size() > 1) {
-                        std::cout << "[Warning] Skipping discontinuous chain: " << base << std::endl;
+                        std::cerr << "[Warning] Skipping discontinuous chain: " << base << std::endl;
                         continue;
                     }
                     for (size_t j = 0; j < frag_indices.size(); j++) {
@@ -437,8 +445,6 @@ int main(int argc, char* const *argv) {
             mtar_finalize(&tar_out);
             mtar_close(&tar_out);
         }
-
-        flag = 0;
     } else if (mode == DECOMPRESS) {
         void* handle;
         mtar_t tar_out;
@@ -519,15 +525,16 @@ int main(int argc, char* const *argv) {
                 } else if (isSingleFileInput) {
                     outputFile = output;
                 } else {
-                    outputFile = output + "/" + outputParts.first;
+                    outputFile = output + "/" + outputParts.first + "." + outputSuffix;
                 }
 
                 if (db_output) {
                     std::ostringstream oss;
                     writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
+                    oss << '\0';
 #pragma omp critical
                     {
-                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
+                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, outputFile.c_str());
                         key++;
                     }
                 } else if (save_as_tar) {
@@ -535,12 +542,13 @@ int main(int argc, char* const *argv) {
                     writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
 #pragma omp critical
                     {
-                        mtar_write_file_header(&tar_out, filename.c_str(), size);
-                        mtar_write_data(&tar_out, oss.str().c_str(), oss.str().size());
+                        std::string os = oss.str();
+                        mtar_write_file_header(&tar_out, outputFile.c_str(), os.size());
+                        mtar_write_data(&tar_out, os.c_str(), os.size());
                     }
                 } else {
                     // Write decompressed data to file
-                    flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, output);
+                    flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, outputFile);
                     if (flag != 0) {
                         std::cerr << "[Error] Writing decompressed data to file: " << output << std::endl;
                         return false;
@@ -557,8 +565,6 @@ int main(int argc, char* const *argv) {
             mtar_finalize(&tar_out);
             mtar_close(&tar_out);
         }
-
-        flag = 0;
     } else if (mode == EXTRACT) {
         void* handle;
         mtar_t tar_out;
@@ -577,7 +583,7 @@ int main(int argc, char* const *argv) {
             }
         }
 
-        if (inputs.size() == 1) {
+        if (isSingleFileInput) {
             std::cout << "Extracting " << input << " to " << output << std::endl;
         } else {
             std::cout << "Extracting files in " << input;
@@ -589,6 +595,13 @@ int main(int argc, char* const *argv) {
             } else {
                 std::cout << "Output directory: " << output << std::endl;
             }
+        }
+
+        bool isMergedOutput = false;
+        std::ofstream default_out;
+        if (!save_as_tar && !db_output && !isSingleFileInput && ext_merge == 0) {
+            default_out.open(output, std::ios::out);
+            isMergedOutput = true;
         }
 
         for (const std::string& input : inputs) {
@@ -609,58 +622,63 @@ int main(int argc, char* const *argv) {
             }
             unsigned int key = 0;
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
-                    std::istringstream input(std::string(dataBuffer, header.size));
-                if (ext_merge == 1) {
-                    std::vector<std::string> data;
-                    Foldcomp compRes;
-                    int flag = compRes.read(input);
-                    if (flag != 0) {
-                        if (flag == -1) {
-                            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
-                        } else if (flag == -2) {
-                            std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
-                        } else {
-                            std::cerr << "[Error] Unknown read error" << std::endl;
-                        }
-                        continue;
+                std::istringstream input(std::string(dataBuffer, size));
+                Foldcomp compRes;
+                int flag = compRes.read(input);
+                if (flag != 0) {
+                    if (flag == -1) {
+                        std::cerr << "[Error] File is not a valid fcz file" << std::endl;
+                    } else if (flag == -2) {
+                        std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
+                    } else {
+                        std::cerr << "[Error] Unknown read error" << std::endl;
                     }
-                    compRes.extract(data, ext_mode);
-                    buffer.append(1, '>');
-                    buffer.append(compRes.strTitle);
-                    buffer.append(1, '\n');
-                    for (size_t j = 0; j < data.size(); j++) {
-                        buffer.append(data[j]);
-                    }
-                    buffer.append(1, '\n');
-                    #pragma omp critical
-                    {
-                        defaultOutput << buffer;
-                    }
-                    buffer.clear();
+                    return false;
+                }
+                std::vector<std::string> data;
+                compRes.extract(data, ext_mode);
+                std::string base = baseName(name);
+                std::pair<std::string, std::string> outputParts = getFileParts(base);
+                std::string outputFile;
+                if (save_as_tar || db_output) {
+                    outputFile = outputParts.first;
+                } else if (isSingleFileInput) {
+                    outputFile = output;
                 } else {
-                    std::string outputFile;
-                    std::string name_clean = baseName(name);
-                    if (ext_mode == 0) {
-                        // output file extension is ".plddt.txt"
-                        outputFile = output + "/" + name_clean + ".plddt.txt";
+                    outputFile = output + "/" + outputParts.first + "." + outputSuffix;
+                }
+
+                if (isMergedOutput) {
+                    std::ostringstream oss;
+                    compRes.writeFASTALike(oss, data);
+#pragma omp critical
+                    {
+                        compRes.writeFASTALike(default_out, data);
                     }
-                    else if (ext_mode == 1) {
-                        outputFile = output + "/" + name_clean + ".fasta";
+                } else if (db_output) {
+                    std::ostringstream oss;
+                    compRes.writeFASTALike(oss, data);
+                    oss << '\0';
+#pragma omp critical
+                    {
+                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, outputFile.c_str());
+                        key++;
                     }
-                    Foldcomp compRes;
-                    flag = compRes.read(file);
-                    if (flag != 0) {
-                        if (flag == -1) {
-                            std::cerr << "[Error] File is not a valid fcz file" << std::endl;
-                        } else if (flag == -2) {
-                            std::cerr << "[Error] Could not restore prevAtoms" << std::endl;
-                        } else {
-                            std::cerr << "[Error] Unknown read error" << std::endl;
-                        }
-                        return 1;
+                } else if (save_as_tar) {
+                    std::ostringstream oss;
+                    compRes.writeFASTALike(oss, data);
+#pragma omp critical
+                    {
+                        std::string os = oss.str();
+                        mtar_write_file_header(&tar_out, outputFile.c_str(), os.size());
+                        mtar_write_data(&tar_out, os.c_str(), os.size());
                     }
-                    std::vector<std::string> data;
-                    compRes.extract(data, ext_mode);
+                } else {
+                    std::ofstream output(outputFile);
+                    if (!output) {
+                        std::cerr << "[Error] Could not open file " << outputFile << std::endl;
+                        return false;
+                    }
                     compRes.writeFASTALike(output, data);
                 }
 
@@ -675,24 +693,34 @@ int main(int argc, char* const *argv) {
             mtar_finalize(&tar_out);
             mtar_close(&tar_out);
         }
-
-        flag = 0;
     } else if (mode == CHECK) {
-        std::cout << "Checking files in " << input << " using " << num_threads << " threads" << std::endl;
-        std::vector<std::string> files = getFilesInDirectory(input, recursive);
-#pragma omp parallel num_threads(num_threads)
-        {
-#pragma omp for
-            for (size_t i = 0; i < files.size(); i++) {
-                std::ifstream input(files[i], std::ios::binary);
-                // Check if file is open
-                if (!input) {
-                    std::cerr << "[Error] Could not open file " << files[i] << std::endl;
-                    continue;
-                }
-                int flag = 0;
+        if (inputs.size() == 1) {
+            std::cout << "Checking " << input << std::endl;
+        } else {
+            std::cout << "Checking files in " << input;
+            std::cout << " using " << num_threads << " threads" << std::endl;
+        }
+
+        for (const std::string& input : inputs) {
+            Processor* processor;
+            struct stat st;
+            if (stringEndsWith(".tar", input)) {
+                processor = new TarProcessor(input);
+            } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+                processor = new DatabaseProcessor(input);
+            } 
+#ifdef HAVE_GCS
+            else if (stringStartsWith("gcs://", input)) {
+                processor = new GcsProcessor(input);
+            }
+#endif 
+            else {
+                processor = new DirectoryProcessor(input, recursive);
+            }
+            process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+                std::istringstream input(std::string(dataBuffer, size));
                 Foldcomp compRes;
-                flag = compRes.read(file);
+                int flag = compRes.read(input);
                 if (flag != 0) {
                     if (flag == -1) {
                         std::cerr << "[Error] File is not a valid fcz file" << std::endl;
@@ -701,21 +729,16 @@ int main(int argc, char* const *argv) {
                     } else {
                         std::cerr << "[Error] Unknown read error" << std::endl;
                     }
-                    return 1;
+                    return false;
                 }
-                ValidityError err;
-                err = compRes.checkValidity();
-                printValidityError(err, filename);
-                return flag;
-            }
+                ValidityError err = compRes.checkValidity();
+                std::string sname(name);
+                printValidityError(err, sname);
+                return true;
+            };
+            processor->run(func, num_threads);
+            delete processor;
         }
-        flag = 0;
-    } else {
-        std::cerr << "Invalid mode." << std::endl;
-        return 1;
     }
-    if (mode != RMSD) {
-        std::cout << "Done." << std::endl;
-    }
-    return flag;
+    return EXIT_SUCCESS;
 }
