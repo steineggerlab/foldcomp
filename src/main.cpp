@@ -377,7 +377,9 @@ int main(int argc, char* const *argv) {
                     std::cerr << "[Error] No atoms found in the input file: " << base << std::endl;
                     return false;
                 }
-                std::string title = outputParts.first;
+
+                // replace the title with only the base name if it was the same as the file name
+                std::string title = reader.title == base ? outputParts.first : reader.title;
 
                 removeAlternativePosition(atomCoordinates);
 
