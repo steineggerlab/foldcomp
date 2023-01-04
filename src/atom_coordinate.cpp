@@ -223,19 +223,23 @@ void writeAtomCoordinatesToPDB(
     // Write title
     // Check if title is too long and if so, write the title in multiple lines
     if (title != "") {
-        int title_line_num = 1;
-        if(title.length() > 70){
-            title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        const char* headerData = title.c_str();
+        size_t headerLen = title.length();
+        int remainingHeader = headerLen;
+        char buffer[128];
+        int written = snprintf(buffer, sizeof(buffer), "TITLE     %.*s\n",  std::min(70, (int)remainingHeader), headerData);
+        if (written >= 0 && written < (int)sizeof(buffer)) {
+            pdb_stream << buffer;
         }
-        // Split title into lines of 70 characters.
-        for (int i = 0; i < title_line_num; i++) {
-            if (i == 0) {
-                pdb_stream << "TITLE     " << title.substr(0, 70) << "\n";
-
-            } else {
-                pdb_stream << "TITLE   " << title.substr(i * 72 - 2, 72) << std::endl;
-
+        remainingHeader -= 70;
+        int continuation = 2;
+        while (remainingHeader > 0) {
+            written = snprintf(buffer, sizeof(buffer), "TITLE  % 3d%.*s\n", continuation, std::min(70, (int)remainingHeader), headerData + (headerLen - remainingHeader));
+            if (written >= 0 && written < (int)sizeof(buffer)) {
+                pdb_stream << buffer;
             }
+            remainingHeader -= 70;
+            continuation++;
         }
     }
 
