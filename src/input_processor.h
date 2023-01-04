@@ -118,34 +118,57 @@ public:
             std::string name;
             while (proceed) {
                 bool writeEntry = true;
-    #pragma omp critical
+#pragma omp critical
                 {
-                    if (mtar_read_header(&tar, &header) != MTAR_ENULLRECORD) {
-                        //TODO GNU tar has special blocks for long filenames
-                        name = header.name;
-                        if (header.size > bufferSize) {
-                            bufferSize = header.size * 1.5;
-                            dataBuffer = (char*)realloc(dataBuffer, bufferSize);
+                    if (tar.isFinished == 0 && (mtar_read_header(&tar, &header)) != MTAR_ENULLRECORD) {
+                        // GNU tar has special blocks for long filenames
+                        if (header.type == MTAR_TGNU_LONGNAME || header.type == MTAR_TGNU_LONGLINK) {
+                            if (header.size > bufferSize) {
+                                bufferSize = header.size * 1.5;
+                                dataBuffer = (char *) realloc(dataBuffer, bufferSize);
+                            }
+                            if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                                std::cerr << "[Error] cannot read entry " << header.name << std::endl;
+                                goto done;
+                            }
+                            name.assign(dataBuffer, header.size);
+                            // skip to next record
+                            if (mtar_read_header(&tar, &header) == MTAR_ENULLRECORD) {
+                                std::cerr << "[Error] tar truncated after entry " << name << std::endl;
+                                goto done;
+                            }
+                        } else {
+                            name = header.name;
                         }
-                        if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
-                            std::cerr << "[Error] reading tar entry " << name << " failed." << std::endl;
-                            writeEntry = false;
-                            proceed = false;
-                        }
-                        else {
-                            writeEntry = true;
+                        if (header.type == MTAR_TREG || header.type == MTAR_TCONT || header.type == MTAR_TOLDREG) {
+                            if (header.size > bufferSize) {
+                                bufferSize = header.size * 1.5;
+                                dataBuffer = (char *) realloc(dataBuffer, bufferSize);
+                            }
+                            if (mtar_read_data(&tar, dataBuffer, header.size) != MTAR_ESUCCESS) {
+                                std::cerr << "[Error] cannot read entry " << name << std::endl;
+                                goto done;
+                            }
                             proceed = true;
+                            writeEntry = true;
+                        } else {
+                            if (header.size > 0 && mtar_skip_data(&tar) != MTAR_ESUCCESS) {
+                                std::cerr << "[Error] cannot skip entry " << name << std::endl;
+                                goto done;
+                            }
+                            proceed = true;
+                            writeEntry = false;
                         }
-                        writeEntry = (header.type == MTAR_TREG) ? writeEntry : false;
-                    }
-                    else {
+                    } else {
+done:
+                        tar.isFinished = 1;
                         proceed = false;
                         writeEntry = false;
                     }
                 } // end read in
                 if (proceed && writeEntry) {
                     if (!func(name.c_str(), dataBuffer, header.size)) {
-                        std::cerr << "[Error] processing tar entry " << name << " failed." << std::endl;
+                        std::cerr << "[Error] failed processing tar entry " << name << std::endl;
                         continue;
                     }
                 }
