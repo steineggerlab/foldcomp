@@ -361,7 +361,9 @@ int main(int argc, char* const *argv) {
                 std::string base = baseName(name);
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
                 std::string outputFile;
-                if (save_as_tar || db_output) {
+                if (save_as_tar) {
+                    outputFile = outputParts.first + "." + outputSuffix;
+                } else if (db_output) {
                     outputFile = outputParts.first;
                 } else if (isSingleFileInput) {
                     outputParts = getFileParts(output);
@@ -520,7 +522,9 @@ int main(int argc, char* const *argv) {
                 std::string base = baseName(name);
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
                 std::string outputFile;
-                if (save_as_tar || db_output) {
+                if (save_as_tar) {
+                    outputFile = outputParts.first + "." + outputSuffix;
+                } else if (db_output) {
                     outputFile = outputParts.first;
                 } else if (isSingleFileInput) {
                     outputFile = output;
@@ -640,7 +644,9 @@ int main(int argc, char* const *argv) {
                 std::string base = baseName(name);
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
                 std::string outputFile;
-                if (save_as_tar || db_output) {
+                if (save_as_tar) {
+                    outputFile = outputParts.first + "." + outputSuffix;
+                } else if (db_output) {
                     outputFile = outputParts.first;
                 } else if (isSingleFileInput) {
                     outputFile = output;
