@@ -16,6 +16,41 @@
 #include <omp.h>
 #endif
 
+#include <zlib.h>
+static int file_gzread(mtar_t *tar, void *data, size_t size) {
+    size_t res = gzread((gzFile)tar->stream, data, size);
+    return (res == size) ? MTAR_ESUCCESS : MTAR_EREADFAIL;
+}
+
+static int file_gzseek(mtar_t *tar, long offset, int whence) {
+    int res = gzseek((gzFile)tar->stream, offset, whence);
+    return (res != -1) ? MTAR_ESUCCESS : MTAR_ESEEKFAIL;
+}
+
+static int file_gzclose(mtar_t *tar) {
+    gzclose((gzFile)tar->stream);
+    return MTAR_ESUCCESS;
+}
+
+int mtar_gzopen(mtar_t *tar, const char *filename) {
+    // Init tar struct and functions
+    memset(tar, 0, sizeof(*tar));
+    tar->read = file_gzread;
+    tar->seek = file_gzseek;
+    tar->close = file_gzclose;
+    // Open file
+    tar->stream = gzopen(filename, "rb");
+    if (!tar->stream) {
+        return MTAR_EOPENFAIL;
+    }
+
+#if defined(ZLIB_VERNUM) && ZLIB_VERNUM >= 0x1240
+    gzbuffer((gzFile)tar->stream, 1 * 1024 * 1024);
+#endif
+
+    return MTAR_ESUCCESS;
+}
+
 using process_entry_func = std::function<bool(const char* name, const char* content, size_t size)>;
 
 class Processor {
@@ -58,8 +93,14 @@ private:
 class TarProcessor : public Processor {
 public:
     TarProcessor(const std::string& input) {
-        if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
-            std::cerr << "[Error] open tar " << input << " failed." << std::endl;
+        if (stringEndsWith(".gz", input) || stringEndsWith(".tgz", input)) {
+            if (mtar_gzopen(&tar, input.c_str()) != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << input << " failed." << std::endl;
+            }
+        } else {
+            if (mtar_open(&tar, input.c_str(), "r") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] open tar " << input << " failed." << std::endl;
+            }
         }
     };
 
@@ -95,7 +136,6 @@ public:
                             writeEntry = true;
                             proceed = true;
                         }
-                        mtar_next(&tar);
                         writeEntry = (header.type == MTAR_TREG) ? writeEntry : false;
                     }
                     else {

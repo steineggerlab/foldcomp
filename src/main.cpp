@@ -261,7 +261,7 @@ int main(int argc, char* const *argv) {
     if (argc == optind + 3) {
         has_output = 1;
         output = argv[optind + 2];
-            if (stringEndsWith(".tar", output)) {
+        if (stringEndsWith(".tar", output)) {
             save_as_tar = 1;
         }
     }
@@ -269,7 +269,7 @@ int main(int argc, char* const *argv) {
     bool isSingleFileInput = !file_input && (S_ISREG(inputStat.st_mode) || S_ISLNK(inputStat.st_mode));
     if (!file_input) {
         struct stat st;
-        if (stringEndsWith(".tar", input)) {
+        if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
             isSingleFileInput = false;
         } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
             isSingleFileInput = false;
@@ -338,7 +338,7 @@ int main(int argc, char* const *argv) {
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input)) {
+            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
@@ -442,7 +442,7 @@ int main(int argc, char* const *argv) {
         if (db_output) {
             free_writer(handle);
         } else if (save_as_tar) {
-            mtar_finalize(&tar_out);
+            mtar_write_finalize(&tar_out);
             mtar_close(&tar_out);
         }
     } else if (mode == DECOMPRESS) {
@@ -480,7 +480,7 @@ int main(int argc, char* const *argv) {
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input)) {
+            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
@@ -562,7 +562,7 @@ int main(int argc, char* const *argv) {
         if (db_output) {
             free_writer(handle);
         } else if (save_as_tar) {
-            mtar_finalize(&tar_out);
+            mtar_write_finalize(&tar_out);
             mtar_close(&tar_out);
         }
     } else if (mode == EXTRACT) {
@@ -607,7 +607,7 @@ int main(int argc, char* const *argv) {
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input)) {
+            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
@@ -688,7 +688,7 @@ int main(int argc, char* const *argv) {
         if (db_output) {
             free_writer(handle);
         } else if (save_as_tar) {
-            mtar_finalize(&tar_out);
+            mtar_write_finalize(&tar_out);
             mtar_close(&tar_out);
         }
     } else if (mode == CHECK) {
@@ -702,7 +702,7 @@ int main(int argc, char* const *argv) {
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input)) {
+            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
