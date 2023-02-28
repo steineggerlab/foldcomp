@@ -6,6 +6,9 @@ _skbuild/
 foldcomp.egg-info/
 dist/
 
+test/out
+test/dir_test_input_fcz
+test/tar_test_input.tar_fcz
 compressed.fcz
 decompressed.pdb
 compressed_cif.fcz
@@ -15,3 +18,4 @@ decompressed_cif.pdb
 *.so
 
 .DS_Store
+

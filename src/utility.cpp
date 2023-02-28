@@ -6,8 +6,8 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: 2022-09-20 11:51:28
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Tue Feb 28 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -133,6 +133,20 @@ std::pair<std::string, std::string> getFileParts(const std::string& file) {
         return std::make_pair(file, "");
     }
     return std::make_pair(file.substr(0, basePos + extStart), file.substr(basePos + extStart + 1));
+}
+
+// Allowable extensions: pdb, cif, pdb.gz, cif.gz
+bool isCompressible(std::pair<std::string, std::string>& fileParts) {
+    std::string ext = fileParts.second;
+    if (ext == "pdb" || ext == "cif") {
+        return true;
+    } else if (ext == "gz") {
+        std::pair<std::string, std::string> fileParts2 = getFileParts(fileParts.first);
+        if (fileParts2.second == "pdb" || fileParts2.second == "cif") {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool stringEndsWith(const std::string& suffix, const std::string& str) {

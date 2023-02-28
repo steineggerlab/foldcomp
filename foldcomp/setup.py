@@ -82,7 +82,7 @@ async def download_json(url):
 #     return asyncio.run(download_json("https://foldseek.steineggerlab.workers.dev/manifest.json"))
 
 
-def setup(db="afdb_foldcomp", download_chunks=16):
+def setup(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         asyncio.run(
             download(
@@ -93,7 +93,7 @@ def setup(db="afdb_foldcomp", download_chunks=16):
         )
 
 
-async def setup_async(db="afdb_foldcomp", download_chunks=16):
+async def setup_async(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         await download(
             f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
