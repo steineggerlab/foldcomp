@@ -13,8 +13,8 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2022-12-05 22:50:47
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Tue Feb 28 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -342,12 +342,12 @@ int main(int argc, char* const *argv) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
-            } 
+            }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
                 processor = new GcsProcessor(input);
             }
-#endif 
+#endif
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
@@ -411,10 +411,10 @@ int main(int argc, char* const *argv) {
                         }
 
                         if (!save_as_tar && !db_output) {
-                            if (outputParts.second != "" && outputParts.second != "pdb" && outputParts.second != "cif") {
-                                filename += "." + outputParts.second;
-                            } else {
+                            if (isCompressible(outputParts)) {
                                 filename += ".fcz";
+                            } else {
+                                filename += "." + outputParts.second;
                             }
                         }
 
@@ -488,12 +488,12 @@ int main(int argc, char* const *argv) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
-            } 
+            }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
                 processor = new GcsProcessor(input);
             }
-#endif 
+#endif
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
@@ -617,12 +617,12 @@ int main(int argc, char* const *argv) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
-            } 
+            }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
                 processor = new GcsProcessor(input);
             }
-#endif 
+#endif
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
@@ -714,12 +714,12 @@ int main(int argc, char* const *argv) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                 processor = new DatabaseProcessor(input);
-            } 
+            }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
                 processor = new GcsProcessor(input);
             }
-#endif 
+#endif
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }

@@ -6,8 +6,8 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-11-29 16:31:08
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Tue Feb 28 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -517,7 +517,7 @@ std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
         }
     }
     // Identify discontinuous regions
-    size_t start = 0;
+    size_t start = N_indices[0].first;
     for (size_t i = 1; i < N_indices.size(); i++) {
         if (N_indices[i].second - N_indices[i - 1].second > 1) {
             output.emplace_back(start, N_indices[i].first);
@@ -525,6 +525,6 @@ std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
         }
     }
     // Add the last fragment
-    output.emplace_back(start, atoms.size());
+    output.emplace_back(start, chain_end);
     return output;
 }
