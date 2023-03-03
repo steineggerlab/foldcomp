@@ -65,6 +65,11 @@ else()
     include_directories(lib/microtar)
     add_subdirectory(lib/microtar)
 
+    # For windows, include lib/windows
+    if(WIN32)
+        include_directories(lib/windows)
+    endif()
+
     target_link_libraries(foldcomp PUBLIC microtar)
 
     if(GCS_SUPPORT)
