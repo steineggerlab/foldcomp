@@ -14,6 +14,11 @@ option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 include_directories(src)
 add_subdirectory(src)
 
+# For windows, include lib/windows
+if(WIN32)
+    include_directories(lib/windows)
+endif(WIN32)
+
 if(HAVE_SANITIZER)
     include(FindUBSan)
     include(FindASan)
@@ -26,6 +31,9 @@ if(BUILD_LIBRARY)
         ${foldcomp_header_files}
         ${foldcomp_source_files})
 elseif(BUILD_PYTHON)
+        if(MSVC)
+            install(FILES lib/windows/dirent.h DESTINATION include)
+        endif(MSVC)
         find_package(PythonExtensions REQUIRED)
         add_library(foldcomp MODULE
             ${foldcomp_header_files}
@@ -64,7 +72,6 @@ else()
 
     include_directories(lib/microtar)
     add_subdirectory(lib/microtar)
-
     target_link_libraries(foldcomp PUBLIC microtar)
 
     if(GCS_SUPPORT)

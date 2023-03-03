@@ -1218,24 +1218,14 @@ int Foldcomp::continuizeTempFactors() {
     return 0;
 }
 
-int Foldcomp::writeFASTALike(std::string filename, std::vector<std::string>& data) {
-    int flag = 0;
-    // outfile is a text file
-    std::ofstream outfile(filename, std::ios::out);
+int Foldcomp::writeFASTALike(std::ostream& os, const std::string& data) {
     // Output format
     // >title
     // 95461729... 889 // plddt of all residues converted to 1 decimal place or
     // MKLLSKPR... YVK // amino acid sequence
     // Write title
-    outfile << ">" << this->strTitle << std::endl;
-    // Write data
-    for (const auto& s : data) {
-        outfile << s;
-    }
-    outfile << std::endl;
-    // Close file
-    outfile.close();
-    return flag;
+    os << ">" << this->strTitle << "\n" << data << "\n";
+    return 0;
 }
 
 int Foldcomp::writeTorsionAngles(std::string filename) {
@@ -1252,26 +1242,6 @@ int Foldcomp::writeTorsionAngles(std::string filename) {
     return flag;
 }
 
-
-#ifdef FOLDCOMP_EXECUTABLE
-int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<std::string>& data) {
-    int flag = 0;
-    // Output format
-    // >title
-    // 95461729... 889 // plddt of all residues converted to 1 decimal place or
-    // MKLLSKPR... YVK // amino acid sequence
-    // Write title
-    std::string str = ">" + this->strTitle + "\n";
-    for (const auto& s : data) {
-        str += s;
-    }
-    str += "\n";
-    mtar_write_file_header(&tar, filename.c_str(), str.size());
-    mtar_write_data(&tar, str.c_str(), str.size());
-    return flag;
-}
-#endif
-
 /**
  * @brief Extract information from the compressed file and write to a FASTA-like file
  *
@@ -1279,21 +1249,24 @@ int Foldcomp::writeFASTALikeTar(mtar_t& tar, std::string filename, std::vector<s
  * @param type 0: plddt, 1: sequence
  * @return int
  */
-int Foldcomp::extract(std::vector<std::string>& data, int type) {
+int Foldcomp::extract(std::string& data, int type) {
     int flag = 0;
     if (type == 0) {
         // Extract temperature factors
         this->continuizeTempFactors();
-        int tempFactorInt;
+        data.reserve(this->tempFactors.size());
         for (size_t i = 0; i < this->tempFactors.size(); i++) {
-            tempFactorInt = (int)(this->tempFactors[i] / 10);
-            data.push_back(std::to_string(tempFactorInt));
+            float clamped = (std::clamp(this->tempFactors[i], 0.0f, 100.0f) / 10.0f);
+            // TODO should this be rounded?
+            char tempFactor = (char)(clamped) + '0';
+            data.append(1, tempFactor);
         }
     } else if (type == 1) {
         // Extract sequence
+        data.reserve(this->header.nResidue);
         for (int i = 0; i < this->header.nResidue; i++) {
             char res = convertIntToOneLetterCode(this->compressedBackBone[i].residue);
-            data.push_back(std::string(1, res));
+            data.append(1, res);
         }
     }
     return flag;
