@@ -65,8 +65,11 @@ else()
     include_directories(lib/microtar)
     add_subdirectory(lib/microtar)
 
-    include_directories(lib/windows)
-
+    # For windows, include lib/windows
+    if(WIN32)
+        include_directories(lib/windows)
+        install(FILES lib/windows/dirent.h DESTINATION include) # ?? not sure.
+    endif(WIN32)
 
     target_link_libraries(foldcomp PUBLIC microtar)
 
