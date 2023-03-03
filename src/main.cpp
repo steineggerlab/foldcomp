@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Tue Feb 28 2023
+ * Last Modified: Fri Mar 03 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -61,6 +61,9 @@ int print_usage(void) {
     std::cout << "       foldcomp compress [-t number] <pdb_dir|tar> [<fcz_dir>]" << std::endl;
     std::cout << "       foldcomp decompress <fcz_file|tar> [<pdb_file>]" << std::endl;
     std::cout << "       foldcomp decompress [-t number] <fcz_dir|tar> [<pdb_dir>]" << std::endl;
+    // TODO: implement createdb
+    // std::cout << "       foldcomp createdb <pdb_dir|fcz_dir|tar> <db_name>" << std::endl;
+    // std::cout << "       foldcomp createdb [-t number] <pdb_dir|fcz_dir|tar> <db_name>" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz_file> [<fasta_file>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
     std::cout << "       foldcomp check <fcz_file>" << std::endl;
@@ -83,6 +86,7 @@ int print_usage(void) {
 }
 
 int rmsd(const std::string& pdb1, const std::string& pdb2) {
+    // RMSD calculation between two PDB/mmCIF files
     StructureReader reader;
     reader.load(pdb1);
     std::vector<AtomCoordinate> atomCoordinates1;
@@ -386,13 +390,18 @@ int main(int argc, char* const *argv) {
                 std::vector<std::pair<size_t, size_t>> chain_indices = identifyChains(atomCoordinates);
                 // Check if there are multiple chains or regions with discontinous residue indices
                 for (size_t i = 0; i < chain_indices.size(); i++) {
-                    std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(atomCoordinates, chain_indices[i].first, chain_indices[i].second);
+                    std::vector<std::pair<size_t, size_t>> frag_indices = identifyDiscontinousResInd(
+                        atomCoordinates, chain_indices[i].first, chain_indices[i].second
+                    );
                     if (skip_discontinuous && frag_indices.size() > 1) {
                         std::cerr << "[Warning] Skipping discontinuous chain: " << base << std::endl;
                         continue;
                     }
                     for (size_t j = 0; j < frag_indices.size(); j++) {
-                        tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(&atomCoordinates[frag_indices[j].first], atomCoordinates.data() + frag_indices[j].second);
+                        tcb::span<AtomCoordinate> frag_span = tcb::span<AtomCoordinate>(
+                            &atomCoordinates[frag_indices[j].first],
+                            atomCoordinates.data() + frag_indices[j].second
+                        );
                         Foldcomp compRes;
                         compRes.strTitle = title;
                         compRes.anchorThreshold = anchor_residue_threshold;

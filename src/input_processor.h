@@ -1,3 +1,9 @@
+/**
+ * File: input_processor.h
+ * Created: 2023-02-10 17:04:08
+ * Author: Milot Mirdita (milot@mirdita.de)
+ */
+
 #pragma once
 
 #include "microtar.h"
@@ -201,6 +207,7 @@ public:
                 // TODO
                 // std::string name = reader_get_name(handle, i);
                 std::string name = std::to_string(i);
+                std::cout << "processing " << name << std::endl;
                 if (!func(name.c_str(), reader_get_data(handle, i), reader_get_length(handle, i))) {
                     std::cerr << "[Error] processing db entry " << name << " failed." << std::endl;
                     continue;

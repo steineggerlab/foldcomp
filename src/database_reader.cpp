@@ -1,3 +1,9 @@
+/**
+ * File: database_reader.cpp
+ * Created: 2023-02-10 17:04:07
+ * Author: Milot Mirdita (milot@mirdita.de)
+ */
+
 #include "database_reader.h"
 #include "utility.h"
 
@@ -334,7 +340,7 @@ uint32_t reader_lookup_entry(void* r, const char* name) {
     if (reader == NULL || reader->lookup == NULL || reader->lookup->size() == 0) {
         return UINT32_MAX;
     }
-    
+
     std::string name_str(name);
     lookup_entry::const_iterator it = std::lower_bound(reader->lookup->cbegin(), reader->lookup->cend(), name_str, compare_by_first());
     if (it != reader->lookup->cend() && it->first == name_str) {

@@ -1,3 +1,9 @@
+/**
+ * File: database_writer.cpp
+ * Created: 2022-12-09 14:53:34
+ * Author: Milot Mirdita (milot@mirdita.de)
+ */
+
 #include "database_writer.h"
 #include "database_reader.h"
 
