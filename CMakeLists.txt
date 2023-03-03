@@ -31,6 +31,9 @@ if(BUILD_LIBRARY)
         ${foldcomp_header_files}
         ${foldcomp_source_files})
 elseif(BUILD_PYTHON)
+        if(MSVC)
+            install(FILES lib/windows/dirent.h DESTINATION include)
+        endif(MSVC)
         find_package(PythonExtensions REQUIRED)
         add_library(foldcomp MODULE
             ${foldcomp_header_files}
