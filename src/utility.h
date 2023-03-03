@@ -20,14 +20,18 @@
 
 #ifdef _WIN32
 #define NOMINMAX
+#ifdef _MSC_VER
+#include <dirent.h>
+#else
 #include "windows/dirent.h"
+#endif // _MSC_VER
 #include <io.h>
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #else
 #include <dirent.h>
 #include <sys/mman.h>
-#endif
+#endif // _WIN32
 
 template<typename T>
 std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
