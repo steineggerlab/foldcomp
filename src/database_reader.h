@@ -1,3 +1,9 @@
+/**
+ * File: database_reader.h
+ * Created: 2022-12-08 00:18:37
+ * Author: Milot Mirdita (milot@mirdita.de)
+ */
+
 #ifndef DATABASE_READER_H
 #define DATABASE_READER_H
 #include <cstdint>

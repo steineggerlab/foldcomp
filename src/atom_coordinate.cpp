@@ -6,8 +6,8 @@
  * Description:
  *     The data type to handle atom coordinate comes here.
  * ---
- * Last Modified: 2022-11-29 16:31:08
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Fri Mar 03 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -223,19 +223,23 @@ void writeAtomCoordinatesToPDB(
     // Write title
     // Check if title is too long and if so, write the title in multiple lines
     if (title != "") {
-        int title_line_num = 1;
-        if(title.length() > 70){
-            title_line_num = (int)(ceil((title.length() - 70) / 72.0) + 1);
+        const char* headerData = title.c_str();
+        size_t headerLen = title.length();
+        int remainingHeader = headerLen;
+        char buffer[128];
+        int written = snprintf(buffer, sizeof(buffer), "TITLE     %.*s\n",  std::min(70, (int)remainingHeader), headerData);
+        if (written >= 0 && written < (int)sizeof(buffer)) {
+            pdb_stream << buffer;
         }
-        // Split title into lines of 70 characters.
-        for (int i = 0; i < title_line_num; i++) {
-            if (i == 0) {
-                pdb_stream << "TITLE     " << title.substr(0, 70) << "\n";
-
-            } else {
-                pdb_stream << "TITLE   " << title.substr(i * 72 - 2, 72) << std::endl;
-
+        remainingHeader -= 70;
+        int continuation = 2;
+        while (remainingHeader > 0) {
+            written = snprintf(buffer, sizeof(buffer), "TITLE  % 3d%.*s\n", continuation, std::min(70, (int)remainingHeader), headerData + (headerLen - remainingHeader));
+            if (written >= 0 && written < (int)sizeof(buffer)) {
+                pdb_stream << buffer;
             }
+            remainingHeader -= 70;
+            continuation++;
         }
     }
 
@@ -513,7 +517,7 @@ std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
         }
     }
     // Identify discontinuous regions
-    size_t start = 0;
+    size_t start = N_indices[0].first;
     for (size_t i = 1; i < N_indices.size(); i++) {
         if (N_indices[i].second - N_indices[i - 1].second > 1) {
             output.emplace_back(start, N_indices[i].first);
@@ -521,6 +525,6 @@ std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
         }
     }
     // Add the last fragment
-    output.emplace_back(start, atoms.size());
+    output.emplace_back(start, chain_end);
     return output;
 }

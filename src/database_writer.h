@@ -1,3 +1,9 @@
+/**
+ * File: database_writer.h
+ * Created: 2022-12-09 14:53:33
+ * Author: Milot Mirdita (milot@mirdita.de)
+ */
+
 #ifndef DATABASE_WRITER_H
 #define DATABASE_WRITER_H
 #include <cstdint>

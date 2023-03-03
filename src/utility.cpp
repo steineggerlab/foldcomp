@@ -6,8 +6,8 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: 2022-09-20 11:51:28
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Fri Mar 03 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -18,17 +18,18 @@
 #include <fstream>
 #include <string>
 
-#ifdef FOLDCOMP_EXECUTABLE
-#ifdef _WIN32
-#include "windows/dirent.h"
-#else
-#include <dirent.h>
-#endif
 #include <errno.h>
 #include <sys/stat.h>
 
 // Get all files in a directory using dirent.h
 void getdir(const std::string& dir, bool recursive, std::vector<std::string>& files) {
+    struct stat st;
+    if (stat(dir.c_str(), &st) == 0) {
+        if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
+            files.emplace_back(dir);
+            return;
+        }
+    }
     DIR* dp;
     struct dirent* dirp;
     if ((dp = opendir(dir.c_str())) == NULL) {
@@ -76,7 +77,32 @@ std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recurs
     getdir(dir, recursive, files);
     return files;
 }
+
+char *file_map(FILE *file, ssize_t *size, int extra_flags) {
+    struct stat sb;
+    fstat(fileno(file), &sb);
+    *size = sb.st_size;
+
+    int fd = fileno(file);
+#ifdef _MSC_VER
+    HANDLE handle = (HANDLE)_get_osfhandle(fd);
+    void* mapping = CreateFileMapping(handle, NULL, PAGE_READONLY, 0, 0, NULL);
+    DWORD offsetLow  = DWORD(0 & 0xFFFFFFFF);
+    DWORD offsetHigh = DWORD(0 >> 32);
+    return (char *)MapViewOfFile(mapping, FILE_MAP_READ, offsetHigh, offsetLow, sb.st_size);
+#else
+    return (char *)mmap(NULL, (size_t)(*size), PROT_READ, MAP_PRIVATE | extra_flags, fd, 0);
 #endif
+}
+
+int file_unmap(char *mem, ssize_t size) {
+#ifdef _MSC_VER
+    return UnmapViewOfFile(mem);
+#else
+    return munmap(mem, size);
+#endif
+}
+
 
 std::string baseName(const std::string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
@@ -97,6 +123,20 @@ std::pair<std::string, std::string> getFileParts(const std::string& file) {
         return std::make_pair(file, "");
     }
     return std::make_pair(file.substr(0, basePos + extStart), file.substr(basePos + extStart + 1));
+}
+
+// Allowable extensions: pdb, cif, pdb.gz, cif.gz
+bool isCompressible(std::pair<std::string, std::string>& fileParts) {
+    std::string ext = fileParts.second;
+    if (ext == "pdb" || ext == "cif") {
+        return true;
+    } else if (ext == "gz") {
+        std::pair<std::string, std::string> fileParts2 = getFileParts(fileParts.first);
+        if (fileParts2.second == "pdb" || fileParts2.second == "cif") {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool stringEndsWith(const std::string& suffix, const std::string& str) {
