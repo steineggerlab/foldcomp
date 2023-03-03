@@ -19,6 +19,7 @@
 #include <vector>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include "windows/dirent.h"
 #include <io.h>
 #include <BaseTsd.h>
