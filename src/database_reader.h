@@ -4,7 +4,8 @@
  * Author: Milot Mirdita (milot@mirdita.de)
  */
 
-#pragma once
+#ifndef DATABASE_READER_H
+#define DATABASE_READER_H
 #include <cstdint>
 
 static const int DB_READER_USE_DATA   = 1u << 0;
@@ -21,3 +22,5 @@ int64_t reader_get_length(void *reader, int64_t id);
 int64_t reader_get_offset(void *reader, int64_t id);
 int64_t reader_get_size(void *r);
 uint32_t reader_lookup_entry(void* r, const char* name);
+
+#endif

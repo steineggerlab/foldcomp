@@ -6,7 +6,7 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: Tue Feb 28 2023
+ * Last Modified: Fri Mar 03 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -87,12 +87,12 @@ void printVector(std::vector<T> v) {
     std::cout << "]" << std::endl;
 }
 
-#ifdef FOLDCOMP_EXECUTABLE
+// #ifdef FOLDCOMP_EXECUTABLE
 // Get all files in a directory using dirent.h
 std::vector<std::string> getFilesInDirectory(const std::string& dir, bool recursive);
 char *file_map(FILE *file, ssize_t *size, int extra_flags = 0);
 int file_unmap(char* mem, ssize_t size);
-#endif
+// #endif
 std::string baseName(const std::string& path);
 
 std::string getFileWithoutExt(const std::string& file);
