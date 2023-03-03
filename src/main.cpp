@@ -55,6 +55,7 @@ static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
 static int ext_mode = 0;
 static int ext_merge = 1;
+static int overwrite = 0;
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
@@ -77,6 +78,7 @@ int print_usage(void) {
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " -d, --db             save as database [default=false]" << std::endl;
+    std::cout << " -y, --overwrite          overwrite existing files [default=false]" << std::endl;
     std::cout << " --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
@@ -150,6 +152,7 @@ int main(int argc, char* const *argv) {
             {"plddt",         no_argument,  &ext_mode,  0 },
             {"fasta",         no_argument,  &ext_mode,  1 },
             {"no-merge",      no_argument, &ext_merge,  0 },
+            {"overwrite",     no_argument, &overwrite,  1 },
             {"time",          no_argument, &measure_time, 1 },
             {"skip-discontinuous", no_argument, &skip_discontinuous, 1 },
             {"db",            no_argument,          0, 'd' },
@@ -159,7 +162,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hazrft:b:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hazrfyt:b:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -179,6 +182,9 @@ int main(int argc, char* const *argv) {
             case 'f':
                 file_input = 1;
                 break;
+            case 'y':
+                overwrite = 1;
+                break;
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
@@ -190,7 +196,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazrt:b:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazrfyt:b:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -366,7 +372,7 @@ int main(int argc, char* const *argv) {
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
                 std::string outputFile;
                 if (save_as_tar) {
-                    outputFile = outputParts.first + "." + outputSuffix;
+                    outputFile = outputParts.first;
                 } else if (db_output) {
                     outputFile = outputParts.first;
                 } else if (isSingleFileInput) {
@@ -419,7 +425,7 @@ int main(int argc, char* const *argv) {
                             filename += "_" + std::to_string(j);
                         }
 
-                        if (!save_as_tar && !db_output) {
+                        if (!db_output) {
                             if (isCompressible(outputParts)) {
                                 filename += ".fcz";
                             } else {
@@ -441,6 +447,10 @@ int main(int argc, char* const *argv) {
                                 compRes.writeTar(tar_out, baseName(filename), compRes.getSize());
                             }
                         } else {
+                            if (stat(filename.c_str(), &st) == 0 && !overwrite) {
+                                std::cerr << "[Error] Output file already exists: " << baseName(outputFile) << std::endl;
+                                return false;
+                            }
                             compRes.write(filename);
                         }
                         compData.clear();
@@ -563,6 +573,11 @@ int main(int argc, char* const *argv) {
                     }
                 } else {
                     // Write decompressed data to file
+                    // Check output file exists
+                    if (stat(outputFile.c_str(), &st) == 0 && !overwrite) {
+                        std::cerr << "[Error] Output file already exists: " << baseName(outputFile) << std::endl;
+                        return false;
+                    }
                     flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, outputFile);
                     if (flag != 0) {
                         std::cerr << "[Error] Writing decompressed data to file: " << output << std::endl;

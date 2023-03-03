@@ -25,11 +25,11 @@ cmake --build ./build --target foldcomp
 minimal_test()
 {
     # Test - PDB
-    ./build/foldcomp compress ./test/test.pdb ./test/compressed.fcz
-    ./build/foldcomp decompress ./test/compressed.fcz ./test/decompressed.pdb
+    ./build/foldcomp compress -y ./test/test.pdb ./test/compressed.fcz
+    ./build/foldcomp decompress -y ./test/compressed.fcz ./test/decompressed.pdb
     # Test - Gzipped CIF
-    ./build/foldcomp compress ./test/test.cif.gz ./test/compressed_cif.fcz
-    ./build/foldcomp decompress -a ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
+    ./build/foldcomp compress -y ./test/test.cif.gz ./test/compressed_cif.fcz
+    ./build/foldcomp decompress -y -a ./test/compressed_cif.fcz ./test/decompressed_cif.pdb
     # RMSD
     RMSD1=$(./build/foldcomp rmsd ./test/test.pdb ./test/decompressed.pdb | cut -f6)
     awk -v check=$RMSD1 -v target=0.0826751 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 }  }'
@@ -39,8 +39,8 @@ minimal_test()
 
 input_type_test()
 {
-    foldcomp_compress="./build/foldcomp compress -t 2"
-    foldcomp_decompress="./build/foldcomp decompress -t 2"
+    foldcomp_compress="./build/foldcomp compress -t 2 -y"
+    foldcomp_decompress="./build/foldcomp decompress -t 2 -y"
     dir_input="./test/dir_test_input"
     tar_input="./test/tar_test_input.tar"
     gz_input="./test/gz_test_input.tar.gz"
@@ -123,7 +123,7 @@ input_type_test()
     # Decompression - Gzipped Tarball
     echo "[Test7] Decompression - Gzipped Tarball"
     # 01. Output is not given
-    gzip ./test/out/dir_in_tar_out.fcz.tar
+    gzip -f ./test/out/dir_in_tar_out.fcz.tar
     $foldcomp_decompress ./test/out/dir_in_tar_out.fcz.tar.gz
     # 02. Output is given as
     # 02-1. Directory

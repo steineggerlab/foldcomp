@@ -37,9 +37,9 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: |
         ./foldcomp compress ../test/test.pdb
-        ./foldcomp decompress ../test/test.fcz
+        ./foldcomp decompress ../test/test.fcz ../test/test_fcz.pdb
         ./foldcomp compress ../test/test.cif.gz
-        ./foldcomp decompress -a ../test/test.cif.fcz
+        ./foldcomp decompress -a ../test/test.cif.fcz ../test.cif_fcz.pdb
         RMSD1=$(./foldcomp rmsd ../test/test.pdb ../test/test_fcz.pdb | cut -f6)
         awk -v check=$RMSD1 -v target=0.0826751 'BEGIN { diff = check - target; if (diff < 0) diff = -diff; if (diff > 0.001) { print check"!="target; exit 1 } }'
         RMSD2=$(./foldcomp rmsd ../test/test.cif.gz ../test/test.cif_fcz.pdb | cut -f6)
