@@ -6,7 +6,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: Tue Feb 28 2023
+# Last Modified: Fri Mar 03 2023
 # Modified By: Hyunbin Kim
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -39,47 +39,112 @@ minimal_test()
 
 input_type_test()
 {
+    foldcomp_compress="./build/foldcomp compress -t 2"
+    foldcomp_decompress="./build/foldcomp decompress -t 2"
     dir_input="./test/dir_test_input"
     tar_input="./test/tar_test_input.tar"
     gz_input="./test/gz_test_input.tar.gz"
+    # TODO: implement database input with given ids
+    # db_input="./test/db_test_input/pdb_db"
+    # fcz_db_input="./test/example_db"
 
     # Compression - Directory
+    echo "[Test1] Compression - Directory"
     # 01. Output is not given
-    ./build/foldcomp compress $dir_input
+    $foldcomp_compress $dir_input
     # 02. Output is given as
     # 02-1. Directory
-    ./build/foldcomp compress $dir_input ./test/out/dir_in_dir_out
+    $foldcomp_compress $dir_input ./test/out/dir_in_dir_out
     # 02-2. Tarball
-    ./build/foldcomp compress --tar $dir_input ./test/out/dir_in_tar_out.tar
+    $foldcomp_compress --tar $dir_input ./test/out/dir_in_tar_out.fcz.tar
     # 02-3. Database
-    ./build/foldcomp compress --db $dir_input ./test/out/dir_in_db_out
+    $foldcomp_compress --db $dir_input ./test/out/dir_in_db_out_fcz_db
 
     # Compression - Tarball
+    echo "[Test2] Compression - Tarball"
     # 01. Output is not given
-    ./build/foldcomp compress $tar_input
+    $foldcomp_compress $tar_input
     # 02. Output is given as
     # 02-1. Directory
-    ./build/foldcomp compress $tar_input ./test/out/tar_in_dir_out
+    $foldcomp_compress $tar_input ./test/out/tar_in_dir_out
     # 02-2. Tarball
-    ./build/foldcomp compress --tar $tar_input ./test/out/tar_in_tar_out.tar
+    $foldcomp_compress --tar $tar_input ./test/out/tar_in_tar_out.fcz.tar
     # 02-3. Database
-    ./build/foldcomp compress --db $tar_input ./test/out/tar_in_db_out
+    $foldcomp_compress --db $tar_input ./test/out/tar_in_db_out_fcz_db
 
     # Compression - Gzipped Tarball
+    echo "[Test3] Compression - Gzipped Tarball"
     # 01. Output is not given
-    ./build/foldcomp compress $gz_input
+    $foldcomp_compress $gz_input
     # 02. Output is given as
     # 02-1. Directory
-    ./build/foldcomp compress $gz_input ./test/out/gz_in_dir_out
+    $foldcomp_compress $gz_input ./test/out/gz_in_dir_out
     # 02-2. Tarball
-    ./build/foldcomp compress --tar $gz_input ./test/out/gz_in_tar_out.tar
+    $foldcomp_compress --tar $gz_input ./test/out/gz_in_tar_out.fcz.tar
     # 02-3. Database
-    ./build/foldcomp compress --db $gz_input ./test/out/gz_in_db_out
+    $foldcomp_compress --db $gz_input ./test/out/gz_in_db_out_fcz_db
 
-    # Decompression - database
-    # TODO: Implement
+    # # Compression - Database
+    # echo "[Test4] Compression - Database"
+    # # 01. Output is not given
+    # $foldcomp_compress $db_input
+    # # 02. Output is given as
+    # # 02-1. Directory
+    # $foldcomp_compress $db_input ./test/out/db_in_dir_out
+    # # 02-2. Tarball
+    # $foldcomp_compress --tar $db_input ./test/out/db_in_tar_out.tar
+    # # 02-3. Database
+    # $foldcomp_compress --db $db_input ./test/out/db_in_db_out
+
+    # Decompression - directory
+    echo "[Test5] Decompression - Directory"
+    # 01. Output is not given
+    $foldcomp_decompress ${dir_input}_fcz
+    # 02. Output is given as
+    # 02-1. Directory
+    $foldcomp_decompress ${dir_input}_fcz ./test/out/dir_in_dir_out
+    # 02-2. Tarball
+    $foldcomp_decompress --tar ${dir_input}_fcz ./test/out/dir_in_tar_out.pdb.tar
+    # 02-3. Database
+    $foldcomp_decompress --db ${dir_input}_fcz ./test/out/dir_in_db_out_pdb_db
+
+    # Decompression - Tarball
+    echo "[Test6] Decompression - Tarball"
+    # 01. Output is not given
+    $foldcomp_decompress ./test/out/dir_in_tar_out.fcz.tar
+    # 02. Output is given as
+    # 02-1. Directory
+    $foldcomp_decompress ./test/out/dir_in_tar_out.fcz.tar ./test/out/tar_in_dir_out
+    # 02-2. Tarball
+    $foldcomp_decompress --tar ./test/out/dir_in_tar_out.fcz.tar ./test/out/tar_in_tar_out.pdb.tar
+    # 02-3. Database
+    $foldcomp_decompress --db ./test/out/dir_in_tar_out.fcz.tar ./test/out/tar_in_db_out_pdb_db
+
+    # Decompression - Gzipped Tarball
+    echo "[Test7] Decompression - Gzipped Tarball"
+    # 01. Output is not given
+    gzip ./test/out/dir_in_tar_out.fcz.tar
+    $foldcomp_decompress ./test/out/dir_in_tar_out.fcz.tar.gz
+    # 02. Output is given as
+    # 02-1. Directory
+    $foldcomp_decompress ./test/out/dir_in_tar_out.fcz.tar.gz ./test/out/gz_in_dir_out
+    # 02-2. Tarball
+    $foldcomp_decompress --tar ./test/out/dir_in_tar_out.fcz.tar.gz ./test/out/gz_in_tar_out.pdb.tar
+    # 02-3. Database
+    $foldcomp_decompress --db ./test/out/dir_in_tar_out.fcz.tar.gz ./test/out/gz_in_db_out_pdb_db
+
+    # # Decompression - Database
+    # echo "[Test8] Decompression - Database"
+    # # 01. Output is not given
+    # $foldcomp_decompress $fcz_db_input
+    # # 02. Output is given as
+    # # 02-1. Directory
+    # $foldcomp_decompress $fcz_db_input ./test/out/db_in_dir_out
+    # # 02-2. Tarball
+    # $foldcomp_decompress --tar $fcz_db_input ./test/out/db_in_tar_out.pdb.tar
+    # # 02-3. Database
+    # $foldcomp_decompress --db $fcz_db_input ./test/out/db_in_db_out_pdb_db
 }
-
 
 # Check argument is not given
 if [ $# -eq 0 ]; then
