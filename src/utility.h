@@ -18,6 +18,16 @@
 #include <map>
 #include <vector>
 
+#ifdef _WIN32
+#include "windows/dirent.h"
+#include <io.h>
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else
+#include <dirent.h>
+#include <sys/mman.h>
+#endif
+
 template<typename T>
 std::vector<T> vectorSlice(std::vector<T> const& v, int m, int n) {
     auto first = v.cbegin() + m;

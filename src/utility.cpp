@@ -18,16 +18,6 @@
 #include <fstream>
 #include <string>
 
-
-#ifdef _WIN32
-#include "windows/dirent.h"
-#include <io.h>
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#else
-#include <dirent.h>
-#include <sys/mman.h>
-#endif
 #include <errno.h>
 #include <sys/stat.h>
 
