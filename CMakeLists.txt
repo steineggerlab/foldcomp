@@ -14,6 +14,11 @@ option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 include_directories(src)
 add_subdirectory(src)
 
+# For windows, include lib/windows
+if(WIN32)
+    include_directories(lib/windows)
+endif(WIN32)
+
 if(HAVE_SANITIZER)
     include(FindUBSan)
     include(FindASan)
@@ -64,12 +69,6 @@ else()
 
     include_directories(lib/microtar)
     add_subdirectory(lib/microtar)
-
-    # For windows, include lib/windows
-    if(WIN32)
-        include_directories(lib/windows)
-    endif(WIN32)
-
     target_link_libraries(foldcomp PUBLIC microtar)
 
     if(GCS_SUPPORT)
