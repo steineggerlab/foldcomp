@@ -6,7 +6,7 @@
  * Description:
  *     Utility functions
  * ---
- * Last Modified: Tue Feb 28 2023
+ * Last Modified: Fri Mar 03 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -18,7 +18,7 @@
 #include <fstream>
 #include <string>
 
-#ifdef FOLDCOMP_EXECUTABLE
+
 #ifdef _WIN32
 #include "windows/dirent.h"
 #include <io.h>
@@ -112,7 +112,7 @@ int file_unmap(char *mem, ssize_t size) {
     return munmap(mem, size);
 #endif
 }
-#endif
+
 
 std::string baseName(const std::string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
