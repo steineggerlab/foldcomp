@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Fri Mar 03 2023
+ * Last Modified: Mon Mar 06 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -62,9 +62,6 @@ int print_usage(void) {
     std::cout << "       foldcomp compress [-t number] <pdb_dir|tar> [<fcz_dir>]" << std::endl;
     std::cout << "       foldcomp decompress <fcz_file|tar> [<pdb_file>]" << std::endl;
     std::cout << "       foldcomp decompress [-t number] <fcz_dir|tar> [<pdb_dir>]" << std::endl;
-    // TODO: implement createdb
-    // std::cout << "       foldcomp createdb <pdb_dir|fcz_dir|tar> <db_name>" << std::endl;
-    // std::cout << "       foldcomp createdb [-t number] <pdb_dir|fcz_dir|tar> <db_name>" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz_file> [<fasta_file>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
     std::cout << "       foldcomp check <fcz_file>" << std::endl;
