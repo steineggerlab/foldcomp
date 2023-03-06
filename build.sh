@@ -6,7 +6,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: Fri Mar 03 2023
+# Last Modified: Mon Mar 06 2023
 # Modified By: Hyunbin Kim
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -44,9 +44,8 @@ input_type_test()
     dir_input="./test/dir_test_input"
     tar_input="./test/tar_test_input.tar"
     gz_input="./test/gz_test_input.tar.gz"
-    # TODO: implement database input with given ids
     # db_input="./test/db_test_input/pdb_db"
-    # fcz_db_input="./test/example_db"
+    fcz_db_input="./test/example_db"
 
     # Compression - Directory
     echo "[Test1] Compression - Directory"
@@ -59,6 +58,8 @@ input_type_test()
     $foldcomp_compress --tar $dir_input ./test/out/dir_in_tar_out.fcz.tar
     # 02-3. Database
     $foldcomp_compress --db $dir_input ./test/out/dir_in_db_out_fcz_db
+    # 03. File list is given
+    $foldcomp_compress -f ./test/pdb_list.txt
 
     # Compression - Tarball
     echo "[Test2] Compression - Tarball"
@@ -95,6 +96,8 @@ input_type_test()
     # $foldcomp_compress --tar $db_input ./test/out/db_in_tar_out.tar
     # # 02-3. Database
     # $foldcomp_compress --db $db_input ./test/out/db_in_db_out
+    # # 03. File list is given
+    # $foldcomp_compress $db_input -f ./test/db_entry.txt
 
     # Decompression - directory
     echo "[Test5] Decompression - Directory"
@@ -107,6 +110,8 @@ input_type_test()
     $foldcomp_decompress --tar ${dir_input}_fcz ./test/out/dir_in_tar_out.pdb.tar
     # 02-3. Database
     $foldcomp_decompress --db ${dir_input}_fcz ./test/out/dir_in_db_out_pdb_db
+    # 03. File list is given
+    $foldcomp_decompress -f ./test/fcz_list.txt
 
     # Decompression - Tarball
     echo "[Test6] Decompression - Tarball"
@@ -133,17 +138,19 @@ input_type_test()
     # 02-3. Database
     $foldcomp_decompress --db ./test/out/dir_in_tar_out.fcz.tar.gz ./test/out/gz_in_db_out_pdb_db
 
-    # # Decompression - Database
-    # echo "[Test8] Decompression - Database"
-    # # 01. Output is not given
-    # $foldcomp_decompress $fcz_db_input
-    # # 02. Output is given as
-    # # 02-1. Directory
-    # $foldcomp_decompress $fcz_db_input ./test/out/db_in_dir_out
-    # # 02-2. Tarball
-    # $foldcomp_decompress --tar $fcz_db_input ./test/out/db_in_tar_out.pdb.tar
-    # # 02-3. Database
-    # $foldcomp_decompress --db $fcz_db_input ./test/out/db_in_db_out_pdb_db
+    # Decompression - Database
+    echo "[Test8] Decompression - Database"
+    # 01. Output is not given
+    $foldcomp_decompress $fcz_db_input
+    # 02. Output is given as
+    # 02-1. Directory
+    $foldcomp_decompress $fcz_db_input ./test/out/db_in_dir_out
+    # 02-2. Tarball
+    $foldcomp_decompress --tar $fcz_db_input ./test/out/db_in_tar_out.pdb.tar
+    # 02-3. Database
+    $foldcomp_decompress --db $fcz_db_input ./test/out/db_in_db_out_pdb_db
+    # # 02-4. with file list
+    #$foldcomp_decompress $db_input -f ./test/db_entry.txt
 }
 
 # Check argument is not given
