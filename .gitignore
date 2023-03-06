@@ -12,6 +12,10 @@ test/dir_test_input_fcz
 test/tar_test_input.tar_fcz
 test/gz_test_input.tar.gz_fcz
 test/dir_test_input_fcz_pdb
+test/example_db_pdb
+test/fcz_list.txt_pdb
+test/pdb_list.txt_fcz
+
 compressed.fcz
 decompressed.pdb
 compressed_cif.fcz

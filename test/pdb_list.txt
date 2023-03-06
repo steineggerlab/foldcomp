@@ -1,0 +1,2 @@
+test/dir_test_input/multichain.pdb
+test/dir_test_input/test.cif.gz

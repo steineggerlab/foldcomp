@@ -1,0 +1,6 @@
+test/dir_test_input_fcz/multichainA.fcz
+test/dir_test_input_fcz/multichainB_0.fcz
+test/dir_test_input_fcz/multichainB_1.fcz
+test/dir_test_input_fcz/test.cif.fcz
+test/dir_test_input_fcz/test.fcz
+test/dir_test_input_fcz/test_af.fcz
