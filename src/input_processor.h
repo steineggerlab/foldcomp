@@ -191,7 +191,7 @@ class DatabaseProcessor : public Processor {
 public:
     DatabaseProcessor(const std::string& input) {
         std::string index = input + ".index";
-        int mode = 0;
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE;
         handle = make_reader(input.c_str(), index.c_str(), mode);
     };
     ~DatabaseProcessor() {
@@ -204,14 +204,20 @@ public:
         {
 #pragma omp for
             for (size_t i = 0; i < db_size; i++) {
-                // TODO
-                // std::string name = reader_get_name(handle, i);
-                std::string name = std::to_string(i);
-                std::cout << "processing " << name << std::endl;
-                if (!func(name.c_str(), reader_get_data(handle, i), reader_get_length(handle, i))) {
-                    std::cerr << "[Error] processing db entry " << name << " failed." << std::endl;
+                uint32_t key = reader_get_key(handle, i);
+                const char* name = reader_lookup_name_alloc(handle, key);
+                // If name == "", throw warning
+                if (name && !name[0]) {
+                    std::cerr << "[Warning] empty name for key " << key << std::endl;
+                    free((void*)name);
                     continue;
                 }
+                if (!func(name, reader_get_data(handle, i), reader_get_length(handle, i))) {
+                    std::cerr << "[Error] processing db entry " << name << " failed." << std::endl;
+                    free((void*)name);
+                    continue;
+                }
+                free((void*)name);
             }
         }
     }
