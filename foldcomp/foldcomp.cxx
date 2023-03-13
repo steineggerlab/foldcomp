@@ -438,9 +438,6 @@ PyObject* vectorToList_Int64(const std::vector<int64_t>& data) {
         // data[i] is a int64_t, but PyLong_FromLongLong expects a long long
         // so we need to cast it without error
         PyObject* num = PyLong_FromLongLong((long long)data[i]);
-        std::cout << "data[i]: " << data[i] << std::endl;
-        std::cout << "long long: " << (long long)data[i] << std::endl;
-        std::cout << "PyLong_FromLongLong: " << PyLong_AsLongLong(num) << std::endl;
         if (!num) {
             Py_DECREF(listObj);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
