@@ -18,6 +18,7 @@ static PyObject *FoldcompError;
 typedef struct {
     PyObject_HEAD
     PyObject* user_ids;
+    PyObject* user_indices;
     bool decompress;
     void* memory_handle;
 } FoldcompDatabaseObject;
@@ -26,6 +27,7 @@ int decompress(const char* input, size_t input_size, bool use_alt_order, std::os
 static PyObject* FoldcompDatabase_close(PyObject* self);
 static PyObject* FoldcompDatabase_enter(PyObject* self);
 static PyObject* FoldcompDatabase_exit(PyObject* self, PyObject* args);
+PyObject* vectorToList_Int64(const std::vector<int64_t>& data);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
@@ -42,8 +44,8 @@ static PyMethodDef FoldcompDatabase_methods[] = {
 // FoldcompDatabase_sq_length
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
-    if (db->user_ids != NULL) {
-        return PySequence_Length(db->user_ids);
+    if (db->user_indices != NULL) {
+        return PySequence_Length(db->user_indices);
     }
     return (Py_ssize_t)reader_get_size(db->memory_handle);
 }
@@ -54,23 +56,14 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
 
     const char* data;
     size_t length;
-    if (db->user_ids != NULL) {
-        if (index >= PySequence_Length(db->user_ids)) {
+    int64_t id;
+    if (db->user_indices != NULL) {
+        if (index >= PySequence_Length(db->user_indices)) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
-        PyObject* item = PySequence_GetItem(db->user_ids, index);
-        // get string representation of id as c string
-        uint32_t key = reader_lookup_entry(db->memory_handle, PyUnicode_AsUTF8(item));
-        if (key == UINT32_MAX) {
-            PyErr_SetString(PyExc_KeyError, "Could not find key in database.");
-            return NULL;
-        }
-        int64_t id = reader_get_id(db->memory_handle, key);
-        if (id == -1) {
-            PyErr_SetString(PyExc_KeyError, "Could not find key in database.");
-            return NULL;
-        }
+        PyObject* id_obj = PySequence_GetItem(db->user_indices, index);
+        id = PyLong_AsLongLong(id_obj);
         data = reader_get_data(db->memory_handle, id);
         length = std::max(reader_get_length(db->memory_handle, id), (int64_t)1) - (int64_t)1;
     } else {
@@ -86,10 +79,13 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
         std::string name;
         int err = decompress(data, length, false, oss, name);
         if (err != 0) {
-            PyErr_SetString(FoldcompError, "Error decompressing.");
+            std::string err_msg = "Error decompressing: " + name;
+            PyErr_SetString(FoldcompError, err_msg.c_str());
             return NULL;
         }
-        return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
+        return Py_BuildValue("(s,O)", name.c_str(),
+            PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size())
+        );
     }
     return PyBytes_FromStringAndSize(data, length);
 }
@@ -379,6 +375,35 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     }
 
     obj->memory_handle = make_reader(dbname.c_str(), index.c_str(), mode);
+
+    if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
+        // Reserve memory for the user indices
+        std::vector<int64_t> user_indices;
+        user_indices.reserve((size_t)PySequence_Length(user_ids));
+
+        for (Py_ssize_t i = 0; i < PySequence_Length(user_ids); i++) {
+            // Iterate over all entries in the database and store ids in a vector of int64_t
+            PyObject* item = PySequence_GetItem(user_ids, i);
+            uint32_t key = reader_lookup_entry(obj->memory_handle, PyUnicode_AsUTF8(item));
+            Py_XDECREF(item);
+            if (key == UINT32_MAX) {
+                std::string err_msg ="Could not find key in database: ";
+                err_msg += PyUnicode_AsUTF8(item);
+                PyErr_SetString(PyExc_KeyError, err_msg.c_str());
+                return NULL;
+            }
+            int64_t id = reader_get_id(obj->memory_handle, key);
+            if (id == -1) {
+                std::string err_msg = "Could not find id in database: ";
+                err_msg += PyUnicode_AsUTF8(item);
+                PyErr_SetString(PyExc_KeyError, err_msg.c_str());
+                return NULL;
+            }
+            user_indices.push_back(id);
+        }
+        obj->user_indices = vectorToList_Int64(user_indices);
+    }
+
     return (PyObject*)obj;
 }
 
@@ -393,6 +418,29 @@ PyObject* vectorToList_Float(const std::vector<float>& data) {
     }
     for (size_t i = 0; i < data.size(); i++) {
         PyObject* num = PyFloat_FromDouble((double)data[i]);
+        if (!num) {
+            Py_DECREF(listObj);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+            return NULL;
+        }
+        PyList_SET_ITEM(listObj, i, num);
+    }
+    return listObj;
+}
+
+PyObject* vectorToList_Int64(const std::vector<int64_t>& data) {
+    PyObject* listObj = PyList_New(data.size());
+    if (!listObj) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
+        return NULL;
+    }
+    for (size_t i = 0; i < data.size(); i++) {
+        // data[i] is a int64_t, but PyLong_FromLongLong expects a long long
+        // so we need to cast it without error
+        PyObject* num = PyLong_FromLongLong((long long)data[i]);
+        std::cout << "data[i]: " << data[i] << std::endl;
+        std::cout << "long long: " << (long long)data[i] << std::endl;
+        std::cout << "PyLong_FromLongLong: " << PyLong_AsLongLong(num) << std::endl;
         if (!num) {
             Py_DECREF(listObj);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for list");
