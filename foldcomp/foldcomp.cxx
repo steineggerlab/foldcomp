@@ -386,22 +386,21 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
             PyObject* item = PySequence_GetItem(user_ids, i);
             uint32_t key = reader_lookup_entry(obj->memory_handle, PyUnicode_AsUTF8(item));
             Py_XDECREF(item);
-            if (key == UINT32_MAX) {
-                std::string err_msg ="Could not find key in database: ";
-                err_msg += PyUnicode_AsUTF8(item);
-                PyErr_SetString(PyExc_KeyError, err_msg.c_str());
-                return NULL;
-            }
             int64_t id = reader_get_id(obj->memory_handle, key);
-            if (id == -1) {
-                std::string err_msg = "Could not find id in database: ";
+
+            if (id == -1 || key == UINT32_MAX) {
+                // Not found --> no error just
+                std::string err_msg = "Could not find key in database: ";
                 err_msg += PyUnicode_AsUTF8(item);
-                PyErr_SetString(PyExc_KeyError, err_msg.c_str());
-                return NULL;
+                err_msg += ". Skipping.";
+                std::cerr << err_msg << std::endl;
+                continue;
             }
             user_indices.push_back(id);
         }
         obj->user_indices = vectorToList_Int64(user_indices);
+    } else {
+        obj->user_indices = NULL;
     }
 
     return (PyObject*)obj;
