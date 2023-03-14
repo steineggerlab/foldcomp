@@ -323,8 +323,10 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     PyObject* path;
     PyObject* user_ids = NULL;
     PyObject* decompress = NULL;
-    static const char *kwlist[] = {"path", "ids", "decompress", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|$OO", const_cast<char**>(kwlist), PyUnicode_FSConverter, &path, &user_ids, &decompress)) {
+    PyObject* err_on_missing = NULL; // Raise an error if the file is missing. Default: False
+
+    static const char *kwlist[] = {"path", "ids", "decompress", "err_on_missing", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O&|$OOO", const_cast<char**>(kwlist), PyUnicode_FSConverter, &path, &user_ids, &decompress, &err_on_missing)) {
         return NULL;
     }
     if (path == NULL) {
@@ -350,8 +352,15 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
         return NULL;
     }
 
+    if (err_on_missing != NULL && !PyBool_Check(err_on_missing)) {
+        Py_XDECREF(path);
+        PyErr_SetString(PyExc_TypeError, "err_on_missing must be a boolean");
+        return NULL;
+    }
+
     std::string dbname(pathCStr);
     std::string index = dbname + ".index";
+    bool err_on_missing_flag = false;
     Py_XDECREF(path);
 
     FoldcompDatabaseObject *obj = PyObject_New(FoldcompDatabaseObject, &FoldcompDatabaseType);
@@ -374,6 +383,12 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
         obj->decompress = PyObject_IsTrue(decompress);
     }
 
+    if (err_on_missing == NULL) {
+        err_on_missing_flag = false;
+    } else {
+        err_on_missing_flag = PyObject_IsTrue(err_on_missing);
+    }
+
     obj->memory_handle = make_reader(dbname.c_str(), index.c_str(), mode);
 
     if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
@@ -390,11 +405,18 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
 
             if (id == -1 || key == UINT32_MAX) {
                 // Not found --> no error just
-                std::string err_msg = "Could not find key in database: ";
+                std::string err_msg = "Skipping entry ";
                 err_msg += PyUnicode_AsUTF8(item);
-                err_msg += ". Skipping.";
-                std::cerr << err_msg << std::endl;
-                continue;
+                err_msg += " which is not in the database.";
+                if (err_on_missing_flag) {
+                    Py_XDECREF(obj->user_ids);
+                    Py_DECREF(obj);
+                    PyErr_SetString(PyExc_KeyError, err_msg.c_str());
+                    return NULL;
+                } else {
+                    std::cerr << err_msg << std::endl;
+                    continue;
+                }
             }
             user_indices.push_back(id);
         }
