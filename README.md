@@ -93,9 +93,11 @@ Currently we offer the following databases:
 
   **Note:** We skipped all structures with discontinous residues or other issues.
    [Here](https://foldcomp.steineggerlab.workers.dev/highquality_clust30_issues.txt) is a list with the affected predictions (~100k).
-  
+
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
 * AlphaFoldDB Uniprot: `foldcomp.setup('afdb_uniprot_v4')`
+* [AlphaFoldDB Cluster Representatives](https://afdb-cluster.steineggerlab.workers.dev/): `foldcomp.setup('afdb_rep_v4')`
+* AlphaFoldDB Cluster Representatives (Dark Clusters): `foldcomp.setup('afdb_rep_dark_v4')`
 
 If you want other prebuilt datasets, please get in touch with us through our [GitHub issues](https://github.com/steineggerlab/foldcomp/issues).
 
@@ -141,6 +143,16 @@ with foldcomp.open("test/example_db", ids=ids) as db:
       with open(name + ".pdb", "w") as pdb_file:
         pdb_file.write(pdb)
 ```
+
+## Subsetting Databases
+If you are dealing with millions of entries, we recommend using `createsubdb` command
+of [mmseqs2](https://mmseqs.com) to subset databases.
+The following commands can be used to subset the AlphaFoldDB Uniprot database with given IDs.
+```sh
+# mmseqs createsubdb --subdb-mode 0 --id-mode 1 id_list.txt input_foldcomp_db output_foldcomp_db
+mmseqs createsubdb --subdb-mode 0 --id-mode 1 id_list.txt afdb_uniprot_v4 afdb_subset
+```
+Please note that the IDs in afdb_uniprot_v4 are in the format `AF-A0A5S3Y9Q7-F1-model_v4` .
 
 ## Community Contributions
 * [PyMOL Plugin for reading Foldcomp files](https://github.com/yakomaxa/load_fcz_PyMOL) by @yakomaxa
