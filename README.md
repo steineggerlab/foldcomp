@@ -89,13 +89,16 @@ python -c "import foldcomp; foldcomp.setup('afdb_swissprot_v4');
 ```
 
 Currently we offer the following databases:
+* [ESMAtlas v2023_02](https://esmatlas.com/): `foldcomp.setup('esmatlas_v2023_02')`
 * ESMAtlas high-quality: `foldcomp.setup('highquality_clust30')`
 
   **Note:** We skipped all structures with discontinous residues or other issues.
-   [Here](https://foldcomp.steineggerlab.workers.dev/highquality_clust30_issues.txt) is a list with the affected predictions (~100k).
+   Here is a list with the affected predictions;
+   [high-quality](https://foldcomp.steineggerlab.workers.dev/highquality_clust30_issues.txt) (~100k),
+   [v2023_02](https://foldcomp.steineggerlab.workers.dev/esmatlas_v2023_02.err.log) (~10k)
 
+* [AlphaFoldDB Uniprot](https://alphafold.ebi.ac.uk/): `foldcomp.setup('afdb_uniprot_v4')`
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
-* AlphaFoldDB Uniprot: `foldcomp.setup('afdb_uniprot_v4')`
 * [AlphaFoldDB Cluster Representatives](https://afdb-cluster.steineggerlab.workers.dev/): `foldcomp.setup('afdb_rep_v4')`
 * AlphaFoldDB Cluster Representatives (Dark Clusters): `foldcomp.setup('afdb_rep_dark_v4')`
 
@@ -147,7 +150,7 @@ with foldcomp.open("test/example_db", ids=ids) as db:
 ## Subsetting Databases
 If you are dealing with millions of entries, we recommend using `createsubdb` command
 of [mmseqs2](https://mmseqs.com) to subset databases.
-The following commands can be used to subset the AlphaFoldDB Uniprot database with given IDs.
+The following commands can be used to subset the AlphaFold Uniprot DB with given IDs.
 ```sh
 # mmseqs createsubdb --subdb-mode 0 --id-mode 1 id_list.txt input_foldcomp_db output_foldcomp_db
 mmseqs createsubdb --subdb-mode 0 --id-mode 1 id_list.txt afdb_uniprot_v4 afdb_subset
