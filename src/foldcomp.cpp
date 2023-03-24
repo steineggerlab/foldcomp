@@ -7,8 +7,8 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-18 18:56:30
- * Modified By: Hyunbin Kim (khb7840@gmail.com)
+ * Last Modified: Fri Mar 24 2023
+ * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */

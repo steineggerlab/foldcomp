@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Mon Mar 06 2023
+ * Last Modified: Fri Mar 24 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -227,9 +227,9 @@ int main(int argc, char* const *argv) {
         mode = EXTRACT;
         mayHaveOutput = true;
         if (ext_mode == 0){
-            outputSuffix = "plddt.txt";
+            outputSuffix = "plddt";
         } else if (ext_mode == 1) {
-            outputSuffix = "aa.fasta";
+            outputSuffix = "fasta";
         }
     } else if (strcmp(argv[optind], "check") == 0){
         mode = CHECK;
@@ -300,7 +300,6 @@ int main(int argc, char* const *argv) {
             if (isSingleFileInput) {
                 output = getFileWithoutExt(input) + "." + outputSuffix;
             } else {
-                // TODO EXTRACT split at .
                 output = input + "_" + outputSuffix + "/";
             }
         }
@@ -601,7 +600,7 @@ int main(int argc, char* const *argv) {
             handle = make_writer(output.c_str(), (output + ".index").c_str());
         } else {
             struct stat st;
-            if (stat(output.c_str(), &st) == -1) {
+            if (stat(output.c_str(), &st) == -1 && !ext_merge) {
 #ifdef _WIN32
                 _mkdir(output.c_str());
 #else
@@ -619,14 +618,20 @@ int main(int argc, char* const *argv) {
                 std::cout << "Output database: " << output << std::endl;
             } else if (save_as_tar) {
                 std::cout << "Output tar file: " << output << std::endl;
-            } else {
+            } else if (!ext_merge) {
                 std::cout << "Output directory: " << output << std::endl;
+            } else {
+                // Single file output. Remove "/" from end of output
+                if (output[output.size() - 1] == '/') {
+                    output = output.substr(0, output.size() - 1);
+                }
+                std::cout << "Output: " << output << std::endl;
             }
         }
 
         bool isMergedOutput = false;
         std::ofstream default_out;
-        if (!save_as_tar && !db_output && !isSingleFileInput && ext_merge == 0) {
+        if (!save_as_tar && !db_output && !isSingleFileInput && ext_merge) {
             default_out.open(output, std::ios::out);
             isMergedOutput = true;
         }
