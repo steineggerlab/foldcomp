@@ -99,6 +99,9 @@ Currently we offer the following databases:
 
 * [AlphaFoldDB Uniprot](https://alphafold.ebi.ac.uk/): `foldcomp.setup('afdb_uniprot_v4')`
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
+* AlphaFoldDB Model Organisms: `foldcomp.setup('h_sapiens')`
+  * `a_thaliana`, `c_albicans`, `c_elegans`, `d_discoideum`, `d_melanogaster`, `d_rerio`, `e_coli`, `g_max`,
+    `h_sapiens`, `m_jannaschii`, `m_musculus`, `o_sativa`, `r_norvegicus`, `s_cerevisiae`, `s_pombe`, `z_mays` 
 * [AlphaFoldDB Cluster Representatives](https://afdb-cluster.steineggerlab.workers.dev/): `foldcomp.setup('afdb_rep_v4')`
 * AlphaFoldDB Cluster Representatives (Dark Clusters): `foldcomp.setup('afdb_rep_dark_v4')`
 
