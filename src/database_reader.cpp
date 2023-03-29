@@ -114,7 +114,8 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
 
         struct stat st;
         if (stat(lookup_name.c_str(), &st) == 0) {
-            reader->lookup = new lookup_entry(reader->size);
+            reader->lookup = new lookup_entry();
+            reader->lookup->reserve(reader->size);
             FILE* file = fopen(lookup_name.c_str(), "rb");
             if (file == NULL) {
                 free_reader(reader);
@@ -352,7 +353,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode) {
         }
         std::string name(entry[1], (entry[2] - entry[1]) - 1);
         uint32_t key = (uint32_t)strtoul(entry[0], NULL, 10);
-        lookup[i] = std::make_pair(name, key);
+        lookup.emplace_back(name, key);
         data = skipLine(data);
         pos = data - start;
         i++;
