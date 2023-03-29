@@ -487,7 +487,6 @@ PyObject* getPyDictFromFoldcomp(Foldcomp* fcmp, const std::vector<float3d>& coor
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Python dictionary");
         return NULL;
     }
-    PyObject* result = NULL;
 
     // Dictionary keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
     // Convert vectors to Python lists
@@ -571,22 +570,17 @@ PyObject* getPyDictFromFoldcomp(Foldcomp* fcmp, const std::vector<float3d>& coor
     PyDict_SetItemString(dict, "b_factors", b_factors);
     PyDict_SetItemString(dict, "coordinates", coordinates);
 
-    result = dict;
+    // Free memory
+    Py_XDECREF(phi);
+    Py_XDECREF(psi);
+    Py_XDECREF(omega);
+    Py_XDECREF(torsion_angles);
+    Py_XDECREF(bond_angles);
+    Py_XDECREF(residues);
+    Py_XDECREF(b_factors);
+    Py_XDECREF(coordinates);
 
-    if (result == NULL) {
-        Py_XDECREF(dict);
-        Py_XDECREF(phi);
-        Py_XDECREF(psi);
-        Py_XDECREF(omega);
-        Py_XDECREF(torsion_angles);
-        Py_XDECREF(bond_angles);
-        Py_XDECREF(residues);
-        Py_XDECREF(b_factors);
-        Py_XDECREF(coordinates);
-        return NULL;
-    }
-
-    return result;
+    return dict;
 }
 
 // Extract
@@ -659,6 +653,7 @@ PyObject* getDataFromPDB(const std::string& pdb_input) {
     if (dict == NULL) {
         return NULL;
     }
+    // Free memory
     return dict;
 }
 
