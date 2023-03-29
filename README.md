@@ -101,7 +101,7 @@ Currently we offer the following databases:
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
 * AlphaFoldDB Model Organisms: `foldcomp.setup('h_sapiens')`
   * `a_thaliana`, `c_albicans`, `c_elegans`, `d_discoideum`, `d_melanogaster`, `d_rerio`, `e_coli`, `g_max`,
-    `h_sapiens`, `m_jannaschii`, `m_musculus`, `o_sativa`, `r_norvegicus`, `s_cerevisiae`, `s_pombe`, `z_mays` 
+    `h_sapiens`, `m_jannaschii`, `m_musculus`, `o_sativa`, `r_norvegicus`, `s_cerevisiae`, `s_pombe`, `z_mays`
 * [AlphaFoldDB Cluster Representatives](https://afdb-cluster.steineggerlab.workers.dev/): `foldcomp.setup('afdb_rep_v4')`
 * AlphaFoldDB Cluster Representatives (Dark Clusters): `foldcomp.setup('afdb_rep_dark_v4')`
 
@@ -128,7 +128,7 @@ with open("test/compressed.fcz", "rb") as fcz:
   with open(name, "w") as pdb_file:
     pdb_file.write(pdb)
 
-  # Get data as dictionary (v0.0.3)
+  # Get data as dictionary
   data_dict = foldcomp.get_data(fcz_binary) # foldcomp.get_data(pdb) also works
   # Keys: phi, psi, omega, torsion_angles, residues, bond_angles, coordinates
   data_dict["phi"] # phi angles (C-N-CA-C)
