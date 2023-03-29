@@ -17,8 +17,7 @@ static PyObject *FoldcompError;
 
 typedef struct {
     PyObject_HEAD
-    PyObject* user_ids;
-    PyObject* user_indices;
+    std::vector<int64_t>* user_indices;
     bool decompress;
     void* memory_handle;
 } FoldcompDatabaseObject;
@@ -45,7 +44,7 @@ static PyMethodDef FoldcompDatabase_methods[] = {
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
     if (db->user_indices != NULL) {
-        return PySequence_Length(db->user_indices);
+        return db->user_indices->size();
     }
     return (Py_ssize_t)reader_get_size(db->memory_handle);
 }
@@ -58,16 +57,15 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
     size_t length;
     int64_t id;
     if (db->user_indices != NULL) {
-        if (index >= PySequence_Length(db->user_indices)) {
+        if (index >= (Py_ssize_t)db->user_indices->size()) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
-        PyObject* id_obj = PySequence_GetItem(db->user_indices, index);
-        id = PyLong_AsLongLong(id_obj);
+        id = db->user_indices->at(index);
         data = reader_get_data(db->memory_handle, id);
         length = std::max(reader_get_length(db->memory_handle, id), (int64_t)1) - (int64_t)1;
     } else {
-        if (index >= reader_get_size(db->memory_handle)) {
+        if (index >= (Py_ssize_t)reader_get_size(db->memory_handle)) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
@@ -83,9 +81,10 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
             PyErr_SetString(FoldcompError, err_msg.c_str());
             return NULL;
         }
-        return Py_BuildValue("(s,O)", name.c_str(),
-            PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size())
-        );
+        PyObject* pdb = PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size());
+        PyObject* result = Py_BuildValue("(s,O)", name.c_str(), pdb);
+        Py_DECREF(pdb);
+        return result;
     }
     return PyBytes_FromStringAndSize(data, length);
 }
@@ -167,7 +166,6 @@ static PyObject* FoldcompDatabase_close(PyObject* self) {
         return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
-    Py_XDECREF(db->user_ids);
     if (db->memory_handle != NULL) {
         free_reader(db->memory_handle);
         db->memory_handle = NULL;
@@ -335,25 +333,25 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     }
     const char* pathCStr = PyBytes_AS_STRING(path);
     if (pathCStr == NULL) {
-        Py_XDECREF(path);
+        Py_DECREF(path);
         PyErr_SetString(PyExc_TypeError, "path must be a path-like object");
         return NULL;
     }
 
     if (user_ids != NULL && !PyList_Check(user_ids)) {
-        Py_XDECREF(path);
+        Py_DECREF(path);
         PyErr_SetString(PyExc_TypeError, "user_ids must be a list.");
         return NULL;
     }
 
     if (decompress != NULL && !PyBool_Check(decompress)) {
-        Py_XDECREF(path);
+        Py_DECREF(path);
         PyErr_SetString(PyExc_TypeError, "decompress must be a boolean");
         return NULL;
     }
 
     if (err_on_missing != NULL && !PyBool_Check(err_on_missing)) {
-        Py_XDECREF(path);
+        Py_DECREF(path);
         PyErr_SetString(PyExc_TypeError, "err_on_missing must be a boolean");
         return NULL;
     }
@@ -361,7 +359,7 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     std::string dbname(pathCStr);
     std::string index = dbname + ".index";
     bool err_on_missing_flag = false;
-    Py_XDECREF(path);
+    Py_DECREF(path);
 
     FoldcompDatabaseObject *obj = PyObject_New(FoldcompDatabaseObject, &FoldcompDatabaseType);
     if (obj == NULL) {
@@ -369,12 +367,9 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
         return NULL;
     }
 
-    obj->user_ids = NULL;
     int mode = DB_READER_USE_DATA;
     if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
         mode |= DB_READER_USE_LOOKUP;
-        obj->user_ids = user_ids;
-        Py_INCREF(obj->user_ids);
     }
 
     if (decompress == NULL) {
@@ -391,25 +386,26 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
 
     obj->memory_handle = make_reader(dbname.c_str(), index.c_str(), mode);
 
+    obj->user_indices = NULL;
     if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
+        size_t id_count = (size_t)PySequence_Length(user_ids);
         // Reserve memory for the user indices
-        std::vector<int64_t> user_indices;
-        user_indices.reserve((size_t)PySequence_Length(user_ids));
-
-        for (Py_ssize_t i = 0; i < PySequence_Length(user_ids); i++) {
+        obj->user_indices = new std::vector<int64_t>();
+        obj->user_indices->reserve(id_count);
+        // user_indices.reserve(id_count);
+        for (Py_ssize_t i = 0; i < (Py_ssize_t)id_count; i++) {
             // Iterate over all entries in the database and store ids in a vector of int64_t
             PyObject* item = PySequence_GetItem(user_ids, i);
-            uint32_t key = reader_lookup_entry(obj->memory_handle, PyUnicode_AsUTF8(item));
-            Py_XDECREF(item);
+            const char* data = PyUnicode_AsUTF8(item);
+            Py_DECREF(item);
+            uint32_t key = reader_lookup_entry(obj->memory_handle, data);
             int64_t id = reader_get_id(obj->memory_handle, key);
-
             if (id == -1 || key == UINT32_MAX) {
                 // Not found --> no error just
                 std::string err_msg = "Skipping entry ";
-                err_msg += PyUnicode_AsUTF8(item);
+                err_msg += data;
                 err_msg += " which is not in the database.";
                 if (err_on_missing_flag) {
-                    Py_XDECREF(obj->user_ids);
                     Py_DECREF(obj);
                     PyErr_SetString(PyExc_KeyError, err_msg.c_str());
                     return NULL;
@@ -418,11 +414,8 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
                     continue;
                 }
             }
-            user_indices.push_back(id);
+            obj->user_indices->push_back(id);
         }
-        obj->user_indices = vectorToList_Int64(user_indices);
-    } else {
-        obj->user_indices = NULL;
     }
 
     return (PyObject*)obj;
