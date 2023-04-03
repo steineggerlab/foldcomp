@@ -7,7 +7,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: Fri Mar 24 2023
+ * Last Modified: Mon Apr 03 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -892,6 +892,8 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     }
     // Reindex atom index of atom
     if (this->hasOXT) {
+        // Set OXT tempFactor
+        this->OXT.tempFactor = tempFactors.back();
         atom.push_back(this->OXT);
     }
     setAtomIndexSequentially(atom, this->header.idxAtom);
