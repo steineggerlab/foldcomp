@@ -19,7 +19,7 @@ Foldcomp efficient compressed format stores protein structures requiring only 13
 
 ## Publications
 
-[Hyunbin Kim, Milot Mirdita, and Martin Steinegger. Foldcomp: a library and format for compressing and indexing large protein structure sets. bioRxiv, doi:10.1101/2022.12.09.519715  (2022)](https://www.biorxiv.org/content/10.1101/2022.12.09.519715v1)
+[Hyunbin Kim, Milot Mirdita, Martin Steinegger, Foldcomp: a library and format for compressing and indexing large protein structure sets, Bioinformatics, 2023;, btad153,](https://doi.org/10.1093/bioinformatics/btad153)
 
 ## Usage
 
