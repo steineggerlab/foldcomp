@@ -341,6 +341,7 @@ int main(int argc, char* const *argv) {
             }
         }
 
+        unsigned int key = 0;
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
@@ -357,7 +358,7 @@ int main(int argc, char* const *argv) {
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
-            unsigned int key = 0;
+
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 TimerGuard guard(name, measure_time);
                 std::vector<AtomCoordinate> atomCoordinates;
@@ -496,6 +497,7 @@ int main(int argc, char* const *argv) {
             }
         }
 
+        unsigned int key = 0;
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
@@ -512,7 +514,7 @@ int main(int argc, char* const *argv) {
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
-            unsigned int key = 0;
+
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 TimerGuard guard(name, measure_time);
                 Foldcomp compRes;
@@ -636,6 +638,7 @@ int main(int argc, char* const *argv) {
             isMergedOutput = true;
         }
 
+        unsigned int key = 0;
         for (const std::string& input : inputs) {
             Processor* processor;
             struct stat st;
@@ -652,7 +655,6 @@ int main(int argc, char* const *argv) {
             else {
                 processor = new DirectoryProcessor(input, recursive);
             }
-            unsigned int key = 0;
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 std::istringstream input(std::string(dataBuffer, size));
                 Foldcomp compRes;
