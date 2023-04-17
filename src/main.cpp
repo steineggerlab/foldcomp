@@ -397,7 +397,8 @@ int main(int argc, char* const *argv) {
                         atomCoordinates, chain_indices[i].first, chain_indices[i].second
                     );
                     if (skip_discontinuous && frag_indices.size() > 1) {
-                        std::cerr << "[Warning] Skipping discontinuous chain: " << base << std::endl;
+                        std::string message = "Skipping discontinuous chain: " + base + "\n";
+                        std::cerr << message;
                         continue;
                     }
                     for (size_t j = 0; j < frag_indices.size(); j++) {
