@@ -433,9 +433,10 @@ int main(int argc, char* const *argv) {
                         if (db_output) {
                             std::ostringstream oss;
                             compRes.writeStream(oss);
+                            std::string os = oss.str();
 #pragma omp critical
                             {
-                                writer_append(handle, oss.str().c_str(), oss.str().size(), key, filename.c_str());
+                                writer_append(handle, os.c_str(), os.size(), key, outputFile.c_str());
                                 key++;
                             }
                         } else if (save_as_tar) {
@@ -555,9 +556,10 @@ int main(int argc, char* const *argv) {
                     std::ostringstream oss;
                     writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
                     oss << '\0';
+                    std::string os = oss.str();
 #pragma omp critical
                     {
-                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, outputFile.c_str());
+                        writer_append(handle, os.c_str(), os.size(), key, outputFile.c_str());
                         key++;
                     }
                 } else if (save_as_tar) {
@@ -693,9 +695,10 @@ int main(int argc, char* const *argv) {
                     std::ostringstream oss;
                     compRes.writeFASTALike(oss, data);
                     oss << '\0';
+                    std::string os = oss.str();
 #pragma omp critical
                     {
-                        writer_append(handle, oss.str().c_str(), oss.str().size(), key, outputFile.c_str());
+                        writer_append(handle, os.c_str(), os.size(), key, outputFile.c_str());
                         key++;
                     }
                 } else if (save_as_tar) {
