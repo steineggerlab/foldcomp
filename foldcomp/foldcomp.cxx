@@ -255,12 +255,19 @@ int compress(const std::string& name, const std::string& pdb_input, std::ostream
     // parse ATOM lines from PDB file into atomCoordinates
     std::istringstream iss(pdb_input);
     std::string line;
+    std::string chain = "";
     while (std::getline(iss, line)) {
         if (line.substr(0, 4) == "ATOM") {
+            if (chain == "") {
+                chain = line.substr(21, 1);
+            }
+            if (line.substr(21, 1) != chain) {
+                return 2; // FLAG 2: multiple chains
+            }
             atomCoordinates.emplace_back(
                 trim(line.substr(12, 4)), // atom
                 trim(line.substr(17, 3)), // residue
-                line.substr(21, 1), // chain
+                chain, // chain
                 std::stoi(line.substr(6,  5)), // atom_index
                 std::stoi(line.substr(22, 4)), // residue_index
                 std::stof(line.substr(30, 8)), std::stof(line.substr(38, 8)), std::stof(line.substr(46, 8)), // coordinates
@@ -270,7 +277,7 @@ int compress(const std::string& name, const std::string& pdb_input, std::ostream
         }
     }
     if (atomCoordinates.size() == 0) {
-        return 1;
+        return 1; // FLAG 1: no ATOM lines
     }
 
     removeAlternativePosition(atomCoordinates);
@@ -306,8 +313,14 @@ static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObjec
 
     std::ostringstream oss;
     int flag = compress(name, pdb_input, oss, threshold);
-    if (flag != 0) {
-        PyErr_SetString(FoldcompError, "Error compressing.");
+    if (flag == 1) {
+        PyErr_SetString(FoldcompError, "No ATOM lines found");
+        return NULL;
+    } else if (flag == 2) {
+        PyErr_SetString(FoldcompError, "Multiple chains found. Please provide a single chain using 'foldcomp.split_pdb_by_chain'");
+        return NULL;
+    } else if (flag != 0) {
+        PyErr_SetString(FoldcompError, "Error compressing");
         return NULL;
     }
 

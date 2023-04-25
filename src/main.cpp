@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Fri Mar 24 2023
+ * Last Modified: Tue Apr 25 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -58,15 +58,15 @@ static int ext_merge = 1;
 static int overwrite = 0;
 
 int print_usage(void) {
-    std::cout << "Usage: foldcomp compress <pdb_file> [<fcz_file>]" << std::endl;
-    std::cout << "       foldcomp compress [-t number] <pdb_dir|tar> [<fcz_dir>]" << std::endl;
-    std::cout << "       foldcomp decompress <fcz_file|tar> [<pdb_file>]" << std::endl;
-    std::cout << "       foldcomp decompress [-t number] <fcz_dir|tar> [<pdb_dir>]" << std::endl;
-    std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz_file> [<fasta_file>]" << std::endl;
-    std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <fcz_dir|tar> [<fasta_dir>]" << std::endl;
-    std::cout << "       foldcomp check <fcz_file>" << std::endl;
-    std::cout << "       foldcomp check [-t number] <fcz_dir|tar>" << std::endl;
-    std::cout << "       foldcomp rmsd <pdb1|cif1> <pdb2|cif2>" << std::endl;
+    std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
+    std::cout << "       foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]" << std::endl;
+    std::cout << "       foldcomp decompress <fcz|tar> [<pdb>]" << std::endl;
+    std::cout << "       foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]" << std::endl;
+    std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta_file>]" << std::endl;
+    std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_dir>]" << std::endl;
+    std::cout << "       foldcomp check <fcz>" << std::endl;
+    std::cout << "       foldcomp check [-t number] <dir|tar(.gz)|db>" << std::endl;
+    std::cout << "       foldcomp rmsd <pdb|cif> <pdb|cif>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
     std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -r, --recursive      recursively look for files in directory [default=0]" << std::endl;
