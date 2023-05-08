@@ -194,6 +194,21 @@ public:
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE;
         handle = make_reader(input.c_str(), index.c_str(), mode);
     };
+
+    DatabaseProcessor(const std::string& input, const char* user_id_file) {
+        std::string index = input + ".index";
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE | DB_READER_USE_LOOKUP;
+        handle = make_reader(input.c_str(), index.c_str(), mode);
+        _read_id_list(user_id_file);
+    };
+
+    DatabaseProcessor(const std::string& input, const std::vector<std::string>& ids) {
+        std::string index = input + ".index";
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE | DB_READER_USE_LOOKUP;
+        handle = make_reader(input.c_str(), index.c_str(), mode);
+        user_ids = ids;
+    };
+
     ~DatabaseProcessor() {
         free_reader(handle);
     };
@@ -201,29 +216,63 @@ public:
     void run(process_entry_func func, int num_threads) override {
         size_t db_size = reader_get_size(handle);
 #pragma omp parallel shared(handle) num_threads(num_threads)
-        {
+        if (user_ids.size() == 0) { // process all entries in db
+            {
 #pragma omp for
-            for (size_t i = 0; i < db_size; i++) {
-                uint32_t key = reader_get_key(handle, i);
-                const char* name = reader_lookup_name_alloc(handle, key);
-                // If name == "", throw warning
-                if (name && !name[0]) {
-                    std::cerr << "[Warning] empty name for key " << key << std::endl;
+                for (size_t i = 0; i < db_size; i++) {
+                    uint32_t key = reader_get_key(handle, i);
+                    const char* name = reader_lookup_name_alloc(handle, key);
+                    // If name == "", throw warning
+                    if (name && !name[0]) {
+                        std::cerr << "[Warning] empty name for key " << key << std::endl;
+                        free((void*)name);
+                        continue;
+                    }
+                    if (!func(name, reader_get_data(handle, i), reader_get_length(handle, i))) {
+                        std::cerr << "[Error] processing db entry " << name << " failed." << std::endl;
+                        free((void*)name);
+                        continue;
+                    }
                     free((void*)name);
-                    continue;
                 }
-                if (!func(name, reader_get_data(handle, i), reader_get_length(handle, i))) {
-                    std::cerr << "[Error] processing db entry " << name << " failed." << std::endl;
-                    free((void*)name);
-                    continue;
+            }
+        } else { // process only entries in user_ids
+            {
+#pragma omp for
+                for (size_t i = 0; i < user_ids.size(); i++) {
+                    uint32_t key = reader_lookup_entry(handle, user_ids[i].c_str());
+                    int64_t id = reader_get_id(handle, key);
+                    if (id == -1 || key == UINT32_MAX) {
+                        // NOT found
+                        std::cerr << "[Warning] " << user_ids[i] << " not found in database." << std::endl;
+                        continue;
+                    }
+                    if (!func(user_ids[i].c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
+                        std::cerr << "[Error] processing db entry " << user_ids[i] << " failed." << std::endl;
+                        continue;
+                    }
                 }
-                free((void*)name);
             }
         }
     }
 
 private:
     void* handle;
+    std::vector<std::string> user_ids;
+
+    void _read_id_list(const char* file) {
+        // Check if file exists
+        if (!std::ifstream(file)) {
+            std::cerr << "[Error] user id '" << file << "' does not exist." << std::endl;
+            return;
+        }
+        std::ifstream infile(file);
+        std::string line;
+        while (std::getline(infile, line)) {
+            user_ids.push_back(line);
+        }
+        infile.close();
+    }
 };
 
 #ifdef HAVE_GCS

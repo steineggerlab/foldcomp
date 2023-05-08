@@ -6,7 +6,7 @@
 # Description:
 #     Build script for foldcomp.
 # ---
-# Last Modified: Mon Mar 06 2023
+# Last Modified: Mon May 08 2023
 # Modified By: Hyunbin Kim
 # ---
 # Copyright © 2022 Hyunbin Kim, All rights reserved
@@ -149,8 +149,8 @@ input_type_test()
     $foldcomp_decompress --tar $fcz_db_input ./test/out/db_in_tar_out.pdb.tar
     # 02-3. Database
     $foldcomp_decompress --db $fcz_db_input ./test/out/db_in_db_out_pdb_db
-    # # 02-4. with file list
-    #$foldcomp_decompress $db_input -f ./test/db_entry.txt
+    # # 02-4. with id list
+    $foldcomp_decompress $db_input --id-list ./test/example_db.subset ./test/example_db ./test/out/db_in_subset
 }
 
 # Check argument is not given
