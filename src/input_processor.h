@@ -12,6 +12,8 @@
 
 #include <utility>
 #include <functional>
+#include <vector>
+#include <string>
 
 #ifdef HAVE_GCS
 #include "google/cloud/storage/client.h"
@@ -195,7 +197,7 @@ public:
         handle = make_reader(input.c_str(), index.c_str(), mode);
     };
 
-    DatabaseProcessor(const std::string& input, std::string user_id_file) {
+    DatabaseProcessor(const std::string& input, std::string& user_id_file) {
         std::string index = input + ".index";
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE | DB_READER_USE_LOOKUP;
         handle = make_reader(input.c_str(), index.c_str(), mode);
@@ -260,7 +262,7 @@ private:
     void* handle;
     std::vector<std::string> user_ids;
 
-    void _read_id_list(std::string file) {
+    void _read_id_list(std::string& file) {
         // Check if file exists
         if (!std::ifstream(file)) {
             std::cerr << "[Error] user id '" << file << "' does not exist." << std::endl;
