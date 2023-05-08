@@ -130,7 +130,7 @@ int main(int argc, char* const *argv) {
     int db_output = 0;
     int measure_time = 0;
     int skip_discontinuous = 0;
-    char* user_id_list = "";
+    std::string user_id_list = "";
 
     // Mode - non-optional argument
     enum {
@@ -189,7 +189,7 @@ int main(int argc, char* const *argv) {
                 anchor_residue_threshold = atoi(optarg);
                 break;
             case 'l':
-                user_id_list = optarg;
+                user_id_list = std::string(optarg);
                 break;
             case 'd':
                 db_output = 1;
@@ -354,7 +354,7 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (strlen(user_id_list) > 0) {
+                if (user_id_list.size() > 0) {
                     processor = new DatabaseProcessor(input, user_id_list);
                 } else {
                     processor = new DatabaseProcessor(input);
@@ -516,7 +516,7 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (strlen(user_id_list) > 0) {
+                if (user_id_list.size() > 0) {
                     processor = new DatabaseProcessor(input, user_id_list);
                 } else {
                     processor = new DatabaseProcessor(input);
@@ -662,7 +662,7 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (strlen(user_id_list) > 0) {
+                if (user_id_list.size() > 0) {
                     processor = new DatabaseProcessor(input, user_id_list);
                 } else {
                     processor = new DatabaseProcessor(input);
@@ -763,7 +763,7 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (strlen(user_id_list) > 0) {
+                if (user_id_list.size() > 0) {
                     processor = new DatabaseProcessor(input, user_id_list);
                 } else {
                     processor = new DatabaseProcessor(input);
@@ -800,6 +800,5 @@ int main(int argc, char* const *argv) {
             delete processor;
         }
     }
-    free(user_id_list);
     return EXIT_SUCCESS;
 }
