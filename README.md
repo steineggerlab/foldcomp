@@ -52,6 +52,9 @@ foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]
 foldcomp decompress <fcz|tar> [<pdb>]
 foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]
 
+# Decompressing a subset of Foldcomp database
+foldcomp decompress [-t number] --id-list <idlist.txt> <db> [<dir|tar>]
+
 # Extraction of sequence or pLDDT
 foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta>]
 foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_out>]
