@@ -34,6 +34,8 @@ elseif(BUILD_PYTHON)
         if(MSVC)
             install(FILES lib/windows/dirent.h DESTINATION include)
         endif(MSVC)
+        find_package(PythonInterp)
+    	find_package(PythonLibs) # Trying to fix cibuildwheel ubuntu error
         find_package(PythonExtensions REQUIRED)
         add_library(foldcomp MODULE
             ${foldcomp_header_files}
