@@ -45,23 +45,23 @@ wget https://mmseqs.com/foldcomp/foldcomp-windows-x64.zip
 ### Executable
 ```
 # Compression
-foldcomp compress <pdb_file|cif_file> [<fcz_file>]
-foldcomp compress [-t number] <pdb_dir|cif_dir> [<fcz_dir>]
+foldcomp compress <pdb|cif> [<fcz>]
+foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]
 
 # Decompression
-foldcomp decompress <fcz_file> [<pdb_file>]
-foldcomp decompress [-t number] <fcz_dir> [<pdb_dir>]
+foldcomp decompress <fcz|tar> [<pdb>]
+foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]
 
 # Extraction of sequence or pLDDT
-foldcomp extract [--plddt|--fasta] <fcz_file> [<txt_file|fasta_file>]
-foldcomp extract [--plddt|--fasta] [-t number] <fcz_dir|tar> [<output_dir>]
+foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta>]
+foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_out>]
 
 # Check
-foldcomp check <fcz_file>
-foldcomp check [-t number] <fcz_dir|tar>
+foldcomp check <fcz>
+foldcomp check [-t number] <dir|tar(.gz)|db>
 
 # RMSD
-foldcomp rmsd <pdb1|cif1> <pdb2|cif2>
+foldcomp rmsd <pdb|cif> <pdb|cif>
 
 # Options
  -h, --help           print this help message
@@ -72,7 +72,8 @@ foldcomp rmsd <pdb1|cif1> <pdb2|cif2>
  -b, --break          interval size to save absolute atom coordinates [default=25]
  -z, --tar            save as tar file [default=false]
  -d, --db             save as database [default=false]
- -y, --overwrite          overwrite existing files [default=false]
+ -y, --overwrite      overwrite existing files [default=false]
+ -l, --id-list        a file of id list to be processed (only for database input)
  --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)
  --plddt              extract pLDDT score (only for extraction mode)
  --fasta              extract amino acid sequence (only for extraction mode)

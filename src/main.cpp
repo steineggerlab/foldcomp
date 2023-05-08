@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Tue Apr 25 2023
+ * Last Modified: Mon May 08 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -62,8 +62,8 @@ int print_usage(void) {
     std::cout << "       foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]" << std::endl;
     std::cout << "       foldcomp decompress <fcz|tar> [<pdb>]" << std::endl;
     std::cout << "       foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]" << std::endl;
-    std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta_file>]" << std::endl;
-    std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_dir>]" << std::endl;
+    std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta>]" << std::endl;
+    std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_out>]" << std::endl;
     std::cout << "       foldcomp check <fcz>" << std::endl;
     std::cout << "       foldcomp check [-t number] <dir|tar(.gz)|db>" << std::endl;
     std::cout << "       foldcomp rmsd <pdb|cif> <pdb|cif>" << std::endl;
@@ -75,7 +75,8 @@ int print_usage(void) {
     std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
     std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
     std::cout << " -d, --db             save as database [default=false]" << std::endl;
-    std::cout << " -y, --overwrite          overwrite existing files [default=false]" << std::endl;
+    std::cout << " -y, --overwrite      overwrite existing files [default=false]" << std::endl;
+    std::cout << " -l, --id-list        a file of id list to be processed (only for database input)" << std::endl;
     std::cout << " --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
@@ -129,6 +130,7 @@ int main(int argc, char* const *argv) {
     int db_output = 0;
     int measure_time = 0;
     int skip_discontinuous = 0;
+    char* user_id_list = "";
 
     // Mode - non-optional argument
     enum {
@@ -155,11 +157,12 @@ int main(int argc, char* const *argv) {
             {"db",            no_argument,          0, 'd' },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
+            {"id-list", required_argument,          0, 'l'},
             {0,                         0,          0,  0 }
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hazrfyt:b:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hazrfyt:b:l:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -185,6 +188,9 @@ int main(int argc, char* const *argv) {
             case 'b':
                 anchor_residue_threshold = atoi(optarg);
                 break;
+            case 'l':
+                user_id_list = optarg;
+                break;
             case 'd':
                 db_output = 1;
                 break;
@@ -193,7 +199,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazrfyt:b:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hazrfyt:b:l:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -348,7 +354,11 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                processor = new DatabaseProcessor(input);
+                if (strlen(user_id_list) > 0) {
+                    processor = new DatabaseProcessor(input, user_id_list);
+                } else {
+                    processor = new DatabaseProcessor(input);
+                }
             }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
@@ -506,7 +516,11 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                processor = new DatabaseProcessor(input);
+                if (strlen(user_id_list) > 0) {
+                    processor = new DatabaseProcessor(input, user_id_list);
+                } else {
+                    processor = new DatabaseProcessor(input);
+                }
             }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
@@ -648,7 +662,11 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                processor = new DatabaseProcessor(input);
+                if (strlen(user_id_list) > 0) {
+                    processor = new DatabaseProcessor(input, user_id_list);
+                } else {
+                    processor = new DatabaseProcessor(input);
+                }
             }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
@@ -745,7 +763,11 @@ int main(int argc, char* const *argv) {
             if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                 processor = new TarProcessor(input);
             } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                processor = new DatabaseProcessor(input);
+                if (strlen(user_id_list) > 0) {
+                    processor = new DatabaseProcessor(input, user_id_list);
+                } else {
+                    processor = new DatabaseProcessor(input);
+                }
             }
 #ifdef HAVE_GCS
             else if (stringStartsWith("gcs://", input)) {
@@ -778,5 +800,6 @@ int main(int argc, char* const *argv) {
             delete processor;
         }
     }
+    free(user_id_list);
     return EXIT_SUCCESS;
 }
