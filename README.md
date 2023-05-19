@@ -93,11 +93,13 @@ python -c "import foldcomp; foldcomp.setup('afdb_swissprot_v4');
 ```
 
 Currently we offer the following databases:
-* [ESMAtlas v2023_02](https://esmatlas.com/): `foldcomp.setup('esmatlas_v2023_02')`
+* [ESMAtlas](https://esmatlas.com/) full (v0 + v2023_02): `foldcomp.setup('esmatlas')`
+* ESMAtlas v2023_02: `foldcomp.setup('esmatlas_v2023_02')`
 * ESMAtlas high-quality: `foldcomp.setup('highquality_clust30')`
 
   **Note:** We skipped all structures with discontinous residues or other issues.
    Here is a list with the affected predictions;
+   [full](https://foldcomp.steineggerlab.workers.dev/esmatlas.err.log) (~21M),
    [high-quality](https://foldcomp.steineggerlab.workers.dev/highquality_clust30_issues.txt) (~100k),
    [v2023_02](https://foldcomp.steineggerlab.workers.dev/esmatlas_v2023_02.err.log) (~10k)
 
