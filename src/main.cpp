@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Mon May 08 2023
+ * Last Modified: Wed May 31 2023
  * Modified By: Hyunbin Kim
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -256,6 +256,7 @@ int main(int argc, char* const *argv) {
         input.pop_back();
     }
     std::vector<std::string> inputs;
+    std::vector<std::string> single_file_inputs;
     if (file_input) {
         std::ifstream inputFile(input);
         if (!inputFile) {
@@ -264,7 +265,14 @@ int main(int argc, char* const *argv) {
         }
         std::string line;
         while (std::getline(inputFile, line)) {
-            inputs.push_back(line);
+            // If the file ends with .pdb, .pdb.gz, .cif, .cif.gz, .fcz, assume it is a single file input
+            if (stringEndsWith(".pdb", line) || stringEndsWith(".pdb.gz", line) ||
+                stringEndsWith(".cif", line) || stringEndsWith(".cif.gz", line) ||
+                stringEndsWith(".fcz", line)) {
+                single_file_inputs.push_back(line);
+            } else {
+                inputs.push_back(line);
+            }
         }
     } else {
         inputs.push_back(input);
@@ -348,27 +356,37 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
-        for (const std::string& input : inputs) {
+        for (size_t i = 0; i < inputs.size() + 1; i++) {
+            const std::string& input = (i == inputs.size()) ? "" : inputs[i];
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                processor = new TarProcessor(input);
-            } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (user_id_list.size() > 0) {
-                    processor = new DatabaseProcessor(input, user_id_list);
+            if (i != inputs.size()) {
+                if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
+                    processor = new TarProcessor(input);
+                }
+                else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+                    if (user_id_list.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_list);
+                    }
+                    else {
+                        processor = new DatabaseProcessor(input);
+                    }
+                }
+#ifdef HAVE_GCS
+                else if (stringStartsWith("gcs://", input)) {
+                    processor = new GcsProcessor(input);
+                }
+#endif
+                else {
+                    processor = new DirectoryProcessor(input, recursive);
+                }
+            } else {
+                if (single_file_inputs.size() > 0) {
+                    processor = new DirectoryProcessor(single_file_inputs);
                 } else {
-                    processor = new DatabaseProcessor(input);
+                    continue;
                 }
             }
-#ifdef HAVE_GCS
-            else if (stringStartsWith("gcs://", input)) {
-                processor = new GcsProcessor(input);
-            }
-#endif
-            else {
-                processor = new DirectoryProcessor(input, recursive);
-            }
-
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 TimerGuard guard(name, measure_time);
                 std::vector<AtomCoordinate> atomCoordinates;
@@ -510,25 +528,37 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
-        for (const std::string& input : inputs) {
+        for (size_t i = 0; i < inputs.size() + 1; i++) {
+            const std::string& input = (i == inputs.size()) ? "" : inputs[i];
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                processor = new TarProcessor(input);
-            } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (user_id_list.size() > 0) {
-                    processor = new DatabaseProcessor(input, user_id_list);
-                } else {
-                    processor = new DatabaseProcessor(input);
+            if (i != inputs.size()) {
+                if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
+                    processor = new TarProcessor(input);
                 }
-            }
+                else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+                    if (user_id_list.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_list);
+                    }
+                    else {
+                        processor = new DatabaseProcessor(input);
+                    }
+                }
 #ifdef HAVE_GCS
-            else if (stringStartsWith("gcs://", input)) {
-                processor = new GcsProcessor(input);
-            }
+                else if (stringStartsWith("gcs://", input)) {
+                    processor = new GcsProcessor(input);
+                }
 #endif
-            else {
-                processor = new DirectoryProcessor(input, recursive);
+                else {
+                    processor = new DirectoryProcessor(input, recursive);
+                }
+            } else {
+                if (single_file_inputs.size() > 0) {
+                    processor = new DirectoryProcessor(single_file_inputs);
+                }
+                else {
+                    continue;
+                }
             }
 
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
@@ -656,26 +686,39 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
-        for (const std::string& input : inputs) {
+        for (size_t i = 0; i < inputs.size() + 1; i++) {
+            const std::string& input = (i == inputs.size()) ? "" : inputs[i];
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                processor = new TarProcessor(input);
-            } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (user_id_list.size() > 0) {
-                    processor = new DatabaseProcessor(input, user_id_list);
-                } else {
-                    processor = new DatabaseProcessor(input);
+            if (i != inputs.size()) {
+                if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
+                    processor = new TarProcessor(input);
+                }
+                else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+                    if (user_id_list.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_list);
+                    }
+                    else {
+                        processor = new DatabaseProcessor(input);
+                    }
+                }
+#ifdef HAVE_GCS
+                else if (stringStartsWith("gcs://", input)) {
+                    processor = new GcsProcessor(input);
+                }
+#endif
+                else {
+                    processor = new DirectoryProcessor(input, recursive);
+                }
+            } else {
+                if (single_file_inputs.size() > 0) {
+                    processor = new DirectoryProcessor(single_file_inputs);
+                }
+                else {
+                    continue;
                 }
             }
-#ifdef HAVE_GCS
-            else if (stringStartsWith("gcs://", input)) {
-                processor = new GcsProcessor(input);
-            }
-#endif
-            else {
-                processor = new DirectoryProcessor(input, recursive);
-            }
+
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 std::istringstream input(std::string(dataBuffer, size));
                 Foldcomp compRes;
@@ -757,26 +800,39 @@ int main(int argc, char* const *argv) {
             std::cout << " using " << num_threads << " threads" << std::endl;
         }
 
-        for (const std::string& input : inputs) {
+        for (size_t i = 0; i < inputs.size() + 1; i++) {
+            const std::string& input = (i == inputs.size()) ? "" : inputs[i];
             Processor* processor;
             struct stat st;
-            if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                processor = new TarProcessor(input);
-            } else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                if (user_id_list.size() > 0) {
-                    processor = new DatabaseProcessor(input, user_id_list);
-                } else {
-                    processor = new DatabaseProcessor(input);
+            if (i != inputs.size()) {
+                if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
+                    processor = new TarProcessor(input);
+                }
+                else if (stat((input + ".dbtype").c_str(), &st) == 0) {
+                    if (user_id_list.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_list);
+                    }
+                    else {
+                        processor = new DatabaseProcessor(input);
+                    }
+                }
+#ifdef HAVE_GCS
+                else if (stringStartsWith("gcs://", input)) {
+                    processor = new GcsProcessor(input);
+                }
+#endif
+                else {
+                    processor = new DirectoryProcessor(input, recursive);
+                }
+            } else {
+                if (single_file_inputs.size() > 0) {
+                    processor = new DirectoryProcessor(single_file_inputs);
+                }
+                else {
+                    continue;
                 }
             }
-#ifdef HAVE_GCS
-            else if (stringStartsWith("gcs://", input)) {
-                processor = new GcsProcessor(input);
-            }
-#endif
-            else {
-                processor = new DirectoryProcessor(input, recursive);
-            }
+
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 std::istringstream input(std::string(dataBuffer, size));
                 Foldcomp compRes;

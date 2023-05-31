@@ -72,6 +72,7 @@ public:
     DirectoryProcessor(const std::string& input, bool recursive) {
         files = getFilesInDirectory(input, recursive);
     };
+    DirectoryProcessor(std::vector<std::string> files) : files(std::move(files)) {};
 
     void run(process_entry_func func, int num_threads) override {
 #pragma omp parallel shared(files) num_threads(num_threads)
