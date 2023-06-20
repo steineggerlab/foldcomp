@@ -185,14 +185,22 @@ jobs:
         chmod 700 ~/.ssh
         echo "$SSH_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+        ssh-keygen -f ~/.ssh/id_rsa -y > ~/.ssh/id_rsa.pub
       shell: bash
       env:
         SSH_KEY: ${{secrets.SSH_PRIVKEY}}
 
     - name: SCP to server
       run: |
-        ssh-keyscan -t rsa uniclust.mmseqs.com >> ~/.ssh/known_hosts
-        ssh codeship@uniclust.mmseqs.com "mkdir -p \"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}\""
-        scp foldcomp-linux-x86_64.tar.gz foldcomp-linux-arm64.tar.gz foldcomp-macos-universal.tar.gz foldcomp-windows-x64.zip \
-          codeship@uniclust.mmseqs.com:"/home/mirdita/repositories/mmseqs-webserver/archive/${GITHUB_SHA}"
-        ssh codeship@uniclust.mmseqs.com "update-latest-foldcomp.sh \"${GITHUB_SHA}\""
+        ssh-keygen -Y sign -f ~/.ssh/id_rsa -n file \
+          foldcomp-linux-x86_64.tar.gz \
+          foldcomp-linux-arm64.tar.gz \
+          foldcomp-macos-universal.tar.gz \
+          foldcomp-windows-x64.zip
+        curl --retry 2 --retry-all-errors -X POST \
+          -F file[]=@foldcomp-linux-x86_64.tar.gz -F signature[]=@foldcomp-linux-x86_64.tar.gz.sig \
+          -F file[]=@foldcomp-linux-arm64.tar.gz -F signature[]=@foldcomp-linux-arm64.tar.gz.sig \
+          -F file[]=@foldcomp-macos-universal.tar.gz -F signature[]=@foldcomp-macos-universal.tar.gz.sig \
+          -F file[]=@foldcomp-windows-x64.zip -F signature[]=@foldcomp-windows-x64.zipz.sig \
+          -F identifier="foldcomp" -F directory="${BUILD_SOURCEVERSION}" \
+            https://mmseqs.com/upload
