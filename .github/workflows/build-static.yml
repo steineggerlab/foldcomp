@@ -171,7 +171,7 @@ jobs:
 
   upload_all:
     needs: [compile, compile_macos, compile_windows]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     steps:
     - uses: actions/download-artifact@v3
