@@ -201,6 +201,6 @@ jobs:
           -F file[]=@foldcomp-linux-x86_64.tar.gz -F signature[]=@foldcomp-linux-x86_64.tar.gz.sig \
           -F file[]=@foldcomp-linux-arm64.tar.gz -F signature[]=@foldcomp-linux-arm64.tar.gz.sig \
           -F file[]=@foldcomp-macos-universal.tar.gz -F signature[]=@foldcomp-macos-universal.tar.gz.sig \
-          -F file[]=@foldcomp-windows-x64.zip -F signature[]=@foldcomp-windows-x64.zipz.sig \
+          -F file[]=@foldcomp-windows-x64.zip -F signature[]=@foldcomp-windows-x64.zip.sig \
           -F identifier="foldcomp" -F directory="${BUILD_SOURCEVERSION}" \
             https://mmseqs.com/upload
