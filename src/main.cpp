@@ -13,8 +13,8 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: Wed May 31 2023
- * Modified By: Hyunbin Kim
+ * Last Modified: 2023-06-28 13:54:34
+ * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -162,7 +162,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hazrfyt:b:l:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hadzrfyt:b:l:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -199,7 +199,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hazrfyt:b:l:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hadzrfyt:b:l:", long_options, &option_index);
     }
 
     // Parse non-option arguments
