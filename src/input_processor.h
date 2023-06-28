@@ -19,6 +19,13 @@
 #include "google/cloud/storage/client.h"
 #endif
 
+// #ifdef HAVE_AWS_S3
+// #include <aws/core/Aws.h>
+// #include <aws/s3/S3Client.h>
+// #include <aws/s3/model/ListObjectsRequest.h>
+// #include <aws/s3/model/GetObjectRequest.h>
+// #endif
+
 // OpenMP for parallelization
 #ifdef OPENMP
 #include <omp.h>
@@ -323,3 +330,63 @@ private:
     std::string bucket_name;
 };
 #endif
+
+// #ifdef HAVE_AWS_S3
+// class S3Processor : public Processor {
+// public:
+//     S3Processor(const std::string& input) {
+//         Aws::Client::ClientConfiguration clientConfig;
+//         clientConfig.region = Aws::Region::US_WEST_2;  // Update the region if needed
+//         client = std::make_shared<Aws::S3::S3Client>(clientConfig);
+//         bucket_name = input;
+//     };
+
+//     void run(process_entry_func func, int num_threads) override {
+// #pragma omp parallel num_threads(num_threads)
+//         {
+// #pragma omp single
+//             // Get object list from S3 bucket
+//             Aws::S3::Model::ListObjectsRequest objects_request;
+//             objects_request.WithBucket(bucket_name);
+
+//             auto list_objects_outcome = client->ListObjects(objects_request);
+
+//             if (list_objects_outcome.IsSuccess()) {
+//                 auto object_list = list_objects_outcome.GetResult().GetContents();
+//                 for (auto const& s3_object : object_list) {
+//                     std::string obj_name = s3_object.GetKey();
+// #pragma omp task firstprivate(obj_name)
+//                     {
+//                         bool skipFilter = true;
+//                         bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
+//                         if (skipFilter && allowedSuffix) {
+//                             Aws::S3::Model::GetObjectRequest object_request;
+//                             object_request.WithBucket(bucket_name).WithKey(obj_name);
+
+//                             auto get_object_outcome = client->GetObject(object_request);
+
+//                             if (get_object_outcome.IsSuccess()) {
+//                                 auto& retrieved_file = get_object_outcome.GetResultWithOwnership().GetBody();
+//                                 std::string contents{ std::istreambuf_iterator<char>{retrieved_file}, {} };
+//                                 func(obj_name.c_str(), contents.c_str(), contents.length());
+//                             }
+//                             else {
+//                                 std::cerr << "Could not read object " << obj_name << std::endl;
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//             else {
+//                 std::cout << "ListObjects error: "
+//                     << list_objects_outcome.GetError().GetExceptionName() << " - "
+//                     << list_objects_outcome.GetError().GetMessage() << std::endl;
+//             }
+//         }
+//     }
+
+// private:
+//     std::shared_ptr<Aws::S3::S3Client> client;
+//     std::string bucket_name;
+// };
+// #endif
