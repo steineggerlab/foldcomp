@@ -207,14 +207,14 @@ public:
 
     DatabaseProcessor(const std::string& input, std::string& user_id_file) {
         std::string index = input + ".index";
-        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE | DB_READER_USE_LOOKUP;
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
         handle = make_reader(input.c_str(), index.c_str(), mode);
         _read_id_list(user_id_file);
     };
 
     DatabaseProcessor(const std::string& input, const std::vector<std::string>& ids) {
         std::string index = input + ".index";
-        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE | DB_READER_USE_LOOKUP;
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
         handle = make_reader(input.c_str(), index.c_str(), mode);
         user_ids = ids;
     };
