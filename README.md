@@ -78,6 +78,7 @@ foldcomp rmsd <pdb|cif> <pdb|cif>
  -y, --overwrite      overwrite existing files [default=false]
  -l, --id-list        a file of id list to be processed (only for database input)
  --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)
+ --check              check FCZ before and skip entries with error (only for batch decompression)
  --plddt              extract pLDDT score (only for extraction mode)
  --fasta              extract amino acid sequence (only for extraction mode)
  --no-merge           do not merge output files (only for extraction mode)

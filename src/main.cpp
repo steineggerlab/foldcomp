@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2023-06-28 13:54:34
+ * Last Modified: 2023-08-22 18:01:09
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -78,6 +78,7 @@ int print_usage(void) {
     std::cout << " -y, --overwrite      overwrite existing files [default=false]" << std::endl;
     std::cout << " -l, --id-list        a file of id list to be processed (only for database input)" << std::endl;
     std::cout << " --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)" << std::endl;
+    std::cout << " --check              check FCZ before and skip entries with error (only for batch decompression)" << std::endl;
     std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
@@ -130,6 +131,7 @@ int main(int argc, char* const *argv) {
     int db_output = 0;
     int measure_time = 0;
     int skip_discontinuous = 0;
+    int check_before_decompression = 0;
     std::string user_id_list = "";
 
     // Mode - non-optional argument
@@ -154,6 +156,7 @@ int main(int argc, char* const *argv) {
             {"overwrite",     no_argument, &overwrite,  1 },
             {"time",          no_argument, &measure_time, 1 },
             {"skip-discontinuous", no_argument, &skip_discontinuous, 1 },
+            {"check",         no_argument, &check_before_decompression, 1 },
             {"db",            no_argument,          0, 'd' },
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
@@ -578,6 +581,14 @@ int main(int argc, char* const *argv) {
                 }
                 std::vector<AtomCoordinate> atomCoordinates;
                 compRes.useAltAtomOrder = use_alt_order;
+                // Check validity before decompression if requested
+                if (check_before_decompression) {
+                    ValidityError err = compRes.checkValidity();
+                    if (err != ValidityError::SUCCESS) {
+                        printValidityError(err, compRes.strTitle);
+                        return true;
+                    }
+                }
                 flag = compRes.decompress(atomCoordinates);
                 if (flag != 0) {
                     std::cerr << "[Error] decompressing compressed data." << std::endl;
