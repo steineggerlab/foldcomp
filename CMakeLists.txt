@@ -55,20 +55,29 @@ else()
     target_compile_definitions(foldcomp PUBLIC FOLDCOMP_EXECUTABLE)
     # For debugging
     # target_compile_definitions(foldcomp PUBLIC _GLIBCXX_DEBUG=1 _LIBCPP_DEBUG=1)
-
-    find_package(OpenMP REQUIRED)
-    if(OPENMP_CXX_FOUND)
-        if((CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
-            target_link_libraries(foldcomp PUBLIC OpenMP::OpenMP_CXX)
-        else()
-            target_link_libraries(foldcomp PRIVATE "${OpenMP_CXX_FLAGS}")
-            target_compile_options(foldcomp PRIVATE "${OpenMP_CXX_FLAGS}")
+    
+    if(NOT EMSCRIPTEN)
+        # For local compilation, openmp and zlib are required
+        find_package(OpenMP REQUIRED)
+        if(OPENMP_CXX_FOUND)
+            if((CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+                target_link_libraries(foldcomp PUBLIC OpenMP::OpenMP_CXX)
+            else()
+                target_link_libraries(foldcomp PRIVATE "${OpenMP_CXX_FLAGS}")
+                target_compile_options(foldcomp PRIVATE "${OpenMP_CXX_FLAGS}")
+            endif()
             target_compile_definitions(foldcomp PUBLIC OPENMP)
         endif()
+        find_package(ZLIB REQUIRED)
+        target_link_libraries(foldcomp PUBLIC ZLIB::ZLIB)
+    else()
+        # For webassembly, not using openmp. zlib is added to compile flags
+        set_target_properties(
+            foldcomp
+            PROPERTIES
+            COMPILE_FLAGS -sUSE_ZLIB=1
+            LINK_FLAGS "-sUSE_ZLIB=1 -sEXPORTED_RUNTIME_METHODS=callMain,FS -sINVOKE_RUN=0 -sFILESYSTEM=1 -sALLOW_MEMORY_GROWTH=1 -sTOTAL_MEMORY=256MB -sENVIRONMENT=web -sMODULARIZE=1 -s EXPORT_ES6=1 -sEXPORT_NAME=createFoldcomp -sSINGLE_FILE=0 -sASSERTIONS=0")
     endif()
-
-    find_package(ZLIB REQUIRED)
-    target_link_libraries(foldcomp PUBLIC ZLIB::ZLIB)
 
     include_directories(lib/gemmi)
 
