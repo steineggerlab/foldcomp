@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2023-08-22 18:01:09
+ * Last Modified: 2023-11-16 01:51:10
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -57,6 +57,9 @@ static int ext_mode = 0;
 static int ext_merge = 1;
 static int overwrite = 0;
 
+// version
+#define FOLDCOMP_VERSION "0.0.5"
+
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
     std::cout << "       foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]" << std::endl;
@@ -68,6 +71,7 @@ int print_usage(void) {
     std::cout << "       foldcomp check [-t number] <dir|tar(.gz)|db>" << std::endl;
     std::cout << "       foldcomp rmsd <pdb|cif> <pdb|cif>" << std::endl;
     std::cout << " -h, --help           print this help message" << std::endl;
+    std::cout << " -v, --version        print version" << std::endl;
     std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
     std::cout << " -r, --recursive      recursively look for files in directory [default=0]" << std::endl;
     std::cout << " -f, --file           input is a list of files [default=0]" << std::endl;
@@ -83,6 +87,11 @@ int print_usage(void) {
     std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
     std::cout << " --time               measure time for compression/decompression" << std::endl;
+    return 0;
+}
+
+inline int print_version(void) {
+    std::cout << "foldcomp " << FOLDCOMP_VERSION << std::endl;
     return 0;
 }
 
@@ -120,6 +129,10 @@ int rmsd(const std::string& pdb1, const std::string& pdb2) {
 
 int main(int argc, char* const *argv) {
     if (argc < 3) {
+        // Check if version is requested
+        if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0)) {
+            return print_version();
+        }
         return print_usage();
     }
 
@@ -157,7 +170,8 @@ int main(int argc, char* const *argv) {
             {"time",          no_argument, &measure_time, 1 },
             {"skip-discontinuous", no_argument, &skip_discontinuous, 1 },
             {"check",         no_argument, &check_before_decompression, 1 },
-            {"db",            no_argument,          0, 'd' },
+            {"db",            no_argument,          0, 'd'},
+            {"version",       no_argument,          0, 'v'},
             {"threads", required_argument,          0, 't'},
             {"break",   required_argument,          0, 'b'},
             {"id-list", required_argument,          0, 'l'},
@@ -165,7 +179,7 @@ int main(int argc, char* const *argv) {
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hadzrfyt:b:l:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hadzrfyvt:b:l:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -197,6 +211,8 @@ int main(int argc, char* const *argv) {
             case 'd':
                 db_output = 1;
                 break;
+            case 'v':
+                return print_version();
             case '?':
                 return print_usage();
             default:

@@ -68,6 +68,7 @@ foldcomp rmsd <pdb|cif> <pdb|cif>
 
 # Options
  -h, --help           print this help message
+ -v, --version        print version
  -t, --threads        threads for (de)compression of folders/tar files [default=1]
  -r, --recursive      recursively look for files in directory [default=0]
  -f, --file           input is a list of files [default=0]
