@@ -107,7 +107,7 @@ jobs:
 
     - name: Install Homebrew dependencies
       run: |
-        brew install cmake gnu-tar libomp
+        brew install cmake gnu-tar libomp jq
         brew uninstall zlib -f --ignore-dependencies
 
     - name: Download libomp.a for arm64
