@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2023-11-16 01:51:10
+ * Last Modified: 2023-12-29 12:29:26
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
