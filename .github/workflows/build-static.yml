@@ -113,10 +113,10 @@ jobs:
     - name: Download libomp.a for arm64
       run: |
         mkdir ${{github.workspace}}/libomp_arm64
-        BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.arm64_big_sur.url')
-        curl -s -L -H "Authorization: Bearer QQ==" -o libomp_arm64_big_sur.tar.gz $BOTTLE_URL
-        file libomp_arm64_big_sur.tar.gz
-        gtar --strip-components=2 -xzf libomp_arm64_big_sur.tar.gz -C ${{github.workspace}}/libomp_arm64
+        BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.arm64_sonoma.url')
+        curl -s -L -H "Authorization: Bearer QQ==" -o libomp_arm64_sonoma.tar.gz $BOTTLE_URL
+        file libomp_arm64_sonoma.tar.gz
+        gtar --strip-components=2 -xzf libomp_arm64_sonoma.tar.gz -C ${{github.workspace}}/libomp_arm64
 
     - name: Build x86_64 x86_64h arm64
       run: |
