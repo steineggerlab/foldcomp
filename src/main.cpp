@@ -58,7 +58,7 @@ static int ext_merge = 1;
 static int overwrite = 0;
 
 // version
-#define FOLDCOMP_VERSION "0.0.5"
+#define FOLDCOMP_VERSION "0.0.6"
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
