@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2023-12-29 12:29:26
+ * Last Modified: 2024-01-06 22:10:08
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -58,7 +58,7 @@ static int ext_merge = 1;
 static int overwrite = 0;
 
 // version
-#define FOLDCOMP_VERSION "0.0.6"
+#define FOLDCOMP_VERSION "0.0.7"
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
