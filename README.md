@@ -17,7 +17,7 @@ Foldcomp efficient compressed format stores protein structures requiring only 13
 </picture>
 </p>
 
-[![ismb2023_foldcomp](https://img.youtube.com/vi/aFtqH0VqE7w/0.jpg)](https://www.youtube.com/watch?v= aFtqH0VqE7w)
+[![ismb2023_foldcomp](https://img.youtube.com/vi/aFtqH0VqE7w/0.jpg)](https://www.youtube.com/watch?v=aFtqH0VqE7w)
 
 ## Publications
 
