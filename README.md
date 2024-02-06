@@ -17,11 +17,17 @@ Foldcomp efficient compressed format stores protein structures requiring only 13
 </picture>
 </p>
 
-[![ismb2023_foldcomp](https://img.youtube.com/vi/aFtqH0VqE7w/0.jpg)](https://www.youtube.com/watch?v=aFtqH0VqE7w)
-
 ## Publications
 
 [Hyunbin Kim, Milot Mirdita, Martin Steinegger, Foldcomp: a library and format for compressing and indexing large protein structure sets, Bioinformatics, 2023;, btad153,](https://doi.org/10.1093/bioinformatics/btad153)
+
+## Presentation Video
+
+We presented Foldcomp at ISMB/ECCB2023. Check it out:
+
+<a href="https://www.youtube.com/watch?v=aFtqH0VqE7w" target="_blank">
+  <img src="https://raw.githubusercontent.com/steineggerlab/foldcomp/master/.github/img/ismb_thumbnail.png" alt="Foldcomp presented at ISMB/ECCB2023" max-width="720px" max-height="400px" width="auto" height="auto">
+</a>
 
 ## Usage
 
