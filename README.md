@@ -75,23 +75,26 @@ foldcomp check [-t number] <dir|tar(.gz)|db>
 foldcomp rmsd <pdb|cif> <pdb|cif>
 
 # Options
- -h, --help           print this help message
- -v, --version        print version
- -t, --threads        threads for (de)compression of folders/tar files [default=1]
- -r, --recursive      recursively look for files in directory [default=0]
- -f, --file           input is a list of files [default=0]
- -a, --alt            use alternative atom order [default=false]
- -b, --break          interval size to save absolute atom coordinates [default=25]
- -z, --tar            save as tar file [default=false]
- -d, --db             save as database [default=false]
- -y, --overwrite      overwrite existing files [default=false]
- -l, --id-list        a file of id list to be processed (only for database input)
- --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)
- --check              check FCZ before and skip entries with error (only for batch decompression)
- --plddt              extract pLDDT score (only for extraction mode)
- --fasta              extract amino acid sequence (only for extraction mode)
- --no-merge           do not merge output files (only for extraction mode)
- --time               measure time for compression/decompression
+ -h, --help               print this help message
+ -v, --version            print version
+ -t, --threads            threads for (de)compression of folders/tar files [default=1]
+ -r, --recursive          recursively look for files in directory [default=0]
+ -f, --file               input is a list of files [default=0]
+ -a, --alt                use alternative atom order [default=false]
+ -b, --break              interval size to save absolute atom coordinates [default=25]
+ -z, --tar                save as tar file [default=false]
+ -d, --db                 save as database [default=false]
+ -y, --overwrite          overwrite existing files [default=false]
+ -l, --id-list            a file of id list to be processed (only for database input)
+ --skip-discontinuous     skip PDB with with discontinuous residues (only batch compression)
+ --check                  check FCZ before and skip entries with error (only for batch decompression)
+ --plddt                  extract pLDDT score (only for extraction mode)
+ -p, --plddt-digits       extract pLDDT score with specified number of digits (only for extraction mode)
+                          - 1: single digit (fasta-like format), 2: 2-digit(00-99; tsv), 3: 3-digit, 4: 4-digit (max)
+ --fasta, --amino-acid    extract amino acid sequence (only for extraction mode)
+ --no-merge               do not merge output files (only for extraction mode)
+ --use-title              use TITLE as the output file name (only for extraction mode)
+ --time                   measure time for compression/decompression
 ```
 
 ### Downloading Databases

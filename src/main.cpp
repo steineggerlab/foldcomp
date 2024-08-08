@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2024-01-06 22:10:08
+ * Last Modified: 2024-08-08 20:54:36
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -54,11 +54,13 @@ static int use_alt_order = 0;
 static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
 static int ext_mode = 0;
+static int ext_plddt_digits = 1;
 static int ext_merge = 1;
+static int ext_use_title = 0;
 static int overwrite = 0;
 
 // version
-#define FOLDCOMP_VERSION "0.0.7"
+#define FOLDCOMP_VERSION "0.0.8"
 
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
@@ -70,23 +72,26 @@ int print_usage(void) {
     std::cout << "       foldcomp check <fcz>" << std::endl;
     std::cout << "       foldcomp check [-t number] <dir|tar(.gz)|db>" << std::endl;
     std::cout << "       foldcomp rmsd <pdb|cif> <pdb|cif>" << std::endl;
-    std::cout << " -h, --help           print this help message" << std::endl;
-    std::cout << " -v, --version        print version" << std::endl;
-    std::cout << " -t, --threads        threads for (de)compression of folders/tar files [default=1]" << std::endl;
-    std::cout << " -r, --recursive      recursively look for files in directory [default=0]" << std::endl;
-    std::cout << " -f, --file           input is a list of files [default=0]" << std::endl;
-    std::cout << " -a, --alt            use alternative atom order [default=false]" << std::endl;
-    std::cout << " -b, --break          interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
-    std::cout << " -z, --tar            save as tar file [default=false]" << std::endl;
-    std::cout << " -d, --db             save as database [default=false]" << std::endl;
-    std::cout << " -y, --overwrite      overwrite existing files [default=false]" << std::endl;
-    std::cout << " -l, --id-list        a file of id list to be processed (only for database input)" << std::endl;
-    std::cout << " --skip-discontinuous skip PDB with with discontinuous residues (only batch compression)" << std::endl;
-    std::cout << " --check              check FCZ before and skip entries with error (only for batch decompression)" << std::endl;
-    std::cout << " --plddt              extract pLDDT score (only for extraction mode)" << std::endl;
-    std::cout << " --fasta              extract amino acid sequence (only for extraction mode)" << std::endl;
-    std::cout << " --no-merge           do not merge output files (only for extraction mode)" << std::endl;
-    std::cout << " --time               measure time for compression/decompression" << std::endl;
+    std::cout << " -h, --help               print this help message" << std::endl;
+    std::cout << " -v, --version            print version" << std::endl;
+    std::cout << " -t, --threads            threads for (de)compression of folders/tar files [default=1]" << std::endl;
+    std::cout << " -r, --recursive          recursively look for files in directory [default=0]" << std::endl;
+    std::cout << " -f, --file               input is a list of files [default=0]" << std::endl;
+    std::cout << " -a, --alt                use alternative atom order [default=false]" << std::endl;
+    std::cout << " -b, --break              interval size to save absolute atom coordinates [default=" << anchor_residue_threshold << "]" << std::endl;
+    std::cout << " -z, --tar                save as tar file [default=false]" << std::endl;
+    std::cout << " -d, --db                 save as database [default=false]" << std::endl;
+    std::cout << " -y, --overwrite          overwrite existing files [default=false]" << std::endl;
+    std::cout << " -l, --id-list            a file of id list to be processed (only for database input)" << std::endl;
+    std::cout << " --skip-discontinuous     skip PDB with with discontinuous residues (only batch compression)" << std::endl;
+    std::cout << " --check                  check FCZ before and skip entries with error (only for batch decompression)" << std::endl;
+    std::cout << " --plddt                  extract pLDDT score (only for extraction mode)" << std::endl;
+    std::cout << " -p, --plddt-digits       extract pLDDT score with specified number of digits (only for extraction mode)" << std::endl;
+    std::cout << "                          - 1: single digit (fasta-like format), 2: 2-digit(00-99; tsv), 3: 3-digit, 4: 4-digit (max)" << std::endl;
+    std::cout << " --fasta, --amino-acid    extract amino acid sequence (only for extraction mode)" << std::endl;
+    std::cout << " --no-merge               do not merge output files (only for extraction mode)" << std::endl;
+    std::cout << " --use-title              use TITLE as the output file name (only for extraction mode)" << std::endl;
+    std::cout << " --time                   measure time for compression/decompression" << std::endl;
     return 0;
 }
 
@@ -158,28 +163,31 @@ int main(int argc, char* const *argv) {
 
     // Define command line options
     static struct option long_options[] = {
-            {"help",          no_argument,          0, 'h'},
-            {"alt",           no_argument,          0, 'a'},
-            {"tar",           no_argument,          0, 'z'},
-            {"recursive",     no_argument,          0, 'r'},
-            {"file",          no_argument,          0, 'f'},
-            {"plddt",         no_argument,  &ext_mode,  0 },
-            {"fasta",         no_argument,  &ext_mode,  1 },
-            {"no-merge",      no_argument, &ext_merge,  0 },
-            {"overwrite",     no_argument, &overwrite,  1 },
-            {"time",          no_argument, &measure_time, 1 },
-            {"skip-discontinuous", no_argument, &skip_discontinuous, 1 },
-            {"check",         no_argument, &check_before_decompression, 1 },
-            {"db",            no_argument,          0, 'd'},
-            {"version",       no_argument,          0, 'v'},
-            {"threads", required_argument,          0, 't'},
-            {"break",   required_argument,          0, 'b'},
-            {"id-list", required_argument,          0, 'l'},
-            {0,                         0,          0,  0 }
+            {"help",               no_argument,                           0, 'h'},
+            {"alt",                no_argument,                           0, 'a'},
+            {"tar",                no_argument,                           0, 'z'},
+            {"recursive",          no_argument,                           0, 'r'},
+            {"file",               no_argument,                           0, 'f'},
+            {"plddt",              no_argument,                   &ext_mode,  0 },
+            {"fasta",              no_argument,                   &ext_mode,  1 },
+            {"amino-acid",         no_argument,                   &ext_mode,  1 },
+            {"no-merge",           no_argument,                  &ext_merge,  0 },
+            {"overwrite",          no_argument,                  &overwrite,  1 },
+            {"time",               no_argument,               &measure_time,  1 },
+            {"skip-discontinuous", no_argument,         &skip_discontinuous,  1 },
+            {"check",              no_argument, &check_before_decompression,  1 },
+            {"use-title",          no_argument,              &ext_use_title,  1 },
+            {"db",                 no_argument,                           0, 'd'},
+            {"version",            no_argument,                           0, 'v'},
+            {"threads",      required_argument,                           0, 't'},
+            {"break",        required_argument,                           0, 'b'},
+            {"id-list",      required_argument,                           0, 'l'},
+            {"plddt-digits", required_argument,                           0, 'p'},
+            {0,                              0,                           0,  0 }
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hadzrfyvt:b:l:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hadzrfyvt:b:l:p:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -211,6 +219,9 @@ int main(int argc, char* const *argv) {
             case 'd':
                 db_output = 1;
                 break;
+            case 'p':
+                ext_plddt_digits = atoi(optarg);
+                break;
             case 'v':
                 return print_version();
             case '?':
@@ -218,7 +229,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hadzrfyt:b:l:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hadzrfyt:b:l:p:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -253,6 +264,9 @@ int main(int argc, char* const *argv) {
         mayHaveOutput = true;
         if (ext_mode == 0){
             outputSuffix = "plddt";
+            if (ext_plddt_digits != 1) {
+                outputSuffix = "plddt.tsv";
+            }
         } else if (ext_mode == 1) {
             outputSuffix = "fasta";
         }
@@ -750,6 +764,8 @@ int main(int argc, char* const *argv) {
                 std::istringstream input(std::string(dataBuffer, size));
                 Foldcomp compRes;
                 int flag = compRes.read(input);
+                std::string strName(name);
+                compRes.strTitle = ext_use_title ? compRes.strTitle : strName;
                 if (flag != 0) {
                     if (flag == -1) {
                         std::cerr << "[Error] File is not a valid fcz file" << std::endl;
@@ -761,7 +777,7 @@ int main(int argc, char* const *argv) {
                     return false;
                 }
                 std::string data;
-                compRes.extract(data, ext_mode);
+                compRes.extract(data, ext_mode, ext_plddt_digits);
                 std::string base = baseName(name);
                 std::pair<std::string, std::string> outputParts = getFileParts(base);
                 std::string outputFile;
@@ -778,11 +794,19 @@ int main(int argc, char* const *argv) {
                 if (isMergedOutput) {
 #pragma omp critical
                     {
-                        compRes.writeFASTALike(default_out, data);
+                        if (ext_mode == 0 && ext_plddt_digits > 1) {
+                            compRes.writeTSV(default_out, data);
+                        } else {
+                            compRes.writeFASTALike(default_out, data);
+                        }
                     }
                 } else if (db_output) {
                     std::ostringstream oss;
-                    compRes.writeFASTALike(oss, data);
+                    if (ext_mode == 0 && ext_plddt_digits > 1) {
+                        compRes.writeTSV(oss, data);
+                    } else {
+                        compRes.writeFASTALike(oss, data);
+                    }
                     oss << '\0';
                     std::string os = oss.str();
 #pragma omp critical
@@ -792,7 +816,11 @@ int main(int argc, char* const *argv) {
                     }
                 } else if (save_as_tar) {
                     std::ostringstream oss;
-                    compRes.writeFASTALike(oss, data);
+                    if (ext_mode == 0 && ext_plddt_digits > 1) {
+                        compRes.writeTSV(oss, data);
+                    } else {
+                        compRes.writeFASTALike(oss, data);
+                    }
 #pragma omp critical
                     {
                         std::string os = oss.str();
@@ -805,7 +833,11 @@ int main(int argc, char* const *argv) {
                         std::cerr << "[Error] Could not open file " << outputFile << std::endl;
                         return false;
                     }
-                    compRes.writeFASTALike(output, data);
+                    if (ext_mode == 0 && ext_plddt_digits > 1) {
+                        compRes.writeTSV(output, data);
+                    } else {
+                        compRes.writeFASTALike(output, data);
+                    }
                 }
 
                 return true;

@@ -345,7 +345,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode) {
     char *entry[3];
     ssize_t pos = 0;
     char* start = (char *) data;
-    size_t i = 0;
+    // size_t i = 0;
     while (pos < size) {
         const size_t columns = getWordsOfLine(data, entry, 3);
         if (columns < 3) {
@@ -356,7 +356,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode) {
         lookup.emplace_back(name, key);
         data = skipLine(data);
         pos = data - start;
-        i++;
+        // i++;
     }
     if (sortMode == SORT_BY_FIRST) {
         std::stable_sort(lookup.begin(), lookup.end(), sort_by_first());

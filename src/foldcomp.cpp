@@ -7,8 +7,8 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: Mon Apr 03 2023
- * Modified By: Hyunbin Kim
+ * Last Modified: 2024-08-08 19:43:31
+ * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
@@ -1230,6 +1230,12 @@ int Foldcomp::writeFASTALike(std::ostream& os, const std::string& data) {
     return 0;
 }
 
+int Foldcomp::writeTSV(std::ostream& os, const std::string& data) {
+    // Write title
+    os << this->strTitle << "\t" << this->nResidue << "\t" << data << "\n";
+    return 0;
+}   
+
 int Foldcomp::writeTorsionAngles(std::string filename) {
     int flag = 0;
     std::ofstream outfile(filename, std::ios::out);
@@ -1251,17 +1257,57 @@ int Foldcomp::writeTorsionAngles(std::string filename) {
  * @param type 0: plddt, 1: sequence
  * @return int
  */
-int Foldcomp::extract(std::string& data, int type) {
+int Foldcomp::extract(std::string& data, int type, int digits) {
     int flag = 0;
     if (type == 0) {
         // Extract temperature factors
         this->continuizeTempFactors();
-        data.reserve(this->tempFactors.size());
+        if (digits < 1) {
+            digits = 1;
+        } else if (digits > 4) {
+            digits = 4;
+        }
+        // Reserve string size
+        int reserving;
+        if (digits == 1) {
+            reserving = this->tempFactors.size();
+        } else if (digits == 2) {
+            // 2 digits, comma separated
+            reserving = this->tempFactors.size() * 3;
+        } else if (digits == 3) {
+            // 3 digits, one decimal place, comma separated
+            reserving = this->tempFactors.size() * 5;
+        } else {
+            // 4 digits, two decimal places, comma separated
+            reserving = this->tempFactors.size() * 6;
+        }
+        data.reserve(reserving);
+
         for (size_t i = 0; i < this->tempFactors.size(); i++) {
-            float clamped = (std::clamp(this->tempFactors[i], 0.0f, 100.0f) / 10.0f);
-            // TODO should this be rounded?
-            char tempFactor = (char)(clamped) + '0';
-            data.append(1, tempFactor);
+            float clamped = (std::clamp(this->tempFactors[i], 0.0f, 100.0f));
+            char digit1 = (char)(clamped / 10.0f) + '0';
+            char digit2 = (char)((int)clamped % 10) + '0';
+
+            data.append(1, digit1);
+            if (digits > 1) {
+                data.append(1, digit2);
+            }
+
+            if (digits >= 3) {
+                char digit3 = (char)((int)(clamped * 10.0f) % 10) + '0';
+                data.append(1, '.');
+                data.append(1, digit3);
+            }
+
+            if (digits == 4) {
+                char digit4 = (char)((int)(clamped * 100.0f) % 10) + '0';
+                data.append(1, digit4);
+            }
+
+            if (digits > 1 && i != this->tempFactors.size() - 1) {
+                // Add comma separator
+                data.append(1, ',');
+            }
         }
     } else if (type == 1) {
         // Extract sequence
