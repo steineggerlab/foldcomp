@@ -8,7 +8,7 @@
  *     This file contains main data structures for torsion angle compression and
  *     functions for handling them.
  * ---
- * Last Modified: 2022-11-18 19:01:03
+ * Last Modified: 2024-08-08 19:37:12
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -389,8 +389,9 @@ public:
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
     int writeFASTALike(std::ostream& os, const std::string& data);
+    int writeTSV(std::ostream& os, const std::string& data);
     int writeTorsionAngles(std::string filename);
-    int extract(std::string& data, int type);
+    int extract(std::string& data, int type, int digits);
 
     // temporary method for testing
     std::vector<float> checkTorsionReconstruction();
