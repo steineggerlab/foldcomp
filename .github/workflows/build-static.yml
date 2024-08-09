@@ -101,7 +101,8 @@ jobs:
 
   compile_macos:
     needs: sanitizer
-    runs-on: macos-latest
+    # macos-latest has been changed to arm64
+    runs-on: macos-latest-large
     steps:
     - uses: actions/checkout@v3
 
