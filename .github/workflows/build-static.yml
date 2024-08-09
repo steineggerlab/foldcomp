@@ -101,8 +101,7 @@ jobs:
 
   compile_macos:
     needs: sanitizer
-    # macos-latest has been changed to arm64
-    runs-on: macos-latest-large
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
 
@@ -111,20 +110,28 @@ jobs:
         brew install cmake gnu-tar libomp jq
         brew uninstall zlib -f --ignore-dependencies
 
-    - name: Download libomp.a for arm64
+    # - name: Download libomp.a for arm64
+    #   run: |
+    #     mkdir ${{github.workspace}}/libomp_arm64
+    #     BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.arm64_sonoma.url')
+    #     curl -s -L -H "Authorization: Bearer QQ==" -o libomp_arm64_sonoma.tar.gz $BOTTLE_URL
+    #     file libomp_arm64_sonoma.tar.gz
+    #     gtar --strip-components=2 -xzf libomp_arm64_sonoma.tar.gz -C ${{github.workspace}}/libomp_arm64
+
+    - name: Download libomp.a for x86_64
       run: |
-        mkdir ${{github.workspace}}/libomp_arm64
-        BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.arm64_sonoma.url')
-        curl -s -L -H "Authorization: Bearer QQ==" -o libomp_arm64_sonoma.tar.gz $BOTTLE_URL
-        file libomp_arm64_sonoma.tar.gz
-        gtar --strip-components=2 -xzf libomp_arm64_sonoma.tar.gz -C ${{github.workspace}}/libomp_arm64
+        mkdir ${{github.workspace}}/libomp_x86_64
+        BOTTLE_URL=$(brew info libomp --json | jq -r '.[].bottle.stable.files.sonoma.url')
+        curl -s -L -H "Authorization: Bearer QQ==" -o libomp_x86_64_sonoma.tar.gz $BOTTLE_URL
+        file libomp_x86_64_sonoma.tar.gz
+        gtar --strip-components=2 -xzf libomp_x86_64_sonoma.tar.gz -C ${{github.workspace}}/libomp_x86_64
 
     - name: Build x86_64 x86_64h arm64
       run: |
         for i in arm64 x86_64 x86_64h; do
           LIBOMP=$(brew --prefix libomp)
-          if [ "$i" = "arm64" ]; then
-            LIBOMP=${{github.workspace}}/libomp_arm64
+          if [ "$i" = "x86_64" ] || ["$i" = "x86_64h"]; then
+            LIBOMP=${{github.workspace}}/libomp_x86_64
           fi
           cmake -B build_${i} -DCMAKE_OSX_ARCHITECTURES=${i} \
             -DBUILD_SHARED_LIBS=OFF -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
