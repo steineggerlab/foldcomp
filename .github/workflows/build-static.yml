@@ -95,7 +95,7 @@ jobs:
         tar -czf foldcomp-linux-${{ matrix.arch.name }}.tar.gz -C ${{github.workspace}}/build foldcomp
 
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
 
@@ -148,7 +148,7 @@ jobs:
           -output "dist/foldcomp"
         tar -C dist -czf foldcomp-macos-universal.tar.gz foldcomp
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: foldcomp-macos-universal.tar.gz
 

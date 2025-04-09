@@ -26,7 +26,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build SDist
       run: pipx run build --sdist
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: dist/*.tar.gz
 
@@ -43,7 +43,7 @@ jobs:
     - uses: pypa/cibuildwheel@v2.10.2
       env:
         CIBW_ARCHS_MACOS: auto universal2
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: wheelhouse/*.whl
 
