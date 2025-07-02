@@ -14,7 +14,7 @@ static const int DB_READER_USE_LOOKUP = 1u << 2;
 static const int DB_READER_USE_LOOKUP_REVERSE = 1u << 3;
 
 
-void* make_reader(const char *data_name, const char *index_name, int32_t data_mode);
+void* make_reader(const char *data_name, const char *index_name, int32_t data_mode, int32_t no_sort);
 void free_reader(void *reader);
 
 int64_t reader_get_id(void *reader, uint32_t key);
