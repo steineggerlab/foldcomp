@@ -257,22 +257,23 @@ public:
                 }
             }
         } else { // process only entries in user_ids
-            if (id_mode == 0) {
+            if constexpr (std::is_same<IdType, int64_t>::value) {
 #pragma omp for
                 for (size_t i = 0; i < user_ids.size(); i++) {
                     int64_t id = user_ids[i]; 
+                    std::string id_str = std::to_string(id);
                     if (id == -1) {
                         // NOT found
                         std::cerr << "[Warning] " << user_ids[i] << " not found in database." << std::endl;
                         continue;
                     }
-                    if (!func(user_ids[i].c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
+                    if (!func(id_str.c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
                         std::cerr << "[Error] processing db entry " << user_ids[i] << " failed." << std::endl;
                         continue;
                     }
                 }
             }
-            else {
+            else if constexpr (std::is_same<IdType, std::string>::value) {
 #pragma omp for
                 for (size_t i = 0; i < user_ids.size(); i++) {
                     uint32_t key = reader_lookup_entry(handle, user_ids[i].c_str());
@@ -304,11 +305,11 @@ private:
         }
         std::ifstream infile(file);
         std::string line;
-        if constexpr (id_mode == 0 && std::is_same<IdType, int64_t>::value) {
+        if constexpr (std::is_same<IdType, int64_t>::value) {
             while (std::getline(infile, line)) {
                 user_ids.push_back(std::stoi(line));
             }
-        } else if (id_mode == 1 && std::is_same<IdType, std::string>::value) {
+        } else if (std::is_same<IdType, std::string>::value) {
             while (std::getline(infile, line)) {
                 user_ids.push_back(line);
             }
