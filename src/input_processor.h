@@ -199,10 +199,6 @@ private:
 
 template<typename IdType>
 class DatabaseProcessor : public Processor {
-    static_assert(
-        std::is_same<IdType, std::string>::value || std::is_same<IdType, int64_t>::value, 
-        "IdType must be std::string or int64_t"
-    );
 public:
     DatabaseProcessor(const std::string& input) {
         std::string index = input + ".index";
@@ -257,10 +253,11 @@ public:
                 }
             }
         } else { // process only entries in user_ids
-            if constexpr (std::is_same<IdType, int64_t>::value) {
+            if constexpr (std::is_same<IdType, uint32_t>::value) {
 #pragma omp for
                 for (size_t i = 0; i < user_ids.size(); i++) {
-                    int64_t id = user_ids[i]; 
+                    uint32_t key = user_ids[i]; 
+                    int64_t id = reader_get_id(handle, key);
                     std::string id_str = std::to_string(id);
                     if (id == -1) {
                         // NOT found
@@ -305,7 +302,7 @@ private:
         }
         std::ifstream infile(file);
         std::string line;
-        if constexpr (std::is_same<IdType, int64_t>::value) {
+        if constexpr (std::is_same<IdType, uint32_t>::value) {
             while (std::getline(infile, line)) {
                 user_ids.push_back(std::stoi(line));
             }
