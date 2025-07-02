@@ -83,6 +83,7 @@ int print_usage(void) {
     std::cout << " -d, --db                 save as database [default=false]" << std::endl;
     std::cout << " -y, --overwrite          overwrite existing files [default=false]" << std::endl;
     std::cout << " -l, --id-list            a file of id list to be processed (only for database input)" << std::endl;
+    std::cout << " -m, --id-mode            id mode for database input. 0: database keys, 1: names (.lookup) [default=1]" << std::endl;
     std::cout << " --skip-discontinuous     skip PDB with with discontinuous residues (only batch compression)" << std::endl;
     std::cout << " --check                  check FCZ before and skip entries with error (only for batch decompression)" << std::endl;
     std::cout << " --plddt                  extract pLDDT score (only for extraction mode)" << std::endl;
@@ -150,6 +151,7 @@ int main(int argc, char* const *argv) {
     int measure_time = 0;
     int skip_discontinuous = 0;
     int check_before_decompression = 0;
+    int id_mode = 1;
     std::string user_id_list = "";
 
     // Mode - non-optional argument
@@ -182,6 +184,7 @@ int main(int argc, char* const *argv) {
             {"threads",      required_argument,                           0, 't'},
             {"break",        required_argument,                           0, 'b'},
             {"id-list",      required_argument,                           0, 'l'},
+            {"id-mode",      required_argument,                           0, 'm'},
             {"plddt-digits", required_argument,                           0, 'p'},
             {0,                              0,                           0,  0 }
     };
@@ -215,6 +218,13 @@ int main(int argc, char* const *argv) {
                 break;
             case 'l':
                 user_id_list = std::string(optarg);
+                break;
+            case 'm':
+                id_mode = atoi(optarg);
+                if (id_mode != 0 && id_mode != 1) {
+                    std::cerr << "[Error] Invalid id mode. Please use 0 or 1." << std::endl;
+                    return print_usage();
+                }
                 break;
             case 'd':
                 db_output = 1;
@@ -399,10 +409,11 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_list);
+                        // Only support id mode 1
+                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = new DatabaseProcessor<std::string>(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -571,10 +582,14 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_list);
+                        if (id_mode == 1) {
+                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                        } else if (id_mode == 0) {
+                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
+                        }
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = new DatabaseProcessor<std::string>(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -737,10 +752,14 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_list);
+                        if (id_mode == 1) {
+                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                        } else if (id_mode == 0) {
+                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
+                        }
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = new DatabaseProcessor<std::string>(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -869,10 +888,14 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_list);
+                        if (id_mode == 1) {
+                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                        } else if (id_mode == 0) {
+                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
+                        }
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = new DatabaseProcessor<std::string>(input);
                     }
                 }
 #ifdef HAVE_GCS
