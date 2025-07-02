@@ -584,8 +584,8 @@ int main(int argc, char* const *argv) {
                     if (user_id_list.size() > 0) {
                         if (id_mode == 1) {
                             processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
-                        } else if (id_mode == 0) {
-                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
+                        } else {
+                            processor = new DatabaseProcessor<uint32_t>(input, user_id_list, id_mode);
                         }
                     }
                     else {
@@ -752,11 +752,7 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        if (id_mode == 1) {
-                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
-                        } else if (id_mode == 0) {
-                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
-                        }
+                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
                     }
                     else {
                         processor = new DatabaseProcessor<std::string>(input);
@@ -888,11 +884,7 @@ int main(int argc, char* const *argv) {
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_list.size() > 0) {
-                        if (id_mode == 1) {
-                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
-                        } else if (id_mode == 0) {
-                            processor = new DatabaseProcessor<int64_t>(input, user_id_list, id_mode);
-                        }
+                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
                     }
                     else {
                         processor = new DatabaseProcessor<std::string>(input);
