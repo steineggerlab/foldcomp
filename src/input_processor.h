@@ -203,7 +203,7 @@ public:
     DatabaseProcessor(const std::string& input) {
         std::string index = input + ".index";
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE;
-        handle = make_reader(input.c_str(), index.c_str(), mode);
+        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
     };
 
     DatabaseProcessor(const std::string& input, std::string& user_id_file, int id_mode) {
@@ -213,14 +213,25 @@ public:
         if (id_mode == 0) {
             mode = DB_READER_USE_DATA;
         }
-        handle = make_reader(input.c_str(), index.c_str(), mode);
+        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
+        _read_id_list(user_id_file);
+    };
+    
+    DatabaseProcessor(const std::string& input, std::string& user_id_file, int id_mode, int no_sort) {
+        std::string index = input + ".index";
+        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
+        this->id_mode = id_mode;
+        if (id_mode == 0) {
+            mode = DB_READER_USE_DATA;
+        }
+        handle = make_reader(input.c_str(), index.c_str(), mode, no_sort);
         _read_id_list(user_id_file);
     };
 
     DatabaseProcessor(const std::string& input, const std::vector<IdType>& ids) {
         std::string index = input + ".index";
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
-        handle = make_reader(input.c_str(), index.c_str(), mode);
+        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
         user_ids = ids;
         id_mode = 1;
     };

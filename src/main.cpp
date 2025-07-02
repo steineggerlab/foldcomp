@@ -93,6 +93,7 @@ int print_usage(void) {
     std::cout << " --no-merge               do not merge output files (only for extraction mode)" << std::endl;
     std::cout << " --use-title              use TITLE as the output file name (only for extraction mode)" << std::endl;
     std::cout << " --time                   measure time for compression/decompression" << std::endl;
+    std::cout << " --no-sort                If the database is sorted by id, do not sort it [default=false]" << std::endl;
     return 0;
 }
 
@@ -152,6 +153,7 @@ int main(int argc, char* const *argv) {
     int skip_discontinuous = 0;
     int check_before_decompression = 0;
     int id_mode = 1;
+    int no_sort = 0;
     std::string user_id_list = "";
 
     // Mode - non-optional argument
@@ -186,6 +188,7 @@ int main(int argc, char* const *argv) {
             {"id-list",      required_argument,                           0, 'l'},
             {"id-mode",      required_argument,                           0, 'm'},
             {"plddt-digits", required_argument,                           0, 'p'},
+            {"no-sort",      no_argument,                          &no_sort,  1 },
             {0,                              0,                           0,  0 }
     };
 
@@ -585,7 +588,7 @@ int main(int argc, char* const *argv) {
                         if (id_mode == 1) {
                             processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
                         } else {
-                            processor = new DatabaseProcessor<uint32_t>(input, user_id_list, id_mode);
+                            processor = new DatabaseProcessor<uint32_t>(input, user_id_list, id_mode, no_sort);
                         }
                     }
                     else {

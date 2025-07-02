@@ -43,7 +43,8 @@ typedef struct DBReader_s DBReader;
 
 enum {
     SORT_BY_FIRST = 0,
-    SORT_BY_SECOND = 1
+    SORT_BY_SECOND = 1,
+    NO_SORT = 2
 };
 
 ssize_t count_lines(char *data, ssize_t size);
@@ -57,7 +58,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode);
 DBReader* load_cache(const char *name);
 bool save_cache(DBReader *reader, const char *name);
 
-void* make_reader(const char *data_name, const char *index_name, int32_t data_mode) {
+void* make_reader(const char *data_name, const char *index_name, int32_t data_mode, int32_t no_sort) {
     char *data = NULL;
     ssize_t data_size = 0;
     if (data_mode & DB_READER_USE_DATA) {
@@ -105,7 +106,9 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
     }
     file_unmap(index_data, (size_t)index_size);
     fclose(file);
-    std::sort(reader->index, reader->index + reader->size, compare_by_id());
+    if (no_sort == 0) {
+        std::sort(reader->index, reader->index + reader->size, compare_by_id());
+    }
 
     reader->lookup = NULL;
     if (data_mode & (DB_READER_USE_LOOKUP) || (data_mode & DB_READER_USE_LOOKUP_REVERSE)) {
@@ -126,6 +129,8 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
             int sortMode = SORT_BY_FIRST;
             if (data_mode & DB_READER_USE_LOOKUP_REVERSE) {
                 sortMode = SORT_BY_SECOND;
+            } else if (no_sort) {
+                sortMode = NO_SORT;
             }
             read_lookup(*(reader->lookup), lookup_data, lookup_size, sortMode);
             file_unmap(lookup_data, lookup_size);
@@ -360,7 +365,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode) {
     }
     if (sortMode == SORT_BY_FIRST) {
         std::stable_sort(lookup.begin(), lookup.end(), sort_by_first());
-    } else {
+    } else if (sortMode == SORT_BY_SECOND) {
         std::stable_sort(lookup.begin(), lookup.end(), sort_by_second());
     }
     return true;
