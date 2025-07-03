@@ -28,6 +28,7 @@ jobs:
       run: pipx run build --sdist
     - uses: actions/upload-artifact@v4
       with:
+        name: sdist
         path: dist/*.tar.gz
 
   build_wheels:
@@ -45,6 +46,7 @@ jobs:
         CIBW_ARCHS_MACOS: auto universal2
     - uses: actions/upload-artifact@v4
       with:
+        name: wheels-${{ matrix.os }}
         path: wheelhouse/*.whl
 
   upload_all:
@@ -54,7 +56,6 @@ jobs:
     steps:
     - uses: actions/download-artifact@v3
       with:
-        name: artifact
         path: dist
 
     - uses: pypa/gh-action-pypi-publish@v1.5.0

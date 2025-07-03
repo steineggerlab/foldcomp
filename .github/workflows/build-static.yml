@@ -97,6 +97,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
         path: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
 
   compile_macos:
@@ -150,6 +151,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-macos-universal.tar.gz
         path: foldcomp-macos-universal.tar.gz
 
   compile_windows:
@@ -176,6 +178,7 @@ jobs:
         tar.exe -C build -acvf foldcomp-windows-x64.zip foldcomp.exe libomp.dll
     - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-windows-x64.zip
         path: foldcomp-windows-x64.zip
 
   upload_all:
