@@ -5,7 +5,10 @@ import os
 
 async def get_size(client, url):
     response = await client.head(url=url)
-    return int(response.headers["Content-Length"])
+    if response.status_code != 200:
+        return int(response.headers["Content-Length"])
+    else:
+        return -1
 
 
 async def download_range(client, url, start, end, output, mode):
@@ -33,6 +36,9 @@ async def download_range(client, url, start, end, output, mode):
 async def download(url, output, chunks=16):
     async with httpx.AsyncClient() as client:
         file_size = await get_size(client, url)
+
+        if file_size == -1:
+            return
 
         # check that file is not already downloaded
         if os.path.exists(output) and os.path.getsize(output) == file_size:
