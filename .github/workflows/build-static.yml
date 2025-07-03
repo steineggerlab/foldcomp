@@ -188,8 +188,8 @@ jobs:
     steps:
     - uses: actions/download-artifact@v4
       with:
-        name: artifact
         path: .
+        merge-multiple: true
 
     - name: Create private key for upload
       run: |
