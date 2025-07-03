@@ -52,7 +52,7 @@ jobs:
         arch: [ {name: 'arm64', prefix: 'aarch64-linux-gnu-'}, {name: 'x86_64', prefix: ''} ]
       fail-fast: false
     needs: sanitizer
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
@@ -68,14 +68,14 @@ jobs:
         sudo apt install -y crossbuild-essential-${{ matrix.arch.name }} gcc-10-aarch64-linux-gnu  g++-10-aarch64-linux-gnu
         DIST=$(lsb_release -cs)
         cat << HEREDOC | sudo tee /etc/apt/sources.list
-        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal main universe multiverse
-        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-updates main universe multiverse
-        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-backports main universe multiverse
-        deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ focal-security main universe multiverse
-        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal main  universe multiverse
-        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-updates main universe multiverse
-        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-backports main universe multiverse
-        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ focal-security main universe multiverse
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ ${DIST} main universe multiverse
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ ${DIST}-updates main universe multiverse
+        deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ ${DIST}-backports main universe multiverse
+        deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ ${DIST}-security main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ ${DIST} main  universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ ${DIST}-updates main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ ${DIST}-backports main universe multiverse
+        deb [arch=${{ matrix.arch.name }}] http://ports.ubuntu.com/ubuntu-ports/ ${DIST}-security main universe multiverse
         HEREDOC
         sudo rm -rf /etc/apt/sources.list.d/*
         sudo dpkg --add-architecture ${{ matrix.arch.name }}
@@ -97,6 +97,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
         path: foldcomp-linux-${{ matrix.arch.name }}.tar.gz
 
   compile_macos:
@@ -150,6 +151,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-macos-universal.tar.gz
         path: foldcomp-macos-universal.tar.gz
 
   compile_windows:
@@ -174,8 +176,9 @@ jobs:
         cmake --build build --config Release --parallel %NUMBER_OF_PROCESSORS%
         copy /Y "%VCINSTALLDIR%\Tools\Llvm\x64\bin\libomp.dll" build/libomp.dll
         tar.exe -C build -acvf foldcomp-windows-x64.zip foldcomp.exe libomp.dll
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
+        name: foldcomp-windows-x64.zip
         path: foldcomp-windows-x64.zip
 
   upload_all:
