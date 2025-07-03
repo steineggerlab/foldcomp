@@ -43,8 +43,7 @@ typedef struct DBReader_s DBReader;
 
 enum {
     SORT_BY_FIRST = 0,
-    SORT_BY_SECOND = 1,
-    NO_SORT = 2
+    SORT_BY_SECOND = 1
 };
 
 ssize_t count_lines(char *data, ssize_t size);
@@ -58,7 +57,7 @@ bool read_lookup(lookup_entry &lookup, char *data, ssize_t size, int sortMode);
 DBReader* load_cache(const char *name);
 bool save_cache(DBReader *reader, const char *name);
 
-void* make_reader(const char *data_name, const char *index_name, int32_t data_mode, int32_t no_sort) {
+void* make_reader(const char *data_name, const char *index_name, int32_t data_mode) {
     char *data = NULL;
     ssize_t data_size = 0;
     if (data_mode & DB_READER_USE_DATA) {
@@ -70,21 +69,22 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
         fclose(file);
     }
 
-    // char cache_name[FILENAME_MAX];
-    // if ((data_mode & DB_READER_NO_CACHE) == 0) {
-    //     sprintf(cache_name, "%s.cache.%d", index_name, data_mode);
+    DBReader* reader = NULL;
+    std::string cache_name;
+    if (data_mode & DB_READER_CACHE) {
+        cache_name = std::string(index_name) + ".cache";
 
-    //     struct stat st;
-    //     if (stat(cache_name, &st) == 0) {
-    //         DBReader* reader = load_cache(cache_name);
-    //         reader->data = data;
-    //         reader->data_size = data_size;
-    //         reader->dataMode = data_mode;
-    //         reader->cache = true;
-    //         return (void*) reader;
-    //     }
-    // }
-
+        struct stat st;
+        if (stat(cache_name.c_str(), &st) == 0) {
+            reader = load_cache(cache_name.c_str());
+            reader->lookup = NULL;
+            reader->data = data;
+            reader->data_size = data_size;
+            reader->dataMode = data_mode;
+            reader->cache = true;
+            return (void*) reader;
+        }
+    }
 
     FILE *file = fopen(index_name, "rb");
     if (file == NULL) {
@@ -93,23 +93,21 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
 
     ssize_t index_size;
     char* index_data = file_map(file, &index_size, 0);
-    DBReader* reader = (DBReader*)malloc(sizeof(DBReader));
+    reader = (DBReader*)malloc(sizeof(DBReader));
     reader->size = count_lines(index_data, index_size);
-	reader->index = (reader_index*)malloc(sizeof(reader_index) * reader->size);
-	reader->data = data;
-	reader->data_size = data_size;
-	reader->dataMode = data_mode;
-	reader->cache = false;
-	if (!read_index(reader, index_data)) {
+    reader->index = (reader_index*)malloc(sizeof(reader_index) * reader->size);
+    reader->data = data;
+    reader->data_size = data_size;
+    reader->dataMode = data_mode;
+    reader->cache = false;
+    if (!read_index(reader, index_data)) {
         free_reader(reader);
         return NULL;
     }
     file_unmap(index_data, (size_t)index_size);
     fclose(file);
-    if (no_sort == 0) {
-        std::sort(reader->index, reader->index + reader->size, compare_by_id());
-    }
-
+    std::sort(reader->index, reader->index + reader->size, compare_by_id());
+    
     reader->lookup = NULL;
     if (data_mode & (DB_READER_USE_LOOKUP) || (data_mode & DB_READER_USE_LOOKUP_REVERSE)) {
         std::string lookup_name(data_name);
@@ -129,8 +127,6 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
             int sortMode = SORT_BY_FIRST;
             if (data_mode & DB_READER_USE_LOOKUP_REVERSE) {
                 sortMode = SORT_BY_SECOND;
-            } else if (no_sort) {
-                sortMode = NO_SORT;
             }
             read_lookup(*(reader->lookup), lookup_data, lookup_size, sortMode);
             file_unmap(lookup_data, lookup_size);
@@ -138,9 +134,9 @@ void* make_reader(const char *data_name, const char *index_name, int32_t data_mo
         }
     }
 
-    // if ((data_mode & DB_READER_NO_CACHE) == 0) {
-    //     save_cache(reader, cache_name);
-    // }
+    if (data_mode & DB_READER_CACHE) {
+        save_cache(reader, cache_name.c_str());
+    }
 
     return (void *)reader;
 }
