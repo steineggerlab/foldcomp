@@ -174,7 +174,7 @@ jobs:
         cmake --build build --config Release --parallel %NUMBER_OF_PROCESSORS%
         copy /Y "%VCINSTALLDIR%\Tools\Llvm\x64\bin\libomp.dll" build/libomp.dll
         tar.exe -C build -acvf foldcomp-windows-x64.zip foldcomp.exe libomp.dll
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         path: foldcomp-windows-x64.zip
 
