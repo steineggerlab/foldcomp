@@ -197,43 +197,35 @@ private:
     mtar_t tar;
 };
 
-template<typename IdType>
 class DatabaseProcessor : public Processor {
 public:
     DatabaseProcessor(const std::string& input) {
         std::string index = input + ".index";
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP_REVERSE;
-        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
-    };
-
-    DatabaseProcessor(const std::string& input, std::string& user_id_file, int id_mode) {
-        std::string index = input + ".index";
-        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
-        this->id_mode = id_mode;
-        if (id_mode == 0) {
-            mode = DB_READER_USE_DATA;
-        }
-        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
-        _read_id_list(user_id_file);
+        handle = make_reader(input.c_str(), index.c_str(), mode);
+        id_as_name = 1;
     };
     
-    DatabaseProcessor(const std::string& input, std::string& user_id_file, int id_mode, int no_sort) {
+    DatabaseProcessor(const std::string& input, std::string& user_id_file, int id_mode, int use_cache) {
         std::string index = input + ".index";
-        int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
-        this->id_mode = id_mode;
-        if (id_mode == 0) {
-            mode = DB_READER_USE_DATA;
+        id_as_name = id_mode;
+        int mode = DB_READER_USE_DATA;
+        if (use_cache) {
+            mode |= DB_READER_CACHE;
+        } else if (id_as_name) {
+            mode |= DB_READER_USE_LOOKUP;
         }
-        handle = make_reader(input.c_str(), index.c_str(), mode, no_sort);
+        
+        handle = make_reader(input.c_str(), index.c_str(), mode);
         _read_id_list(user_id_file);
     };
 
-    DatabaseProcessor(const std::string& input, const std::vector<IdType>& ids) {
+    DatabaseProcessor(const std::string& input, const std::vector<std::string>& ids, int id_mode) {
         std::string index = input + ".index";
         int mode = DB_READER_USE_DATA | DB_READER_USE_LOOKUP;
-        handle = make_reader(input.c_str(), index.c_str(), mode, 0);
+        handle = make_reader(input.c_str(), index.c_str(), mode);
         user_ids = ids;
-        id_mode = 1;
+        id_as_name = id_mode;
     };
 
     ~DatabaseProcessor() {
@@ -264,37 +256,24 @@ public:
                 }
             }
         } else { // process only entries in user_ids
-            if constexpr (std::is_same<IdType, uint32_t>::value) {
 #pragma omp for
-                for (size_t i = 0; i < user_ids.size(); i++) {
-                    uint32_t key = user_ids[i]; 
-                    int64_t id = reader_get_id(handle, key);
-                    std::string id_str = std::to_string(id);
-                    if (id == -1) {
-                        // NOT found
-                        std::cerr << "[Warning] " << user_ids[i] << " not found in database." << std::endl;
-                        continue;
-                    }
-                    if (!func(id_str.c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
-                        std::cerr << "[Error] processing db entry " << user_ids[i] << " failed." << std::endl;
-                        continue;
-                    }
+            for (size_t i = 0; i < user_ids.size(); i++) {
+                uint32_t key;
+
+                if (!id_as_name) {
+                    key = std::stoi(user_ids[i]);
+                } else {
+                    key = reader_lookup_entry(handle, user_ids[i].c_str());
                 }
-            }
-            else if constexpr (std::is_same<IdType, std::string>::value) {
-#pragma omp for
-                for (size_t i = 0; i < user_ids.size(); i++) {
-                    uint32_t key = reader_lookup_entry(handle, user_ids[i].c_str());
-                    int64_t id = reader_get_id(handle, key);
-                    if (id == -1 || key == UINT32_MAX) {
-                        // NOT found
-                        std::cerr << "[Warning] " << user_ids[i] << " not found in database." << std::endl;
-                        continue;
-                    }
-                    if (!func(user_ids[i].c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
-                        std::cerr << "[Error] processing db entry " << user_ids[i] << " failed." << std::endl;
-                        continue;
-                    }
+                int64_t id = reader_get_id(handle, key);
+                if (id == -1 || key == UINT32_MAX) {
+                    // NOT found
+                    std::cerr << "[Warning] " << user_ids[i] << " not found in database." << std::endl;
+                    continue;
+                }
+                if (!func(user_ids[i].c_str(), reader_get_data(handle, id), reader_get_length(handle, id))) {
+                    std::cerr << "[Error] processing db entry " << user_ids[i] << " failed." << std::endl;
+                    continue;
                 }
             }
         }
@@ -302,8 +281,8 @@ public:
 
 private:
     void* handle;
-    std::vector<IdType> user_ids;
-    int id_mode;
+    std::vector<std::string> user_ids;
+    int id_as_name;
 
     void _read_id_list(std::string& file) {
         // Check if file exists
@@ -313,16 +292,8 @@ private:
         }
         std::ifstream infile(file);
         std::string line;
-        if constexpr (std::is_same<IdType, uint32_t>::value) {
-            while (std::getline(infile, line)) {
-                user_ids.push_back(std::stoi(line));
-            }
-        } else if (std::is_same<IdType, std::string>::value) {
-            while (std::getline(infile, line)) {
-                user_ids.push_back(line);
-            }
-        } else {
-            std::cerr << "[Error] Invalid id mode." << std::endl;
+        while (std::getline(infile, line)) {
+            user_ids.push_back(line);
         }
         infile.close();
     }

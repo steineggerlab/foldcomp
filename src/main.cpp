@@ -93,7 +93,7 @@ int print_usage(void) {
     std::cout << " --no-merge               do not merge output files (only for extraction mode)" << std::endl;
     std::cout << " --use-title              use TITLE as the output file name (only for extraction mode)" << std::endl;
     std::cout << " --time                   measure time for compression/decompression" << std::endl;
-    std::cout << " --no-sort                If the database is sorted by id, do not sort it [default=false]" << std::endl;
+    std::cout << " --use-cache              use cached index for database input [default=false]" << std::endl;
     return 0;
 }
 
@@ -153,8 +153,10 @@ int main(int argc, char* const *argv) {
     int skip_discontinuous = 0;
     int check_before_decompression = 0;
     int id_mode = 1;
-    int no_sort = 0;
-    std::string user_id_list = "";
+    int use_cache = 0;
+    std::string user_id_file = "";
+    std::vector<std::string> user_names;
+    std::vector<uint32_t> user_ids;
 
     // Mode - non-optional argument
     enum {
@@ -188,7 +190,7 @@ int main(int argc, char* const *argv) {
             {"id-list",      required_argument,                           0, 'l'},
             {"id-mode",      required_argument,                           0, 'm'},
             {"plddt-digits", required_argument,                           0, 'p'},
-            {"no-sort",      no_argument,                          &no_sort,  1 },
+            {"use-cache",      no_argument,                          &use_cache,  1 },
             {0,                              0,                           0,  0 }
     };
 
@@ -220,7 +222,7 @@ int main(int argc, char* const *argv) {
                 anchor_residue_threshold = atoi(optarg);
                 break;
             case 'l':
-                user_id_list = std::string(optarg);
+                user_id_file = std::string(optarg);
                 break;
             case 'm':
                 id_mode = atoi(optarg);
@@ -411,12 +413,11 @@ int main(int argc, char* const *argv) {
                     processor = new TarProcessor(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                    if (user_id_list.size() > 0) {
-                        // Only support id mode 1
-                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                    if (user_id_file.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor<std::string>(input);
+                        processor = new DatabaseProcessor(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -584,15 +585,11 @@ int main(int argc, char* const *argv) {
                     processor = new TarProcessor(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                    if (user_id_list.size() > 0) {
-                        if (id_mode == 1) {
-                            processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
-                        } else {
-                            processor = new DatabaseProcessor<uint32_t>(input, user_id_list, id_mode, no_sort);
-                        }
+                    if (user_id_file.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor<std::string>(input);
+                        processor = new DatabaseProcessor(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -754,11 +751,11 @@ int main(int argc, char* const *argv) {
                     processor = new TarProcessor(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                    if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                    if (user_id_file.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor<std::string>(input);
+                        processor = new DatabaseProcessor(input);
                     }
                 }
 #ifdef HAVE_GCS
@@ -886,11 +883,11 @@ int main(int argc, char* const *argv) {
                     processor = new TarProcessor(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
-                    if (user_id_list.size() > 0) {
-                        processor = new DatabaseProcessor<std::string>(input, user_id_list, id_mode);
+                    if (user_id_file.size() > 0) {
+                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor<std::string>(input);
+                        processor = new DatabaseProcessor(input);
                     }
                 }
 #ifdef HAVE_GCS
