@@ -6,7 +6,7 @@ import os
 async def get_size(client, url):
     response = await client.head(url=url)
     if response.status_code == 200:
-        return int(response.headers["Content-Length"])
+        return int(response.headers["content-length"])
     else:
         return -1
 
@@ -92,7 +92,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         asyncio.run(
             download(
-                f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
+                f"https://steineggerlab.s3.amazonaws.com/foldcomp/{db}{i}",
                 f"{db}{i}",
                 chunks=download_chunks,
             )
@@ -102,7 +102,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
 async def setup_async(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         await download(
-            f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
+            f"https://steineggerlab.s3.amazonaws.com/foldcomp/{db}{i}",
             f"{db}{i}",
             chunks=download_chunks,
         )
