@@ -2,11 +2,13 @@ name: Python
 
 on:
   push:
-    branches: [ "master", "dev" ]
-  pull_request:
-    branches: [ "master", "dev" ]
-  release:
-      types: [published]
+    branches: [ "dev" ]
+  # push:
+  #   branches: [ "master", "dev" ]
+  # pull_request:
+  #   branches: [ "master", "dev" ]
+  # release:
+  #     types: [published]
 
 jobs:
   lint:
@@ -53,13 +55,17 @@ jobs:
   upload_all:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
+    # if: github.event_name == 'release' && github.event.action == 'published'
     steps:
     - uses: actions/download-artifact@v4
       with:
         path: dist
+        merge-multiple: true
+    - run: |
+        ls -lah dist
+      name: List uploads before pypi
 
-    - uses: pypa/gh-action-pypi-publish@v1.12.4
-      with:
-        user: __token__
-        password: ${{ secrets.pypi_password }}
+    # - uses: pypa/gh-action-pypi-publish@v1.12.4
+    #   with:
+    #     user: __token__
+    #     password: ${{ secrets.pypi_password }}
