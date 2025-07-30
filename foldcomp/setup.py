@@ -6,7 +6,7 @@ import os
 async def get_size(client, url):
     response = await client.head(url=url)
     if response.status_code == 200:
-        return int(response.headers["Content-Length"])
+        return int(response.headers["content-length"])
     else:
         return -1
 

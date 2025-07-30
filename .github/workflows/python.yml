@@ -44,6 +44,7 @@ jobs:
     - uses: pypa/cibuildwheel@v3.1.2
       env:
         CIBW_ARCHS_MACOS: auto universal2
+        CIBW_SKIP: "cp314t-* pp314t-*"  # Skip Python 3.14t
     - uses: actions/upload-artifact@v4
       with:
         name: wheels-${{ matrix.os }}
