@@ -6,7 +6,7 @@ import os
 async def get_size(client, url):
     response = await client.head(url=url)
     if response.status_code == 200:
-        return int(response.headers["content-length"])
+        return int(response.headers["Content-Length"])
     else:
         return -1
 
@@ -34,9 +34,8 @@ async def download_range(client, url, start, end, output, mode):
 
 
 async def download(url, output, chunks=16):
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         file_size = await get_size(client, url)
-
         if file_size == -1:
             return
 
@@ -79,7 +78,7 @@ async def download(url, output, chunks=16):
 
 
 async def download_json(url):
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         response = await client.get(url)
         return response.json()
 
@@ -92,7 +91,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         asyncio.run(
             download(
-                f"https://steineggerlab.s3.amazonaws.com/foldcomp/{db}{i}",
+                f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
                 f"{db}{i}",
                 chunks=download_chunks,
             )
@@ -102,7 +101,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
 async def setup_async(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         await download(
-            f"https://steineggerlab.s3.amazonaws.com/foldcomp/{db}{i}",
+            f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
             f"{db}{i}",
             chunks=download_chunks,
         )
