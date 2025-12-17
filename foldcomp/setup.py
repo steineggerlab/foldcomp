@@ -91,7 +91,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         asyncio.run(
             download(
-                f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
+                f"https://opendata.mmseqs.org/foldcomp/{db}{i}",
                 f"{db}{i}",
                 chunks=download_chunks,
             )
@@ -101,7 +101,7 @@ def setup(db="afdb_swissprot", download_chunks=16):
 async def setup_async(db="afdb_swissprot", download_chunks=16):
     for i in ["", ".index", ".dbtype", ".lookup", ".source"]:
         await download(
-            f"https://foldcomp.steineggerlab.workers.dev/{db}{i}",
+            f"https://opendata.mmseqs.org/foldcomp/{db}{i}",
             f"{db}{i}",
             chunks=download_chunks,
         )
