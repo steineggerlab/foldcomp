@@ -7,7 +7,7 @@ Foldcomp compresses protein structures with torsion angles effectively. It compr
 
 Foldcomp efficient compressed format stores protein structures requiring only 13 bytes per residue, which reduces the required storage space by an order of magnitude compared to saving 3D coordinates directly. We achieve this reduction by encoding the torsion angles of the backbone as well as the side-chain angles in a compact binary file format (FCZ).
 
-> Foldcomp currently only supports compression of single chain PDB files
+> Foldcomp compression core is single-chain per FCZ chunk. Multi-chain or discontinuous inputs are split into multiple FCZ entries.
 <br clear="right"/>
 
 <p align="center">
@@ -57,7 +57,7 @@ foldcomp compress <pdb|cif> [<fcz>]
 foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]
 
 # Decompression
-foldcomp decompress <fcz|tar> [<pdb>]
+foldcomp decompress <fcz|tar> [<pdb|cif>]
 foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]
 
 # Decompressing a subset of Foldcomp database
@@ -94,6 +94,7 @@ foldcomp rmsd <pdb|cif> <pdb|cif>
  --fasta, --amino-acid    extract amino acid sequence (only for extraction mode)
  --no-merge               do not merge output files (only for extraction mode)
  --use-title              use TITLE as the output file name (only for extraction mode)
+ --output-format          output format for decompression: pdb|mmcif|cif [default=pdb]
  --time                   measure time for compression/decompression
 ```
 
@@ -137,7 +138,8 @@ with open("test/compressed.fcz", "rb") as fcz:
   fcz_binary = fcz.read()
 
   # Decompress
-  (name, pdb) = foldcomp.decompress(fcz_binary) # pdb_out[0]: file name, pdb_out[1]: pdb binary string
+  (name, pdb) = foldcomp.decompress(fcz_binary) # tuple[str, str] where second is decompressed structure text (PDB)
+  (name, cif) = foldcomp.decompress(fcz_binary, format="mmcif") # mmCIF text output
 
   # Save to a pdb file
   with open(name, "w") as pdb_file:
@@ -163,7 +165,26 @@ with foldcomp.open("test/example_db", ids=ids) as db:
       # save entries as seperate pdb files
       with open(name + ".pdb", "w") as pdb_file:
         pdb_file.write(pdb)
+
+# 03. Multi-chain/discontinuous handling in Python
+with open("test/multichain.pdb", "r") as f:
+  pdb_in = f.read()
+
+# Split into chain/fragments (CLI-compatible naming) and compress each chunk
+chunks = foldcomp.compress("multichain.pdb", pdb_in, split=True)  # list[(chunk_name, fcz_bytes)]
+
+# If a Foldcomp DB stores these chunks, you can reconstruct one whole structure text per lookup group
+with foldcomp.open("test/example_db", merge_fragments=True, format="mmcif") as db:
+  name, mmcif_text = db[0]
 ```
+
+### CLI format example
+```sh
+# Write mmCIF directly during decompression
+foldcomp decompress --output-format mmcif input.fcz output.cif
+```
+
+For tar/database outputs, parent directories in the output path are created automatically.
 
 ## Subsetting Databases
 If you are dealing with millions of entries, we recommend using `createsubdb` command
@@ -182,4 +203,3 @@ Please note that the IDs in afdb_uniprot_v4 are in the format `AF-A0A5S3Y9Q7-F1-
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
   <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
 </a>
-

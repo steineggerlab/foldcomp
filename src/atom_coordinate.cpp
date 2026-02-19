@@ -13,6 +13,8 @@
  */
 #include "atom_coordinate.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -217,6 +219,53 @@ void fast_ftoa(float n, char* s) {
     // }
 }
 
+static std::string sanitizeMMCIFBlockName(const std::string& title) {
+    std::string block = title;
+    if (block.empty()) {
+        block = "foldcomp";
+    }
+    std::transform(block.begin(), block.end(), block.begin(), [](unsigned char c) {
+        if (std::isalnum(c) || c == '_' || c == '-') {
+            return (char)c;
+        }
+        return '_';
+    });
+    return block.empty() ? "foldcomp" : block;
+}
+
+static void writeMMCIFValue(std::ostream& out, const std::string& value) {
+    if (value.empty()) {
+        out << ".";
+        return;
+    }
+    bool needs_quote = false;
+    for (char c : value) {
+        if (std::isspace((unsigned char)c) || c == '\'' || c == '"' || c == ';' || c == '#') {
+            needs_quote = true;
+            break;
+        }
+    }
+    if (!needs_quote) {
+        out << value;
+        return;
+    }
+    std::string escaped = value;
+    std::replace(escaped.begin(), escaped.end(), '\n', '_');
+    std::replace(escaped.begin(), escaped.end(), '\r', '_');
+    std::replace(escaped.begin(), escaped.end(), '\'', '_');
+    std::replace(escaped.begin(), escaped.end(), '"', '_');
+    out << "'" << escaped << "'";
+}
+
+static char inferElementSymbol(const std::string& atom_name) {
+    for (char c : atom_name) {
+        if (std::isalpha((unsigned char)c)) {
+            return (char)std::toupper((unsigned char)c);
+        }
+    }
+    return '?';
+}
+
 void writeAtomCoordinatesToPDB(
     std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_stream
 ) {
@@ -298,6 +347,93 @@ int writeAtomCoordinatesToPDBFile(
         return 1;
     }
     writeAtomCoordinatesToPDB(atoms, title, pdb_file);
+    return 0;
+}
+
+void writeAtomCoordinatesToMMCIF(
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, std::ostream& mmcif_stream
+) {
+    static const char* MMCIF_ATOM_SITE_HEADER =
+        "#\n"
+        "loop_\n"
+        "_atom_site.group_PDB\n"
+        "_atom_site.id\n"
+        "_atom_site.type_symbol\n"
+        "_atom_site.label_atom_id\n"
+        "_atom_site.label_alt_id\n"
+        "_atom_site.label_comp_id\n"
+        "_atom_site.label_asym_id\n"
+        "_atom_site.label_entity_id\n"
+        "_atom_site.label_seq_id\n"
+        "_atom_site.pdbx_PDB_ins_code\n"
+        "_atom_site.Cartn_x\n"
+        "_atom_site.Cartn_y\n"
+        "_atom_site.Cartn_z\n"
+        "_atom_site.occupancy\n"
+        "_atom_site.B_iso_or_equiv\n"
+        "_atom_site.pdbx_formal_charge\n"
+        "_atom_site.auth_seq_id\n"
+        "_atom_site.auth_comp_id\n"
+        "_atom_site.auth_asym_id\n"
+        "_atom_site.auth_atom_id\n"
+        "_atom_site.pdbx_PDB_model_num\n";
+
+    mmcif_stream << "data_" << sanitizeMMCIFBlockName(title) << "\n";
+    mmcif_stream << MMCIF_ATOM_SITE_HEADER;
+
+    char xbuf[16];
+    char ybuf[16];
+    char zbuf[16];
+    char occbuf[16];
+    char bbuf[16];
+    for (const AtomCoordinate& atom : atoms) {
+        const std::string chain = atom.chain.empty() ? "." : atom.chain;
+        const float occupancy = atom.occupancy > 0.0f ? atom.occupancy : 1.0f;
+        const char element = inferElementSymbol(atom.atom);
+        fast_ftoa<1000, 3>(atom.coordinate.x, xbuf);
+        fast_ftoa<1000, 3>(atom.coordinate.y, ybuf);
+        fast_ftoa<1000, 3>(atom.coordinate.z, zbuf);
+        fast_ftoa<100, 2>(occupancy, occbuf);
+        fast_ftoa<100, 2>(atom.tempFactor, bbuf);
+
+        mmcif_stream << "ATOM "
+                     << atom.atom_index << " "
+                     << element << " ";
+        writeMMCIFValue(mmcif_stream, atom.atom);
+        mmcif_stream << " . ";
+        writeMMCIFValue(mmcif_stream, atom.residue);
+        mmcif_stream << " ";
+        writeMMCIFValue(mmcif_stream, chain);
+        mmcif_stream << " "
+                     << "1 "
+                     << atom.residue_index << " "
+                     << "? "
+                     << xbuf << " "
+                     << ybuf << " "
+                     << zbuf << " "
+                     << occbuf << " "
+                     << bbuf << " "
+                     << "? "
+                     << atom.residue_index << " "
+                     ;
+        writeMMCIFValue(mmcif_stream, atom.residue);
+        mmcif_stream << " ";
+        writeMMCIFValue(mmcif_stream, chain);
+        mmcif_stream << " ";
+        writeMMCIFValue(mmcif_stream, atom.atom);
+        mmcif_stream << " 1\n";
+    }
+    mmcif_stream << "#\n";
+}
+
+int writeAtomCoordinatesToMMCIFFile(
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, const std::string& mmcif_path
+) {
+    std::ofstream mmcif_file(mmcif_path);
+    if (!mmcif_file) {
+        return 1;
+    }
+    writeAtomCoordinatesToMMCIF(atoms, title, mmcif_file);
     return 0;
 }
 

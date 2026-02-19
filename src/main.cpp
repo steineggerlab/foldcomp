@@ -29,10 +29,12 @@
 #include "input_processor.h"
 
 // Standard libraries
+#include <algorithm>
+#include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream> // IWYU pragma: keep
 #ifdef _WIN32
-#include <direct.h>
 #include "windows/getopt.h"
 #include "windows/dirent.h"
 #else
@@ -62,10 +64,37 @@ static int overwrite = 0;
 // version
 #define FOLDCOMP_VERSION "1.0.0"
 
+static bool ensureDirectoryExists(const std::string& dir_path) {
+    if (dir_path.empty()) {
+        return true;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(std::filesystem::path(dir_path), ec);
+    if (ec) {
+        std::cerr << "[Error] Could not create directory: " << dir_path << std::endl;
+        return false;
+    }
+    return true;
+}
+
+static bool ensureParentDirectoryExists(const std::string& file_path) {
+    std::filesystem::path parent = std::filesystem::path(file_path).parent_path();
+    if (parent.empty()) {
+        return true;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(parent, ec);
+    if (ec) {
+        std::cerr << "[Error] Could not create parent directory: " << parent.string() << std::endl;
+        return false;
+    }
+    return true;
+}
+
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
     std::cout << "       foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]" << std::endl;
-    std::cout << "       foldcomp decompress <fcz|tar> [<pdb>]" << std::endl;
+    std::cout << "       foldcomp decompress <fcz|tar> [<pdb|cif>]" << std::endl;
     std::cout << "       foldcomp decompress [-t number] <dir|tar(.gz)|db> [<dir|tar>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] <fcz> [<fasta>]" << std::endl;
     std::cout << "       foldcomp extract [--plddt|--amino-acid] [-t number] <dir|tar(.gz)|db> [<fasta_out>]" << std::endl;
@@ -92,6 +121,7 @@ int print_usage(void) {
     std::cout << " --fasta, --amino-acid    extract amino acid sequence (only for extraction mode)" << std::endl;
     std::cout << " --no-merge               do not merge output files (only for extraction mode)" << std::endl;
     std::cout << " --use-title              use TITLE as the output file name (only for extraction mode)" << std::endl;
+    std::cout << " --output-format          output format for decompression: pdb|mmcif|cif [default=pdb]" << std::endl;
     std::cout << " --time                   measure time for compression/decompression" << std::endl;
     std::cout << " --use-cache              use cached index for database input [default=false]" << std::endl;
     return 0;
@@ -154,6 +184,7 @@ int main(int argc, char* const *argv) {
     int check_before_decompression = 0;
     int id_mode = 1;
     int use_cache = 0;
+    std::string output_format = "pdb";
     std::string user_id_file = "";
     std::vector<std::string> user_names;
     std::vector<uint32_t> user_ids;
@@ -190,12 +221,13 @@ int main(int argc, char* const *argv) {
             {"id-list",      required_argument,                           0, 'l'},
             {"id-mode",      required_argument,                           0, 'm'},
             {"plddt-digits", required_argument,                           0, 'p'},
+            {"output-format", required_argument,                          0, 'x'},
             {"use-cache",      no_argument,                          &use_cache,  1 },
             {0,                              0,                           0,  0 }
     };
 
     // Parse command line options with getopt_long
-    int flag = getopt_long(argc, argv, "hadzrfyvt:b:l:p:", long_options, &option_index);
+    int flag = getopt_long(argc, argv, "hadzrfyvt:b:l:p:x:", long_options, &option_index);
     while (flag != -1) {
         switch (flag) {
             case 'h':
@@ -237,6 +269,20 @@ int main(int argc, char* const *argv) {
             case 'p':
                 ext_plddt_digits = atoi(optarg);
                 break;
+            case 'x': {
+                output_format = std::string(optarg);
+                std::transform(output_format.begin(), output_format.end(), output_format.begin(), [](unsigned char c) {
+                    return (char)std::tolower(c);
+                });
+                if (output_format == "mmcif") {
+                    output_format = "cif";
+                }
+                if (output_format != "pdb" && output_format != "cif") {
+                    std::cerr << "[Error] Invalid output format. Please use pdb, mmcif, or cif." << std::endl;
+                    return print_usage();
+                }
+                break;
+            }
             case 'v':
                 return print_version();
             case '?':
@@ -244,7 +290,7 @@ int main(int argc, char* const *argv) {
             default:
                 break;
         }
-        flag = getopt_long(argc, argv, "hadzrfyt:b:l:p:", long_options, &option_index);
+        flag = getopt_long(argc, argv, "hadzrfyt:b:l:p:x:", long_options, &option_index);
     }
 
     // Parse non-option arguments
@@ -273,7 +319,7 @@ int main(int argc, char* const *argv) {
     } else if (strcmp(argv[optind], "decompress") == 0) {
         mode = DECOMPRESS;
         mayHaveOutput = true;
-        outputSuffix = "pdb";
+        outputSuffix = output_format.c_str();
     } else if (strcmp(argv[optind], "extract") == 0) {
         mode = EXTRACT;
         mayHaveOutput = true;
@@ -372,20 +418,28 @@ int main(int argc, char* const *argv) {
         rmsd(input, output);
     } else if (mode == COMPRESS) {
         // output variants
-        void* handle;
+        void* handle = NULL;
         mtar_t tar_out;
         if (save_as_tar) {
-            mtar_open(&tar_out, output.c_str(), "w");
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
+            if (mtar_open(&tar_out, output.c_str(), "w") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] Could not open tar output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else if (db_output) {
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
             handle = make_writer(output.c_str(), (output + ".index").c_str());
+            if (handle == NULL) {
+                std::cerr << "[Error] Could not open database output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else if (!isSingleFileInput) {
-            struct stat st;
-            if (stat(output.c_str(), &st) == -1) {
-#ifdef _WIN32
-                _mkdir(output.c_str());
-#else
-                mkdir(output.c_str(), 0755);
-#endif
+            if (!ensureDirectoryExists(output)) {
+                return EXIT_FAILURE;
             }
         }
 
@@ -544,20 +598,28 @@ int main(int argc, char* const *argv) {
             mtar_close(&tar_out);
         }
     } else if (mode == DECOMPRESS) {
-        void* handle;
+        void* handle = NULL;
         mtar_t tar_out;
         if (save_as_tar) {
-            mtar_open(&tar_out, output.c_str(), "w");
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
+            if (mtar_open(&tar_out, output.c_str(), "w") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] Could not open tar output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else if (db_output) {
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
             handle = make_writer(output.c_str(), (output + ".index").c_str());
+            if (handle == NULL) {
+                std::cerr << "[Error] Could not open database output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else if (!isSingleFileInput) {
-            struct stat st;
-            if (stat(output.c_str(), &st) == -1) {
-#ifdef _WIN32
-                _mkdir(output.c_str());
-#else
-                mkdir(output.c_str(), 0755);
-#endif
+            if (!ensureDirectoryExists(output)) {
+                return EXIT_FAILURE;
             }
         }
 
@@ -576,6 +638,19 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
+        auto writeDecompressedStructure = [&](std::vector<AtomCoordinate>& atomCoordinates, const std::string& title, std::ostream& out) {
+            if (output_format == "pdb") {
+                writeAtomCoordinatesToPDB(atomCoordinates, title, out);
+            } else {
+                writeAtomCoordinatesToMMCIF(atomCoordinates, title, out);
+            }
+        };
+        auto writeDecompressedStructureFile = [&](std::vector<AtomCoordinate>& atomCoordinates, const std::string& title, const std::string& outputFile) -> int {
+            if (output_format == "pdb") {
+                return writeAtomCoordinatesToPDBFile(atomCoordinates, title, outputFile);
+            }
+            return writeAtomCoordinatesToMMCIFFile(atomCoordinates, title, outputFile);
+        };
         for (size_t i = 0; i < inputs.size() + 1; i++) {
             const std::string& input = (i == inputs.size()) ? "" : inputs[i];
             Processor* processor;
@@ -655,7 +730,7 @@ int main(int argc, char* const *argv) {
 
                 if (db_output) {
                     std::ostringstream oss;
-                    writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
+                    writeDecompressedStructure(atomCoordinates, compRes.strTitle, oss);
                     oss << '\0';
                     std::string os = oss.str();
 #pragma omp critical
@@ -665,7 +740,7 @@ int main(int argc, char* const *argv) {
                     }
                 } else if (save_as_tar) {
                     std::ostringstream oss;
-                    writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
+                    writeDecompressedStructure(atomCoordinates, compRes.strTitle, oss);
 #pragma omp critical
                     {
                         std::string os = oss.str();
@@ -679,7 +754,7 @@ int main(int argc, char* const *argv) {
                         std::cerr << "[Error] Output file already exists: " << baseName(outputFile) << std::endl;
                         return false;
                     }
-                    flag = writeAtomCoordinatesToPDBFile(atomCoordinates, compRes.strTitle, outputFile);
+                    flag = writeDecompressedStructureFile(atomCoordinates, compRes.strTitle, outputFile);
                     if (flag != 0) {
                         std::cerr << "[Error] Writing decompressed data to file: " << output << std::endl;
                         return false;
@@ -697,20 +772,28 @@ int main(int argc, char* const *argv) {
             mtar_close(&tar_out);
         }
     } else if (mode == EXTRACT) {
-        void* handle;
+        void* handle = NULL;
         mtar_t tar_out;
         if (save_as_tar) {
-            mtar_open(&tar_out, output.c_str(), "w");
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
+            if (mtar_open(&tar_out, output.c_str(), "w") != MTAR_ESUCCESS) {
+                std::cerr << "[Error] Could not open tar output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else if (db_output) {
+            if (!ensureParentDirectoryExists(output)) {
+                return EXIT_FAILURE;
+            }
             handle = make_writer(output.c_str(), (output + ".index").c_str());
+            if (handle == NULL) {
+                std::cerr << "[Error] Could not open database output: " << output << std::endl;
+                return EXIT_FAILURE;
+            }
         } else {
-            struct stat st;
-            if (stat(output.c_str(), &st) == -1 && !ext_merge) {
-#ifdef _WIN32
-                _mkdir(output.c_str());
-#else
-                mkdir(output.c_str(), 0755);
-#endif
+            if (!ext_merge && !ensureDirectoryExists(output)) {
+                return EXIT_FAILURE;
             }
         }
 
