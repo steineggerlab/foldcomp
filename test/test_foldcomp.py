@@ -108,14 +108,18 @@ def test_open_merge_fragments_lookup_grouping(pytestconfig, tmp_path):
                 break
         assert found
 
-    with foldcomp.open(str(dbpath), ids=["merged_entry"], merge_fragments=True) as merged_filtered:
+    with foldcomp.open(
+        str(dbpath), ids=["merged_entry"], merge_fragments=True
+    ) as merged_filtered:
         assert len(merged_filtered) == 1
         name, pdb = merged_filtered[0]
         assert name == "merged_entry"
         assert "ATOM" in pdb
         assert len(merged_filtered.source_indices(0)) == 2
 
-    with foldcomp.open(str(dbpath), ids=["merged_entry"], merge_fragments=True, format="mmcif") as merged_mmcif:
+    with foldcomp.open(
+        str(dbpath), ids=["merged_entry"], merge_fragments=True, format="mmcif"
+    ) as merged_mmcif:
         assert len(merged_mmcif) == 1
         name, mmcif = merged_mmcif[0]
         assert name == "merged_entry"
@@ -139,4 +143,6 @@ def test_source_indices_requires_merge(pytestconfig):
 
 def test_open_invalid_format(pytestconfig):
     with pytest.raises(ValueError, match="format must be one of"):
-        foldcomp.open(str(pytestconfig.rootpath.joinpath("test/example_db")), format="xyz")
+        foldcomp.open(
+            str(pytestconfig.rootpath.joinpath("test/example_db")), format="xyz"
+        )
