@@ -15,7 +15,6 @@
 #include "utility.h"
 
 #include <cstdlib>
-#include <fstream>
 #include <string>
 
 #include <errno.h>

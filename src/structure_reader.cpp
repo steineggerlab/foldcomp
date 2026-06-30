@@ -14,12 +14,49 @@
 #include "structure_reader.h"
 
 #include <stdexcept>
+#ifdef FOLDCOMP_WITH_ZLIB
 #include <zlib.h>
-#include <iostream>
-// Gemmi
 #include "gemmi/gz.hpp"
+#endif
+// Gemmi
 #include "gemmi/input.hpp"
 #include "gemmi/mmread.hpp"
+#include "gemmi/resinfo.hpp"
+
+namespace {
+
+bool isCompressedPath(const std::string& path) {
+    return path.size() >= 3 && path.compare(path.size() - 3, 3, ".gz") == 0;
+}
+
+std::string basePath(const std::string& path) {
+    if (isCompressedPath(path)) {
+        return path.substr(0, path.size() - 3);
+    }
+    return path;
+}
+
+bool isProteinLikeResidue(gemmi::Residue& res) {
+    gemmi::ResidueInfo resInfo = gemmi::find_tabulated_residue(res.name);
+    if (resInfo.found() && resInfo.is_amino_acid()) {
+        return true;
+    }
+    bool hasN = false;
+    bool hasCA = false;
+    bool hasC = false;
+    for (const gemmi::Atom& atom : res.atoms) {
+        if (atom.name == "N") {
+            hasN = true;
+        } else if (atom.name == "CA") {
+            hasCA = true;
+        } else if (atom.name == "C") {
+            hasC = true;
+        }
+    }
+    return hasN && hasCA && hasC;
+}
+
+}
 
 /**
  * @brief StructureReader::updateStructure
@@ -44,16 +81,33 @@ void StructureReader::updateStructure(void* void_st, const std::string& filename
         this->title = filename;
     }
 
+    size_t totalAtoms = 0;
     for (gemmi::Model& model : st->models) {
         for (gemmi::Chain& ch : model.chains) {
             for (gemmi::Residue& res : ch.residues) {
+                if (isProteinLikeResidue(res)) {
+                    totalAtoms += res.atoms.size();
+                }
+            }
+        }
+    }
+    this->atoms.reserve(totalAtoms);
+
+    for (size_t modelIndex = 0; modelIndex < st->models.size(); modelIndex++) {
+        gemmi::Model& model = st->models[modelIndex];
+        for (gemmi::Chain& ch : model.chains) {
+            for (gemmi::Residue& res : ch.residues) {
+                if (!isProteinLikeResidue(res)) {
+                    continue;
+                }
                 for (gemmi::Atom& atom : res.atoms) {
-                    AtomCoordinate ac = AtomCoordinate(
+                    this->atoms.emplace_back(
                         atom.name, res.name, ch.name, atom.serial, (int)res.seqid.num,
-                        (float)atom.pos.x, (float)atom.pos.y, (float)atom.pos.z
+                        (float)atom.pos.x, (float)atom.pos.y, (float)atom.pos.z,
+                        (float)atom.occ, (float)atom.b_iso, static_cast<int>(modelIndex + 1),
+                        res.seqid.icode == '\0' ? ' ' : res.seqid.icode,
+                        atom.altloc == '\0' ? ' ' : atom.altloc
                     );
-                    ac.tempFactor = atom.b_iso;
-                    this->atoms.push_back(ac);
                 }
             }
         }
@@ -73,10 +127,9 @@ void StructureReader::updateStructure(void* void_st, const std::string& filename
  */
 bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, const std::string& name) {
     try {
-        gemmi::MaybeGzipped infile(name);
         gemmi::Structure st;
-        // If infile is a compressed file, we need to uncompress buffer using zlib
-        if (infile.is_compressed()) {
+        if (isCompressedPath(name)) {
+#ifdef FOLDCOMP_WITH_ZLIB
             char* uncompBuffer;
             size_t uncompBufferSize;
             int ret = uncompressBuffer(const_cast<const char**>(&uncompBuffer), &uncompBufferSize, buffer, bufferSize);
@@ -85,13 +138,16 @@ bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, cons
             }
             st = gemmi::read_structure_from_char_array(uncompBuffer, uncompBufferSize, name);
             free(uncompBuffer);
-        } else {
-            st = gemmi::read_structure_from_char_array(const_cast<char*>(buffer), bufferSize, name);
+            updateStructure((void*)&st, name);
+            return true;
+#else
+            return false;
+#endif
         }
-
+        st = gemmi::read_structure_from_char_array(const_cast<char*>(buffer), bufferSize, name);
         updateStructure((void*)&st, name);
     }
-    catch (std::runtime_error& e) {
+    catch (const std::exception&) {
         return false;
     }
     return true;
@@ -105,14 +161,24 @@ bool StructureReader::loadFromBuffer(const char* buffer, size_t bufferSize, cons
  * @return gemmi::Structure
  */
 gemmi::Structure openStructure(const std::string& filename) {
-    gemmi::MaybeGzipped infile(filename);
-    gemmi::CoorFormat format = gemmi::coor_format_from_ext(infile.basepath());
+    if (isCompressedPath(filename)) {
+#ifdef FOLDCOMP_WITH_ZLIB
+        gemmi::MaybeGzipped infile(filename);
+        gemmi::CoorFormat format = gemmi::coor_format_from_ext(infile.basepath());
+        if (format != gemmi::CoorFormat::Unknown && format != gemmi::CoorFormat::Unknown) {
+            return gemmi::read_structure(infile, format);
+        }
+        return gemmi::read_structure(infile, gemmi::CoorFormat::Pdb);
+#else
+        throw std::runtime_error("gzipped structure input requires zlib support");
+#endif
+    }
+    gemmi::BasicInput infile(filename);
+    gemmi::CoorFormat format = gemmi::coor_format_from_ext(basePath(filename));
     if (format != gemmi::CoorFormat::Unknown && format != gemmi::CoorFormat::Unknown) {
         return gemmi::read_structure(infile, format);
     }
-    else {
-        return gemmi::read_structure(infile, gemmi::CoorFormat::Pdb);
-    }
+    return gemmi::read_structure(infile, gemmi::CoorFormat::Pdb);
 }
 
 /**
@@ -128,7 +194,7 @@ bool StructureReader::load(const std::string& filename){
         gemmi::Structure st = openStructure(filename);
         updateStructure((void*)&st, filename);
     }
-    catch (std::runtime_error& e) {
+    catch (const std::exception&) {
         return false;
     }
     return true;
@@ -153,6 +219,7 @@ bool StructureReader::readAllAtoms(std::vector<AtomCoordinate>& allAtoms){
     return true;
 }
 
+#ifdef FOLDCOMP_WITH_ZLIB
 int uncompressBuffer(
     const char** uncompBuffer, size_t* uncompBufferSize,
     const char* origBuffer, size_t origBufferSize
@@ -201,3 +268,4 @@ int uncompressBuffer(
     *uncompBufferSize = current - buffer;
     return 0;
 }
+#endif

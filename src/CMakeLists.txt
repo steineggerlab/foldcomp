@@ -10,6 +10,7 @@ set(foldcomp_header_files
     src/foldcomp.h
     src/nerf.h
     src/sidechain.h
+    src/structure_codec.h
     src/tcbspan.h
     src/torsion_angle.h
     src/utility.h
@@ -25,6 +26,7 @@ set(foldcomp_source_files
     src/foldcomp.cpp
     src/nerf.cpp
     src/sidechain.cpp
+    src/structure_codec.cpp
     src/torsion_angle.cpp
     src/utility.cpp
     PARENT_SCOPE

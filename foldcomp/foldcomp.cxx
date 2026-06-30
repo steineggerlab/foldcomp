@@ -3,15 +3,17 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <algorithm>
+#include <limits>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <sstream> // IWYU pragma: keep
+#include <utility>
 
+#include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "foldcomp.h"
 #include "database_reader.h"
+#include "structure_codec.h"
 
 static PyObject *FoldcompError;
 
@@ -22,11 +24,269 @@ typedef struct {
     void* memory_handle;
 } FoldcompDatabaseObject;
 
-int decompress(const char* input, size_t input_size, bool use_alt_order, std::ostream& oss, std::string& name);
+int decompress(const char* input, size_t input_size, bool use_alt_order, std::string& output, std::string& name);
+int decompress(const char* input, size_t input_size, bool use_alt_order, const std::string& format, std::string& output, std::string& name);
+PyObject* getDataFromStructureText(const std::string& input, const char* format);
 static PyObject* FoldcompDatabase_close(PyObject* self);
 static PyObject* FoldcompDatabase_enter(PyObject* self);
 static PyObject* FoldcompDatabase_exit(PyObject* self, PyObject* args);
+static void FoldcompDatabase_dealloc(PyObject* self);
 PyObject* vectorToList_Int64(const std::vector<int64_t>& data);
+
+namespace {
+
+bool regionNeedsRawFallback(const tcb::span<AtomCoordinate>& atoms);
+bool shouldStoreSmallMixedFragmentAsRaw(
+    const tcb::span<AtomCoordinate>& chainSpan,
+    const std::vector<BackboneRegion>& regions,
+    const std::vector<bool>& regionNeedsRaw
+);
+
+static int encodeStructureToFoldcompContainer(
+    const std::string& title,
+    const char* data,
+    size_t size,
+    const char* format,
+    int anchorResidueThreshold,
+    float maxBackboneRmsd,
+    std::string& output
+) {
+    std::vector<AtomCoordinate> atomCoordinates;
+    int status = PARSE_PDB_OK;
+    if (!parseStructureAtoms(data, size, false, atomCoordinates, status, nullptr, format)) {
+        return status;
+    }
+
+    std::vector<ContainerFragment> encodedFragments;
+    std::vector<std::pair<size_t, size_t>> chainIndices = identifyChains(atomCoordinates);
+    for (const auto& chainRegion : chainIndices) {
+        std::vector<std::pair<size_t, size_t>> fragmentIndices = identifyDiscontinousResInd(
+            atomCoordinates, chainRegion.first, chainRegion.second
+        );
+        if (fragmentIndices.empty()) {
+            fragmentIndices.push_back(chainRegion);
+        }
+        for (const auto& fragment : fragmentIndices) {
+            tcb::span<AtomCoordinate> chainSpan(
+                atomCoordinates.data() + fragment.first,
+                fragment.second - fragment.first
+            );
+            if (chainSpan.empty()) {
+                continue;
+            }
+            std::vector<BackboneRegion> regions = identifyBackboneRegions(chainSpan);
+            if (regions.empty()) {
+                continue;
+            }
+            std::vector<bool> regionNeedsRaw(regions.size(), false);
+            for (size_t regionIndex = 0; regionIndex < regions.size(); regionIndex++) {
+                if (!regions[regionIndex].encodable) {
+                    continue;
+                }
+                tcb::span<AtomCoordinate> regionSpan(
+                    chainSpan.data() + regions[regionIndex].start,
+                    regions[regionIndex].end - regions[regionIndex].start
+                );
+                regionNeedsRaw[regionIndex] = regionNeedsRawFallback(regionSpan);
+            }
+            if (shouldStoreSmallMixedFragmentAsRaw(chainSpan, regions, regionNeedsRaw)) {
+                ContainerFragment containerFragment;
+                containerFragment.kind = CONTAINER_FRAGMENT_KIND_RAW_ATOMS;
+                containerFragment.model = chainSpan.front().model;
+                containerFragment.chain = chainSpan.front().chain;
+                if (!serializeAtomCoordinates(
+                        tcb::span<const AtomCoordinate>(chainSpan.data(), chainSpan.size()),
+                        containerFragment.payload)) {
+                    return PARSE_PDB_INVALID_FORMAT;
+                }
+                encodedFragments.push_back(std::move(containerFragment));
+                continue;
+            }
+            for (size_t regionIndex = 0; regionIndex < regions.size(); regionIndex++) {
+                const auto& region = regions[regionIndex];
+                tcb::span<AtomCoordinate> regionSpan(
+                    chainSpan.data() + region.start,
+                    region.end - region.start
+                );
+                ContainerFragment containerFragment;
+                containerFragment.model = chainSpan[region.start].model;
+                containerFragment.chain = chainSpan[region.start].chain;
+                bool useFoldcompEncoding = region.encodable && !regionNeedsRaw[regionIndex];
+                if (useFoldcompEncoding) {
+                    Foldcomp compRes;
+                    compRes.strTitle = title;
+                    compRes.anchorThreshold = anchorResidueThreshold;
+                    std::vector<BackboneChain> compData = compRes.compress(regionSpan);
+                    if (compData.empty()) {
+                        continue;
+                    }
+                    containerFragment.kind = CONTAINER_FRAGMENT_KIND_FCZ;
+                    if (compRes.writeString(containerFragment.payload) != 0) {
+                        return PARSE_PDB_INVALID_FORMAT;
+                    }
+                    if (compRes.exceedsBackboneRmsdThreshold(maxBackboneRmsd)) {
+                        containerFragment.kind = CONTAINER_FRAGMENT_KIND_RAW_ATOMS;
+                        containerFragment.payload.clear();
+                        if (!serializeAtomCoordinates(
+                                tcb::span<const AtomCoordinate>(regionSpan.data(), regionSpan.size()),
+                                containerFragment.payload)) {
+                            return PARSE_PDB_INVALID_FORMAT;
+                        }
+                    }
+                } else {
+                    containerFragment.kind = CONTAINER_FRAGMENT_KIND_RAW_ATOMS;
+                    if (!serializeAtomCoordinates(
+                            tcb::span<const AtomCoordinate>(regionSpan.data(), regionSpan.size()),
+                            containerFragment.payload)) {
+                        return PARSE_PDB_INVALID_FORMAT;
+                    }
+                }
+                encodedFragments.push_back(std::move(containerFragment));
+            }
+        }
+    }
+
+    if (encodedFragments.empty()) {
+        return PARSE_PDB_NO_ATOM;
+    }
+
+    bool useContainer = encodedFragments.size() > 1 ||
+                        encodedFragments[0].kind != CONTAINER_FRAGMENT_KIND_FCZ ||
+                        encodedFragments[0].chain.size() != 1 ||
+                        encodedFragments[0].model != 1;
+    if (useContainer) {
+        if (!writeContainerToString(output, title, encodedFragments)) {
+            return PARSE_PDB_INVALID_FORMAT;
+        }
+    } else {
+        output = encodedFragments[0].payload;
+    }
+    return PARSE_PDB_OK;
+}
+
+struct CoutStateGuard {
+    std::ios::iostate state;
+    CoutStateGuard(): state(std::cout.rdstate()) {}
+    ~CoutStateGuard() {
+        std::cout.clear(state);
+    }
+};
+
+bool residueNeedsRawFallback(const tcb::span<const AtomCoordinate>& residueAtoms) {
+    if (residueAtoms.empty()) {
+        return false;
+    }
+    auto aaIt = Foldcomp::AAS.find(residueAtoms[0].residue);
+    if (aaIt == Foldcomp::AAS.end()) {
+        return true;
+    }
+
+    int matchedCanonicalAtoms = 0;
+    bool hasOxt = false;
+    for (const auto& atom : residueAtoms) {
+        if (atom.altloc != ' ' && atom.altloc != '\0') {
+            return true;
+        }
+        if (atom.insertion_code != ' ' && atom.insertion_code != '\0') {
+            return true;
+        }
+        if (atom.atom == "OXT") {
+            if (hasOxt) {
+                return true;
+            }
+            hasOxt = true;
+            continue;
+        }
+        bool found = false;
+        for (const auto& canonicalAtom : aaIt->second.atoms) {
+            if (atom.atom == canonicalAtom) {
+                matchedCanonicalAtoms++;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return true;
+        }
+    }
+    int expectedAtomCount = static_cast<int>(aaIt->second.atoms.size()) + (hasOxt ? 1 : 0);
+    return static_cast<int>(residueAtoms.size()) != expectedAtomCount ||
+           matchedCanonicalAtoms != static_cast<int>(aaIt->second.atoms.size());
+}
+
+bool regionNeedsRawFallback(const tcb::span<AtomCoordinate>& atoms) {
+    size_t residuesWithOxt = 0;
+    size_t residueStart = 0;
+    for (size_t i = 1; i <= atoms.size(); i++) {
+        bool endOfResidue = (i == atoms.size()) || startsNewResidue(atoms[i], atoms[i - 1]);
+        if (!endOfResidue) {
+            continue;
+        }
+        bool hasOxt = false;
+        for (size_t j = residueStart; j < i; j++) {
+            const auto& atom = atoms[j];
+            if (atom.atom == "OXT") {
+                hasOxt = true;
+                break;
+            }
+        }
+        if (hasOxt) {
+            residuesWithOxt++;
+            if (residuesWithOxt > 1 || i != atoms.size()) {
+                return true;
+            }
+        }
+        if (residueNeedsRawFallback(
+                tcb::span<const AtomCoordinate>(atoms.data() + residueStart, i - residueStart))) {
+            return true;
+        }
+        residueStart = i;
+    }
+    return false;
+}
+
+size_t countResidues(const tcb::span<AtomCoordinate>& atoms) {
+    if (atoms.empty()) {
+        return 0;
+    }
+    size_t residueCount = 1;
+    for (size_t i = 1; i < atoms.size(); i++) {
+        if (startsNewResidue(atoms[i], atoms[i - 1])) {
+            residueCount++;
+        }
+    }
+    return residueCount;
+}
+
+bool shouldStoreSmallMixedFragmentAsRaw(
+    const tcb::span<AtomCoordinate>& chainSpan,
+    const std::vector<BackboneRegion>& regions,
+    const std::vector<bool>& regionNeedsRaw
+) {
+    if (regions.size() <= 1) {
+        return false;
+    }
+    if (countResidues(chainSpan) > 24) {
+        return false;
+    }
+    for (size_t i = 0; i < regions.size(); i++) {
+        if (!regions[i].encodable || regionNeedsRaw[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void releaseFoldcompDatabase(FoldcompDatabaseObject* db) {
+    if (db->memory_handle != NULL) {
+        free_reader(db->memory_handle);
+        db->memory_handle = NULL;
+    }
+    delete db->user_indices;
+    db->user_indices = NULL;
+}
+
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
@@ -43,6 +303,10 @@ static PyMethodDef FoldcompDatabase_methods[] = {
 // FoldcompDatabase_sq_length
 static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
+    if (db->memory_handle == NULL) {
+        PyErr_SetString(PyExc_ValueError, "database is closed");
+        return -1;
+    }
     if (db->user_indices != NULL) {
         return db->user_indices->size();
     }
@@ -52,6 +316,14 @@ static Py_ssize_t FoldcompDatabase_sq_length(PyObject* self) {
 // FoldcompDatabase_sq_item
 static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
+    if (db->memory_handle == NULL) {
+        PyErr_SetString(PyExc_ValueError, "database is closed");
+        return NULL;
+    }
+    if (index < 0) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
 
     const char* data;
     size_t length;
@@ -63,25 +335,25 @@ static PyObject* FoldcompDatabase_sq_item(PyObject* self, Py_ssize_t index) {
         }
         id = db->user_indices->at(index);
         data = reader_get_data(db->memory_handle, id);
-        length = std::max(reader_get_length(db->memory_handle, id), (int64_t)1) - (int64_t)1;
+        length = reader_get_length(db->memory_handle, id);
     } else {
         if (index >= (Py_ssize_t)reader_get_size(db->memory_handle)) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
         }
         data = reader_get_data(db->memory_handle, index);
-        length = std::max(reader_get_length(db->memory_handle, index), (int64_t)1) - (int64_t)1;
+        length = reader_get_length(db->memory_handle, index);
     }
     if (db->decompress) {
-        std::ostringstream oss;
+        std::string pdbText;
         std::string name;
-        int err = decompress(data, length, false, oss, name);
+        int err = decompress(data, length, false, pdbText, name);
         if (err != 0) {
             std::string err_msg = "Error decompressing: " + name;
             PyErr_SetString(FoldcompError, err_msg.c_str());
             return NULL;
         }
-        PyObject* pdb = PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size());
+        PyObject* pdb = PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, pdbText.c_str(), pdbText.size());
         PyObject* result = Py_BuildValue("(s,O)", name.c_str(), pdb);
         Py_DECREF(pdb);
         return result;
@@ -111,7 +383,7 @@ static PyTypeObject FoldcompDatabaseType = {
     "foldcomp.FoldcompDatabase",    /* tp_name */
     sizeof(FoldcompDatabaseObject), /* tp_basicsize */
     0,                         /* tp_itemsize */
-    0,                         /* tp_dealloc */
+    (destructor)FoldcompDatabase_dealloc, /* tp_dealloc */
     0,                         /* tp_vectorcall_offset */
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
@@ -166,11 +438,14 @@ static PyObject* FoldcompDatabase_close(PyObject* self) {
         return NULL;
     }
     FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
-    if (db->memory_handle != NULL) {
-        free_reader(db->memory_handle);
-        db->memory_handle = NULL;
-    }
+    releaseFoldcompDatabase(db);
     Py_RETURN_NONE;
+}
+
+static void FoldcompDatabase_dealloc(PyObject* self) {
+    FoldcompDatabaseObject* db = (FoldcompDatabaseObject*)self;
+    releaseFoldcompDatabase(db);
+    Py_TYPE(self)->tp_free(self);
 }
 
 // FoldcompDatabase_enter
@@ -184,120 +459,76 @@ static PyObject *FoldcompDatabase_exit(PyObject *self, PyObject* /* args */) {
     return FoldcompDatabase_close(self);
 }
 
-// https://stackoverflow.com/questions/1448467/initializing-a-c-stdistringstream-from-an-in-memory-buffer/1449527
-struct OneShotReadBuf : public std::streambuf
-{
-    OneShotReadBuf(char* s, std::size_t n)
-    {
-        setg(s, s, s + n);
-    }
-};
-
 // Decompress
-int decompress(const char* input, size_t input_size, bool use_alt_order, std::ostream& oss, std::string& name) {
-    OneShotReadBuf buf((char*)input, input_size);
-    std::istream istr(&buf);
+int decompress(const char* input, size_t input_size, bool use_alt_order, std::string& output, std::string& name) {
+    return decompress(input, input_size, use_alt_order, "pdb", output, name);
+}
 
+int decompress(
+    const char* input, size_t input_size, bool use_alt_order, const std::string& format,
+    std::string& output, std::string& name
+) {
+    CoutStateGuard coutStateGuard;
     std::cout.setstate(std::ios_base::failbit);
-    Foldcomp compRes;
-    int flag = compRes.read(istr);
-    if (flag != 0) {
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+    if (format == "mmcif" || format == "cif") {
+        if (!decodeStructureToMMCIF(input, input_size, use_alt_order, name, output)) {
+            return 1;
+        }
+        return 0;
+    }
+#endif
+    if (format != "pdb") {
+        return 2;
+    }
+    if (!decodeStructureToPDB(input, input_size, use_alt_order, name, output)) {
         return 1;
     }
-    std::vector<AtomCoordinate> atomCoordinates;
-    compRes.useAltAtomOrder = use_alt_order;
-    flag = compRes.decompress(atomCoordinates);
-    if (flag != 0) {
-        return 1;
-    }
-    // Write decompressed data to file
-    writeAtomCoordinatesToPDB(atomCoordinates, compRes.strTitle, oss);
-    std::cout.clear();
-
-    name = compRes.strTitle;
-
     return 0;
 }
 // Python binding for decompress
-static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args) {
-    // Unpack a string from the arguments
+static PyObject *foldcomp_decompress(PyObject* /* self */, PyObject *args, PyObject* kwargs) {
     const char *strArg;
     Py_ssize_t strSize;
-    if (!PyArg_ParseTuple(args, "y#", &strArg, &strSize)) {
+    const char* format = "pdb";
+    static const char* kwlist[] = {"input", "format", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y#|$s", const_cast<char**>(kwlist), &strArg, &strSize, &format)) {
         return NULL;
     }
 
-    std::ostringstream oss;
+    std::string output;
     std::string name;
-    int err = decompress(strArg, strSize, false, oss, name);
+    int err = decompress(strArg, strSize, false, format, output, name);
+    if (err == 2) {
+        PyErr_SetString(PyExc_ValueError, "format must be 'pdb' or 'mmcif'");
+        return NULL;
+    }
     if (err != 0) {
         PyErr_SetString(FoldcompError, "Error decompressing.");
         return NULL;
     }
 
-    return Py_BuildValue("(s,O)", name.c_str(), PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, oss.str().c_str(), oss.str().size()));
-}
-
-std::string trim(const std::string& str, const std::string& whitespace = " \t") {
-    const std::string::size_type strBegin = str.find_first_not_of(whitespace);
-    if (strBegin == std::string::npos)
-        return ""; // no content
-
-    const std::string::size_type strEnd = str.find_last_not_of(whitespace);
-    const std::string::size_type strRange = strEnd - strBegin + 1;
-
-    return str.substr(strBegin, strRange);
-}
-
-// Compress
-int compress(const std::string& name, const std::string& pdb_input, std::ostream& oss, int anchor_residue_threshold) {
-    std::vector<AtomCoordinate> atomCoordinates;
-    // parse ATOM lines from PDB file into atomCoordinates
-    std::istringstream iss(pdb_input);
-    std::string line;
-    std::string chain = "";
-    while (std::getline(iss, line)) {
-        if (line.substr(0, 4) == "ATOM") {
-            if (chain == "") {
-                chain = line.substr(21, 1);
-            }
-            if (line.substr(21, 1) != chain) {
-                return 2; // FLAG 2: multiple chains
-            }
-            atomCoordinates.emplace_back(
-                trim(line.substr(12, 4)), // atom
-                trim(line.substr(17, 3)), // residue
-                chain, // chain
-                std::stoi(line.substr(6,  5)), // atom_index
-                std::stoi(line.substr(22, 4)), // residue_index
-                std::stof(line.substr(30, 8)), std::stof(line.substr(38, 8)), std::stof(line.substr(46, 8)), // coordinates
-                std::stof(line.substr(54, 6)), // occupancy
-                std::stof(line.substr(60, 6)) // tempFactor
-            );
-        }
+    PyObject* pdb = PyUnicode_FromKindAndData(PyUnicode_1BYTE_KIND, output.c_str(), output.size());
+    if (pdb == NULL) {
+        return NULL;
     }
-    if (atomCoordinates.size() == 0) {
-        return 1; // FLAG 1: no ATOM lines
-    }
-
-    removeAlternativePosition(atomCoordinates);
-
-    // compress
-    Foldcomp compRes;
-    compRes.strTitle = name;
-    compRes.anchorThreshold = anchor_residue_threshold;
-    compRes.compress(atomCoordinates);
-    compRes.writeStream(oss);
-
-    return 0;
+    PyObject* result = Py_BuildValue("(s,O)", name.c_str(), pdb);
+    Py_DECREF(pdb);
+    return result;
 }
+
 // Python binding for compress
 static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObject* kwargs) {
     const char* name;
     const char* pdb_input;
+    Py_ssize_t pdb_input_size;
+    const char* format = "pdb";
     PyObject* anchor_residue_threshold = NULL;
-    static const char *kwlist[] = {"name", "pdb_content", "anchor_residue_threshold", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|$O", const_cast<char**>(kwlist), &name, &pdb_input, &anchor_residue_threshold)) {
+    PyObject* max_backbone_rmsd = NULL;
+    static const char *kwlist[] = {"name", "pdb_content", "format", "anchor_residue_threshold", "max_backbone_rmsd", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|$sOO", const_cast<char**>(kwlist),
+                                     &name, &pdb_input, &pdb_input_size, &format,
+                                     &anchor_residue_threshold, &max_backbone_rmsd)) {
         return NULL;
     }
 
@@ -305,26 +536,42 @@ static PyObject *foldcomp_compress(PyObject* /* self */, PyObject *args, PyObjec
         PyErr_SetString(PyExc_TypeError, "anchor_residue_threshold must be an integer");
         return NULL;
     }
+    if (max_backbone_rmsd != NULL &&
+        max_backbone_rmsd != Py_None &&
+        !PyFloat_Check(max_backbone_rmsd) &&
+        !PyLong_Check(max_backbone_rmsd)) {
+        PyErr_SetString(PyExc_TypeError, "max_backbone_rmsd must be a float");
+        return NULL;
+    }
 
     int threshold = DEFAULT_ANCHOR_THRESHOLD;
     if (anchor_residue_threshold != NULL) {
         threshold = PyLong_AsLong(anchor_residue_threshold);
     }
+    float maxBackboneRmsdValue = std::numeric_limits<float>::infinity();
+    if (max_backbone_rmsd != NULL && max_backbone_rmsd != Py_None) {
+        maxBackboneRmsdValue = static_cast<float>(PyFloat_AsDouble(max_backbone_rmsd));
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
+    }
 
-    std::ostringstream oss;
-    int flag = compress(name, pdb_input, oss, threshold);
-    if (flag == 1) {
-        PyErr_SetString(FoldcompError, "No ATOM lines found");
+    std::string output;
+    int flag = encodeStructureToFoldcompContainer(
+        name, pdb_input, static_cast<size_t>(pdb_input_size), format, threshold, maxBackboneRmsdValue, output
+    );
+    if (flag == PARSE_PDB_NO_ATOM) {
+        PyErr_SetString(FoldcompError, "No protein atoms found");
         return NULL;
-    } else if (flag == 2) {
-        PyErr_SetString(FoldcompError, "Multiple chains found. Please provide a single chain using 'foldcomp.split_pdb_by_chain'");
+    } else if (flag == PARSE_PDB_INVALID_FORMAT) {
+        PyErr_SetString(PyExc_ValueError, "Invalid structure input or format");
         return NULL;
     } else if (flag != 0) {
         PyErr_SetString(FoldcompError, "Error compressing");
         return NULL;
     }
 
-    return PyBytes_FromStringAndSize(oss.str().c_str(), oss.str().length());
+    return PyBytes_FromStringAndSize(output.c_str(), output.length());
 }
 
 
@@ -379,6 +626,9 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for FoldcompDatabaseObject");
         return NULL;
     }
+    obj->user_indices = NULL;
+    obj->memory_handle = NULL;
+    obj->decompress = true;
 
     int mode = DB_READER_USE_DATA;
     if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
@@ -398,8 +648,12 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
     }
 
     obj->memory_handle = make_reader(dbname.c_str(), index.c_str(), mode);
+    if (obj->memory_handle == NULL) {
+        Py_DECREF((PyObject*)obj);
+        PyErr_SetString(FoldcompError, "Could not open Foldcomp database");
+        return NULL;
+    }
 
-    obj->user_indices = NULL;
     if (user_ids != NULL && PySequence_Length(user_ids) > 0) {
         size_t id_count = (size_t)PySequence_Length(user_ids);
         // Reserve memory for the user indices
@@ -409,7 +663,22 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
         for (Py_ssize_t i = 0; i < (Py_ssize_t)id_count; i++) {
             // Iterate over all entries in the database and store ids in a vector of int64_t
             PyObject* item = PySequence_GetItem(user_ids, i);
+            if (item == NULL) {
+                Py_DECREF((PyObject*)obj);
+                return NULL;
+            }
+            if (!PyUnicode_Check(item)) {
+                Py_DECREF(item);
+                Py_DECREF((PyObject*)obj);
+                PyErr_SetString(PyExc_TypeError, "ids must contain only strings");
+                return NULL;
+            }
             const char* data = PyUnicode_AsUTF8(item);
+            if (data == NULL) {
+                Py_DECREF(item);
+                Py_DECREF((PyObject*)obj);
+                return NULL;
+            }
             Py_DECREF(item);
             uint32_t key = reader_lookup_entry(obj->memory_handle, data);
             int64_t id = reader_get_id(obj->memory_handle, key);
@@ -419,7 +688,7 @@ static PyObject *foldcomp_open(PyObject* /* self */, PyObject* args, PyObject* k
                 err_msg += data;
                 err_msg += " which is not in the database.";
                 if (err_on_missing_flag) {
-                    Py_DECREF(obj);
+                    Py_DECREF((PyObject*)obj);
                     PyErr_SetString(PyExc_KeyError, err_msg.c_str());
                     return NULL;
                 } else {
@@ -601,80 +870,53 @@ PyObject* getPyDictFromFoldcomp(Foldcomp* fcmp, const std::vector<float3d>& coor
 // phi, psi, omega, torsion_angles, residues, bond_angles, coordinates, b_factors
 // 01. Extract information starting from FCZ file
 PyObject* getDataFromFCZ(const char* input, size_t input_size) {
-    // Input
-    OneShotReadBuf buf((char*)input, input_size);
-    std::istream istr(&buf);
-
-    Foldcomp compRes;
-    int flag = compRes.read(istr);
-    if (flag != 0) {
-        PyErr_SetString(PyExc_ValueError, "Could not read FCZ file");
-        return NULL;
-    }
+    std::string title;
     std::vector<AtomCoordinate> atomCoordinates;
-    flag = compRes.decompress(atomCoordinates);
-    if (flag != 0) {
+    if (!decodeStructureToAtoms(input, input_size, false, title, atomCoordinates)) {
         PyErr_SetString(PyExc_ValueError, "Could not decompress FCZ file");
         return NULL;
     }
 
+    Foldcomp compRes;
+    compRes.compress(atomCoordinates);
     std::vector<float3d> coordsVector = extractCoordinates(atomCoordinates);
-
-    // Output
-    PyObject* dict = getPyDictFromFoldcomp(&compRes, coordsVector);
-    if (dict == NULL) {
-        return NULL;
-    }
-    // Return dictionary
-    return dict;
+    return getPyDictFromFoldcomp(&compRes, coordsVector);
 }
 
 // 02. Extract information starting from PDB
-PyObject* getDataFromPDB(const std::string& pdb_input) {
+PyObject* getDataFromStructureText(const std::string& pdb_input, const char* format) {
     std::vector<AtomCoordinate> atomCoordinates;
-    // parse ATOM lines from PDB file into atomCoordinates
-    std::istringstream iss(pdb_input);
-    std::string line;
-    // Read PDB string
-    while (std::getline(iss, line)) {
-        if (line.substr(0, 4) == "ATOM") {
-            atomCoordinates.emplace_back(
-                trim(line.substr(12, 4)), // atom
-                trim(line.substr(17, 3)), // residue
-                line.substr(21, 1), // chain
-                std::stoi(line.substr(6, 5)), // atom_index
-                std::stoi(line.substr(22, 4)), // residue_index
-                std::stof(line.substr(30, 8)), std::stof(line.substr(38, 8)), std::stof(line.substr(46, 8)), // coordinates
-                std::stof(line.substr(54, 6)), // occupancy
-                std::stof(line.substr(60, 6)) // tempFactor
-            );
+    int status = 0;
+    if (!parseStructureAtoms(pdb_input.data(), pdb_input.size(), false, atomCoordinates, status, nullptr, format)) {
+        if (status == PARSE_PDB_NO_ATOM) {
+            PyErr_SetString(PyExc_ValueError, "No protein atoms found in structure input");
+            return NULL;
+        } else if (status == PARSE_PDB_INVALID_FORMAT) {
+            PyErr_SetString(PyExc_ValueError, "Invalid structure input or format");
+            return NULL;
         }
-    }
-    if (atomCoordinates.size() == 0) {
-        PyErr_SetString(PyExc_ValueError, "No ATOM lines found in PDB file");
+        PyErr_SetString(PyExc_ValueError, "Could not parse structure input");
         return NULL;
     }
 
-    // compress
     Foldcomp compRes;
     compRes.compress(atomCoordinates);
 
     std::vector<float3d> coordsVector = extractCoordinates(atomCoordinates);
 
-    // Output
     PyObject* dict = getPyDictFromFoldcomp(&compRes, coordsVector);
     if (dict == NULL) {
         return NULL;
     }
-    // Free memory
     return dict;
 }
 
 static PyObject* foldcomp_get_data(PyObject* /* self */, PyObject* args, PyObject* kwargs) {
     const char* input;
-    size_t input_size;
-    static const char* kwlist[] = { "input", NULL };
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#", (char**)kwlist, &input, &input_size)) {
+    Py_ssize_t input_size;
+    const char* format = "pdb";
+    static const char* kwlist[] = { "input", "format", NULL };
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y#|$s", (char**)kwlist, &input, &input_size, &format)) {
         return NULL;
     }
     // Check input
@@ -682,12 +924,13 @@ static PyObject* foldcomp_get_data(PyObject* /* self */, PyObject* args, PyObjec
         PyErr_SetString(PyExc_ValueError, "Input is empty");
         return NULL;
     }
-    // Check the first 4 bytes of the input and if they are "FCMP" then it is a FCZ file
-    if (input_size >= 4 && strncmp(input, "FCMP", 4) == 0) {
+    // FCMP is standalone FCZ, FCZC is the container format.
+    if ((input_size >= MAGICNUMBER_LENGTH && memcmp(input, MAGICNUMBER, MAGICNUMBER_LENGTH) == 0) ||
+        hasContainerMagic(input, input_size)) {
         return getDataFromFCZ(input, input_size);
     } else if (input_size >= 4) {
         std::string pdb_input(input, input_size);
-        return getDataFromPDB(pdb_input);
+        return getDataFromStructureText(pdb_input, format);
     } else {
         PyErr_SetString(PyExc_ValueError, "Input is not a FCZ file or PDB file");
         return NULL;
@@ -701,7 +944,7 @@ static PyObject* foldcomp_get_data(PyObject* /* self */, PyObject* args, PyObjec
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef foldcomp_methods[] = {
     // {"compress", foldcomp_compress, METH_VARARGS, "Compress a PDB file."},
-    {"decompress", foldcomp_decompress, METH_VARARGS, "Decompress FCZ content to PDB."},
+    {"decompress", (PyCFunction)foldcomp_decompress, METH_VARARGS | METH_KEYWORDS, "Decompress Foldcomp content to PDB or mmCIF."},
     {"compress", (PyCFunction)foldcomp_compress, METH_VARARGS | METH_KEYWORDS, "Compress PDB content to FCZ."},
     {"open", (PyCFunction)foldcomp_open, METH_VARARGS | METH_KEYWORDS, "Open a Foldcomp database."},
     {"get_data", (PyCFunction)foldcomp_get_data, METH_VARARGS | METH_KEYWORDS, "Get data from FCZ or PDB content."},

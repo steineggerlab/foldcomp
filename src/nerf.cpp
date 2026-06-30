@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
+#include <unordered_map>
 
 /**
  * @brief Calculate the position of next atom with torsion angle.
@@ -108,10 +109,28 @@ std::vector<AtomCoordinate> Nerf::reconstructAminoAcid(
     const std::vector<float>& torsion_angles,
     const AminoAcid& aa
 ) {
+    return reconstructAminoAcid(
+        tcb::span<const AtomCoordinate>(original_atoms.data(), original_atoms.size()),
+        torsion_angles,
+        aa
+    );
+}
+
+std::vector<AtomCoordinate> Nerf::reconstructAminoAcid(
+    const tcb::span<const AtomCoordinate>& original_atoms,
+    const std::vector<float>& torsion_angles,
+    const AminoAcid& aa
+) {
     // save three first atoms
     std::vector<AtomCoordinate> reconstructed_atoms = {
         original_atoms[0], original_atoms[1], original_atoms[2]
     };
+    reconstructed_atoms.reserve(aa.atoms.size());
+    std::unordered_map<std::string, size_t> atomIndexByName;
+    atomIndexByName.reserve(aa.atoms.size());
+    atomIndexByName.emplace(reconstructed_atoms[0].atom, 0);
+    atomIndexByName.emplace(reconstructed_atoms[1].atom, 1);
+    atomIndexByName.emplace(reconstructed_atoms[2].atom, 2);
 
     AtomCoordinate curr_atom(
         "", original_atoms[0].residue, original_atoms[0].chain,
@@ -123,14 +142,15 @@ std::vector<AtomCoordinate> Nerf::reconstructAminoAcid(
     for (int i = 0; i < (total - 3); i++) {
         // Get current atom's info
         curr_atom.atom_index = reconstructed_atoms[i + 2].atom_index + 1;
-        curr_atom.atom = aa.atoms[i + 3];
+        const std::string& currAtomName = aa.atoms[i + 3];
+        curr_atom.atom = currAtomName;
 
         const auto& side_chain = aa.sideChain.at(curr_atom.atom);
 
         // Fill prev_atoms
-        const AtomCoordinate& prev_atom0 = findFirstAtom(reconstructed_atoms, side_chain[0]);
-        const AtomCoordinate& prev_atom1 = findFirstAtom(reconstructed_atoms, side_chain[1]);
-        const AtomCoordinate& prev_atom2 = findFirstAtom(reconstructed_atoms, side_chain[2]);
+        const AtomCoordinate& prev_atom0 = reconstructed_atoms[atomIndexByName.at(side_chain[0])];
+        const AtomCoordinate& prev_atom1 = reconstructed_atoms[atomIndexByName.at(side_chain[1])];
+        const AtomCoordinate& prev_atom2 = reconstructed_atoms[atomIndexByName.at(side_chain[2])];
 
         float3d prev_coord[3];
         extractCoordinates(prev_coord, prev_atom0, prev_atom1, prev_atom2);
@@ -150,6 +170,7 @@ std::vector<AtomCoordinate> Nerf::reconstructAminoAcid(
             curr_atom.atom_index, curr_atom.residue_index,
             curr_coord.x, curr_coord.y, curr_coord.z
         );
+        atomIndexByName[currAtomName] = reconstructed_atoms.size() - 1;
     }
     return reconstructed_atoms;
 }
@@ -340,31 +361,29 @@ std::vector<AtomCoordinate> Nerf::reconstructWithBreaks(
  * @return std::vector<AtomCoordinate>
  */
 std::vector<AtomCoordinate> Nerf::reconstructWithReversed(
-    std::vector<AtomCoordinate> original_atoms,
-    std::vector<float> torsion_angles,
-    std::vector<float> atom_bond_angles
+    const std::vector<AtomCoordinate>& original_atoms,
+    const std::vector<float>& torsion_angles,
+    const std::vector<float>& atom_bond_angles
 ) {
+    const size_t total = original_atoms.size();
+    std::vector<AtomCoordinate> reconstructed_atoms;
+    reconstructed_atoms.reserve(total);
+    reconstructed_atoms.push_back(original_atoms[total - 1]);
+    reconstructed_atoms.push_back(original_atoms[total - 2]);
+    reconstructed_atoms.push_back(original_atoms[total - 3]);
 
-    std::reverse(original_atoms.begin(), original_atoms.end());
-    std::reverse(torsion_angles.begin(), torsion_angles.end());
-    std::reverse(atom_bond_angles.begin(), atom_bond_angles.end());
-
-    // save three first atoms
-    std::vector<AtomCoordinate> reconstructed_atoms = {
-        original_atoms[0], original_atoms[1], original_atoms[2]
-    };
-
-    int total = original_atoms.size();
-    for (int i = 0; i < (total - 3); i++) {
-        const AtomCoordinate& curr_atom = original_atoms[i + 3];
+    for (size_t i = 0; i < (total - 3); i++) {
+        const AtomCoordinate& curr_atom = original_atoms[total - 4 - i];
         float3d prev_coord[3];
         extractCoordinates(prev_coord, reconstructed_atoms[i], reconstructed_atoms[i + 1],
                       reconstructed_atoms[i + 2] );
-        std::string curr_bond_name = curr_atom.atom  + "_TO_" +original_atoms[i + 2].atom;
+        const AtomCoordinate& next_atom_in_forward = original_atoms[total - 3 - i];
+        std::string curr_bond_name = curr_atom.atom + "_TO_" + next_atom_in_forward.atom;
         float curr_bond_length = this->bond_lengths.at(curr_bond_name);
-        float curr_bond_angle = atom_bond_angles[i + 1];
+        size_t reverseIndex = total - 4 - i;
+        float curr_bond_angle = atom_bond_angles[reverseIndex];
         float3d curr_coord = place_atom(prev_coord, curr_bond_length, curr_bond_angle,
-            torsion_angles[i]);
+            torsion_angles[reverseIndex]);
         reconstructed_atoms.emplace_back(
             curr_atom.atom, curr_atom.residue, curr_atom.chain,
             curr_atom.atom_index, curr_atom.residue_index,

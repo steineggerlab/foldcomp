@@ -12,7 +12,6 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
-#include <iosfwd>
 #include <map>
 #include <string> // IWYU pragma: keep
 #include <vector>
@@ -51,6 +50,9 @@ std::map<std::string, float> calculateTorsionAngles(
 
 std::vector<float> calculateTorsionAnglesInResidue(
     const std::vector<AtomCoordinate>& originalAtoms, const AminoAcid& AA
+);
+std::vector<float> calculateTorsionAnglesInResidue(
+    const tcb::span<const AtomCoordinate>& originalAtoms, const AminoAcid& AA
 );
 
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(

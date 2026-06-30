@@ -28,7 +28,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -86,7 +85,7 @@ static_assert(sizeof(BackboneChain) == 8, "BackboneChain must remain compatible"
 struct BackboneChainHeader {
     uint16_t nResidue;   // 16 bits
     uint16_t nAtom;      // 16 bits
-    uint16_t idxResidue; // 16 bits
+    int16_t idxResidue; // 16 bits
     uint16_t idxAtom;    // 16 bits
     // char firstResidue; // 1 byte = 8 bits --> WILL BE APPLIED AFTER CHANGING BACKBONE CHAIN
     float prevAtoms[9];  // 9 * 4 byte
@@ -119,21 +118,28 @@ struct CompressedFileHeader {
     // Backbone
     uint16_t nResidue;   // 16 bits
     uint16_t nAtom;      // 16 bits
-    uint16_t idxResidue; // 16 bits
+    int16_t idxResidue;  // 16 bits
     uint16_t idxAtom;    // 16 bits
     // Anchor points
     uint8_t nAnchor;     // 8 bits
     char chain;          // 8 bits + 8 bits padding TODO
+    uint8_t version;     // 8 bits (uses previous padding)
+    uint8_t flags;       // 8 bits (uses previous padding)
     // Sidechain
     uint32_t nSideChainTorsion; // 32 bits
     char firstResidue;   // 8 bits
-    char lastResidue;    // 8 bits + 8 bits padding TODO
+    char lastResidue;    // 8 bits
+    char chain2;         // 8 bits
+    char chain3;         // 8 bits
     uint32_t lenTitle;   // 32 bits
     // Discretizer for backbone chain
     float mins[6];       // 6 * 32 bits
     float cont_fs[6];    // 6 * 32 bits
 };
 static_assert(sizeof(CompressedFileHeader) == 72, "CompressedFileHeader must remain compatible");
+
+std::string getChainName(const CompressedFileHeader& header);
+void setChainName(CompressedFileHeader& header, const std::string& chain);
 
 struct SideChainDiscretizers {
     float ala_min[2];
@@ -206,7 +212,12 @@ float _continuize(unsigned int input, float min, float cont_f);
 std::vector<AtomCoordinate> reconstructBackboneAtoms(
     const std::vector<AtomCoordinate>& prevAtoms,
     const std::vector<BackboneChain>& backbone,
-    const CompressedFileHeader& header
+    CompressedFileHeader& header
+);
+
+int reconstructBackboneReverse(
+    std::vector<AtomCoordinate>& atom, std::vector< std::vector<float> >& lastCoords,
+    std::vector<float>& torsion_angles, Nerf& nerf
 );
 
 std::vector<AtomCoordinate> reconstructSidechainAtoms(
@@ -274,7 +285,7 @@ private:
 
     // Anchor
     int _getAnchorNum(int threshold);
-    void _setAnchor(const tcb::span<AtomCoordinate>& atomCoordinates);
+    void _setAnchor();
     std::vector<AtomCoordinate> _getAnchorAtoms(bool includeStartAndEnd = true);
 
     int _discretizeSideChainTorsionAngles(
@@ -284,6 +295,8 @@ private:
     int _continuizeSideChainTorsionAngles(
         std::vector<unsigned int>& input, std::vector< std::vector<float> >& output
     );
+
+    float computeBackboneRmsdForCompressedState() const;
 
 public:
     bool isPreprocessed = false;
@@ -371,9 +384,11 @@ public:
      // methods
     int preprocess(const tcb::span<AtomCoordinate>& atoms);
     std::vector<BackboneChain> compress(const tcb::span<AtomCoordinate>& atoms);
+    int decompressBackbone(std::vector<AtomCoordinate>& atoms);
     int decompress(std::vector<AtomCoordinate>& atoms);
-    int read(std::istream & filename);
-    int writeStream(std::ostream& os);
+    bool exceedsBackboneRmsdThreshold(float maxBackboneRmsd) const;
+    int read(const char* data, size_t size);
+    int writeString(std::string& output);
     int write(std::string filename);
     // Read & write for tar files
 #ifdef FOLDCOMP_EXECUTABLE
@@ -388,8 +403,6 @@ public:
     size_t getSize();
     // methods for getting plddt (tempFactors) or amino acid sequence
     int continuizeTempFactors();
-    int writeFASTALike(std::ostream& os, const std::string& data);
-    int writeTSV(std::ostream& os, const std::string& data);
     int writeTorsionAngles(std::string filename);
     int extract(std::string& data, int type, int digits);
 

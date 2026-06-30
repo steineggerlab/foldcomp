@@ -1,0 +1,235 @@
+{
+  "summary": {
+    "total_tests": 32,
+    "passed": 32,
+    "failed": 0,
+    "total_duration_sec": 0.0675,
+    "pass_rate": 100.0
+  },
+  "results": [
+    {
+      "name": "test_compress_multichain_pdb",
+      "passed": true,
+      "duration_sec": 0.001643,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_decompress_multichain_pdb",
+      "passed": true,
+      "duration_sec": 0.003383,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_decompress_multichain_mmcif",
+      "passed": true,
+      "duration_sec": 0.005623,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_single_chain_pdb",
+      "passed": true,
+      "duration_sec": 0.001366,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_af_pdb",
+      "passed": true,
+      "duration_sec": 0.000267,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_cif",
+      "passed": true,
+      "duration_sec": 0.001961,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_multichain_cif_1dlp",
+      "passed": true,
+      "duration_sec": 0.012533,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_multichain_cif_2ap2",
+      "passed": true,
+      "duration_sec": 0.004353,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_multichain_cif_7c2s",
+      "passed": true,
+      "duration_sec": 0.001958,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_multichain_cif_1hrn",
+      "passed": true,
+      "duration_sec": 0.005356,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_get_data_multichain_pdb",
+      "passed": true,
+      "duration_sec": 0.001482,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_get_data_multichain_fcz",
+      "passed": true,
+      "duration_sec": 0.002462,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_get_data_single_chain_pdb",
+      "passed": true,
+      "duration_sec": 0.000536,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_get_data_fcz_file",
+      "passed": true,
+      "duration_sec": 0.000646,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_get_data_af_fcz",
+      "passed": true,
+      "duration_sec": 0.000311,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_split_pdb_by_chain_multichain",
+      "passed": true,
+      "duration_sec": 0.000801,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_split_pdb_by_chain_single",
+      "passed": true,
+      "duration_sec": 0.00029,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_split_pdb_by_chain_roundtrip",
+      "passed": true,
+      "duration_sec": 0.00344,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_open_db_all",
+      "passed": true,
+      "duration_sec": 0.006516,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_open_db_ids",
+      "passed": true,
+      "duration_sec": 0.000651,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_open_db_str_path",
+      "passed": true,
+      "duration_sec": 0.000333,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_open_db_pathlib_path",
+      "passed": true,
+      "duration_sec": 3.2e-05,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_db_entry_atom_counts",
+      "passed": true,
+      "duration_sec": 0.000738,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_fcz_file_roundtrip",
+      "passed": true,
+      "duration_sec": 0.000679,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_fcz_cif_file_roundtrip",
+      "passed": true,
+      "duration_sec": 0.000662,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compression_ratios",
+      "passed": true,
+      "duration_sec": 0.001858,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_with_anchor_threshold",
+      "passed": true,
+      "duration_sec": 0.001212,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_with_max_backbone_rmsd",
+      "passed": true,
+      "duration_sec": 0.00126,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_dir_input_multichain_pdb",
+      "passed": true,
+      "duration_sec": 0.002753,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_dir_input_cif",
+      "passed": true,
+      "duration_sec": 0.001779,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_decompress_invalid_format",
+      "passed": true,
+      "duration_sec": 0.000553,
+      "details": {},
+      "error": ""
+    },
+    {
+      "name": "test_compress_empty_input",
+      "passed": true,
+      "duration_sec": 1.7e-05,
+      "details": {},
+      "error": ""
+    }
+  ]
+}

@@ -19,41 +19,73 @@
 #include <fstream> // IWYU pragma: keep
 #include <iostream>
 
+namespace {
+
+void setDiscretizerRange(Discretizer& discretizer, float minValue, float maxValue) {
+    discretizer.min = minValue;
+    discretizer.max = maxValue;
+    const float range = discretizer.max - discretizer.min;
+    if (discretizer.n_bin == 0 || std::fabs(range) <= 1e-12f) {
+        discretizer.disc_f = 0.0f;
+        discretizer.cont_f = 0.0f;
+        return;
+    }
+    discretizer.disc_f = static_cast<float>(discretizer.n_bin) / range;
+    discretizer.cont_f = range / static_cast<float>(discretizer.n_bin);
+}
+
+unsigned int discretizeValue(const Discretizer& discretizer, float continuousValue) {
+    if (discretizer.n_bin == 0 || discretizer.disc_f == 0.0f) {
+        return 0;
+    }
+    float scaled = (continuousValue - discretizer.min) * discretizer.disc_f;
+    long rounded = std::lround(scaled);
+    if (rounded < 0) {
+        return 0;
+    }
+    if (rounded > static_cast<long>(discretizer.n_bin)) {
+        return discretizer.n_bin;
+    }
+    return static_cast<unsigned int>(rounded);
+}
+
+}
+
 Discretizer::Discretizer(const std::vector<float>& values, unsigned int nb):
     n_bin(nb) {
     if (values.size() == 0) {
+        min = 0.0f;
+        max = 0.0f;
+        disc_f = 0.0f;
+        cont_f = 0.0f;
         return;
     }
-    // Get min & max
-    this->min = *std::min_element(values.begin(), values.end());
-    this->max = *std::max_element(values.begin(), values.end());
-    // Calculate factors
-    this->disc_f = this->n_bin / (this->max - this->min);
-    this->cont_f = (this->max - this->min) / this->n_bin;
+    setDiscretizerRange(*this,
+                        *std::min_element(values.begin(), values.end()),
+                        *std::max_element(values.begin(), values.end()));
 }
 
 void Discretizer::set_continuous_values(const std::vector<float>& values) {
-    this->min = *std::min_element(values.begin(), values.end());
-    this->max = *std::max_element(values.begin(), values.end());
-    // Calculate factors
-    this->disc_f = this->n_bin / (this->max - this->min);
-    this->cont_f = (this->max - this->min) / this->n_bin;
+    if (values.empty()) {
+        setDiscretizerRange(*this, 0.0f, 0.0f);
+        return;
+    }
+    setDiscretizerRange(*this,
+                        *std::min_element(values.begin(), values.end()),
+                        *std::max_element(values.begin(), values.end()));
 }
 
 std::vector<unsigned int> Discretizer::discretize(const std::vector<float>& continuous_values) {
-    std::vector<float>::const_iterator it;
-    unsigned int tmp_disc_value;
     std::vector<unsigned int> discretizedValues;
     discretizedValues.reserve(continuous_values.size());
-    for (it = continuous_values.cbegin(); it != continuous_values.cend(); it++) {
-        tmp_disc_value = (unsigned int)((*it - min) * (this->disc_f) + 0.5);
-        discretizedValues.push_back(tmp_disc_value);
+    for (float value : continuous_values) {
+        discretizedValues.push_back(discretizeValue(*this, value));
     }
     return discretizedValues;
 }
 
 unsigned int Discretizer::discretize(float continuous_value) {
-    return (continuous_value - this->min) * (this->disc_f);
+    return discretizeValue(*this, continuous_value);
 }
 
 std::vector<float> Discretizer::continuize(const std::vector<unsigned int>& discrete_values) {

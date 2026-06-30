@@ -14,6 +14,8 @@
 
 #include "amino_acid.h"
 
+#include <fstream>
+
 // 2021-08-18 23:20:21
 
 int writeAminoAcidMapToFile(std::map<std::string, AminoAcid>& aa_map, std::string filename) {

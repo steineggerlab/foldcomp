@@ -12,11 +12,242 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #include "atom_coordinate.h"
+#include "amino_acid.h"
+#include "foldcomp.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <iomanip>
 #include <iostream>
-#include <sstream> // IWYU pragma: keep
+
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+#include "gemmi/model.hpp"
+#define GEMMI_WRITE_IMPLEMENTATION
+#include "gemmi/to_mmcif.hpp"
+#include "gemmi/to_cif.hpp"
+#include <sstream>
+#endif
+
+namespace {
+
+constexpr float MAX_PEPTIDE_BOND_DISTANCE = 2.5f;
+constexpr float MAX_PEPTIDE_BOND_DISTANCE_SQUARED =
+    MAX_PEPTIDE_BOND_DISTANCE * MAX_PEPTIDE_BOND_DISTANCE;
+
+void appendSpaces(std::string& output, size_t count) {
+    output.append(count, ' ');
+}
+
+void appendLeftAligned(std::string& output, const std::string& value, size_t width) {
+    size_t copied = std::min(width, value.size());
+    output.append(value.data(), copied);
+    if (copied < width) {
+        appendSpaces(output, width - copied);
+    }
+}
+
+void appendRightAligned(std::string& output, const std::string& value, size_t width) {
+    size_t copied = std::min(width, value.size());
+    if (copied < width) {
+        appendSpaces(output, width - copied);
+    }
+    output.append(value.data() + (value.size() - copied), copied);
+}
+
+void appendRightAlignedInt(std::string& output, int value, size_t width) {
+    bool negative = value < 0;
+    uint32_t magnitude;
+    if (negative) {
+        magnitude = static_cast<uint32_t>(-(static_cast<int64_t>(value)));
+    } else {
+        magnitude = static_cast<uint32_t>(value);
+    }
+    char digits[16];
+    int len = 0;
+    do {
+        digits[len++] = static_cast<char>('0' + (magnitude % 10));
+        magnitude /= 10;
+    } while (magnitude != 0);
+    size_t totalLen = static_cast<size_t>(len + (negative ? 1 : 0));
+    if (totalLen < width) {
+        appendSpaces(output, width - totalLen);
+    }
+    if (negative) {
+        output.push_back('-');
+    }
+    while (len-- > 0) {
+        output.push_back(digits[len]);
+    }
+}
+
+template <size_t Width, uint32_t Scale, size_t Precision>
+void appendRightAlignedFixed(std::string& output, float value) {
+    bool negative = value < 0.0f;
+    float adjusted = value + (negative ? -(0.5f / static_cast<float>(Scale))
+                                       :  (0.5f / static_cast<float>(Scale)));
+    int64_t scaled = static_cast<int64_t>(adjusted * static_cast<float>(Scale));
+    if (scaled < 0) {
+        scaled = -scaled;
+    }
+    uint32_t fraction = static_cast<uint32_t>(scaled % Scale);
+    uint32_t integer = static_cast<uint32_t>(scaled / Scale);
+
+    char intDigits[16];
+    int intLen = 0;
+    do {
+        intDigits[intLen++] = static_cast<char>('0' + (integer % 10));
+        integer /= 10;
+    } while (integer != 0);
+
+    size_t totalLen = static_cast<size_t>(intLen) + 1 + Precision + (negative ? 1 : 0);
+    if (totalLen < Width) {
+        appendSpaces(output, Width - totalLen);
+    }
+    if (negative) {
+        output.push_back('-');
+    }
+    while (intLen-- > 0) {
+        output.push_back(intDigits[intLen]);
+    }
+    output.push_back('.');
+
+    char fracDigits[Precision];
+    for (size_t i = 0; i < Precision; i++) {
+        fracDigits[Precision - 1 - i] = static_cast<char>('0' + (fraction % 10));
+        fraction /= 10;
+    }
+    output.append(fracDigits, Precision);
+}
+
+void appendTitleLines(std::string& output, const std::string& title) {
+    if (title.empty()) {
+        return;
+    }
+    size_t offset = 0;
+    int continuation = 1;
+    while (offset < title.size()) {
+        size_t chunk = std::min<size_t>(70, title.size() - offset);
+        if (continuation == 1) {
+            output.append("TITLE     ", 10);
+        } else {
+            output.append("TITLE  ", 7);
+            appendRightAlignedInt(output, continuation, 3);
+        }
+        output.append(title.data() + offset, chunk);
+        output.push_back('\n');
+        offset += chunk;
+        continuation++;
+    }
+}
+
+bool residueRequiresRawEncoding(const tcb::span<const AtomCoordinate>& residueAtoms) {
+    for (const auto& atom : residueAtoms) {
+        if (atom.altloc != ' ' && atom.altloc != '\0') {
+            return true;
+        }
+        if (atom.insertion_code != ' ' && atom.insertion_code != '\0') {
+            return true;
+        }
+    }
+    return false;
+}
+
+struct ResidueSummary {
+    size_t start;
+    size_t end;
+    int residueIndex;
+    const AtomCoordinate* n;
+    const AtomCoordinate* ca;
+    const AtomCoordinate* c;
+    bool requiresRawEncoding;
+};
+
+bool hasAbnormalPeptideGap(const ResidueSummary& previousResidue, const ResidueSummary& currentResidue) {
+    if (previousResidue.c == nullptr || currentResidue.n == nullptr) {
+        return false;
+    }
+    float dx = previousResidue.c->coordinate.x - currentResidue.n->coordinate.x;
+    float dy = previousResidue.c->coordinate.y - currentResidue.n->coordinate.y;
+    float dz = previousResidue.c->coordinate.z - currentResidue.n->coordinate.z;
+    float distanceSquared = dx * dx + dy * dy + dz * dz;
+    return distanceSquared > MAX_PEPTIDE_BOND_DISTANCE_SQUARED;
+}
+
+std::vector<ResidueSummary> buildResidueSummaries(
+    const tcb::span<const AtomCoordinate>& atoms,
+    size_t offset = 0
+) {
+    std::vector<ResidueSummary> summaries;
+    if (atoms.empty()) {
+        return summaries;
+    }
+
+    summaries.reserve(atoms.size() / 4 + 1);
+    size_t residueStart = 0;
+    for (size_t i = 1; i <= atoms.size(); i++) {
+        bool endOfResidue = (i == atoms.size()) || startsNewResidue(atoms[i], atoms[i - 1]);
+        if (!endOfResidue) {
+            continue;
+        }
+
+        const AtomCoordinate* n = nullptr;
+        const AtomCoordinate* ca = nullptr;
+        const AtomCoordinate* c = nullptr;
+        for (size_t j = residueStart; j < i; j++) {
+            const AtomCoordinate& atom = atoms[j];
+            if (atom.atom == "N" && n == nullptr) {
+                n = &atom;
+            } else if (atom.atom == "CA" && ca == nullptr) {
+                ca = &atom;
+            } else if (atom.atom == "C" && c == nullptr) {
+                c = &atom;
+            }
+        }
+        summaries.push_back({
+            residueStart + offset, i + offset, atoms[residueStart].residue_index,
+            n, ca, c,
+            residueRequiresRawEncoding(tcb::span<const AtomCoordinate>(atoms.data() + residueStart, i - residueStart))
+        });
+        residueStart = i;
+    }
+
+    return summaries;
+}
+
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+std::string sanitizeMMCIFDataName(const std::string& title) {
+    if (title.empty()) {
+        return "foldcomp";
+    }
+    std::string output;
+    output.reserve(title.size());
+    for (char ch : title) {
+        unsigned char uch = static_cast<unsigned char>(ch);
+        if (std::isalnum(uch) || ch == '_') {
+            output.push_back(ch);
+        } else {
+            output.push_back('_');
+        }
+    }
+    if (output.empty() || output[0] == '_' || output[0] == '#') {
+        output.insert(output.begin(), 'd');
+    }
+    return output;
+}
+
+gemmi::Element inferGemmiElement(const std::string& atomName) {
+    const char* ptr = atomName.c_str();
+    while (*ptr != '\0' && !std::isalpha(static_cast<unsigned char>(*ptr))) {
+        ++ptr;
+    }
+    return gemmi::find_element(ptr);
+}
+#endif
+
+}
 
 /**
  * @brief Construct a new Atom Coordinate:: Atom Coordinate object
@@ -30,10 +261,10 @@
  * @param z A float for z coordinate
  */
 AtomCoordinate::AtomCoordinate(
-    std::string a, std::string r, std::string c,
+    const std::string& a, const std::string& r, const std::string& c,
     int ai, int ri, float x, float y, float z,
-    float occupancy, float tempFactor
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor) {
+    float occupancy, float tempFactor, int model, char insertionCode, char altloc
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor), model(model), insertion_code(insertionCode), altloc(altloc) {
     this->coordinate = {x, y, z};
 }
 
@@ -47,10 +278,33 @@ AtomCoordinate::AtomCoordinate(
  * @param coord A float vector for x,y,z coordinates.
  */
 AtomCoordinate::AtomCoordinate(
-    std::string a, std::string r, std::string c,
+    const std::string& a, const std::string& r, const std::string& c,
     int ai, int ri, float3d coord,
-    float occupancy, float tempFactor
-): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor) {
+    float occupancy, float tempFactor, int model, char insertionCode, char altloc
+): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor), model(model), insertion_code(insertionCode), altloc(altloc) {
+}
+
+bool startsNewResidue(const AtomCoordinate& current, const AtomCoordinate& previous) {
+    if (current.chain != previous.chain) {
+        return true;
+    }
+    if (current.model != previous.model) {
+        return true;
+    }
+    if (current.residue_index != previous.residue_index) {
+        return true;
+    }
+    if (current.insertion_code != previous.insertion_code) {
+        return true;
+    }
+    if (current.residue != previous.residue) {
+        return true;
+    }
+    if (current.atom == "N" && previous.atom != "N") {
+        // Reused residue indices can still denote a new residue in author numbering.
+        return true;
+    }
+    return false;
 }
 
 bool AtomCoordinate::operator==(const AtomCoordinate& other) const {
@@ -60,6 +314,9 @@ bool AtomCoordinate::operator==(const AtomCoordinate& other) const {
         (this->residue == other.residue) &&
         (this->residue_index == other.residue_index) &&
         (this->chain == other.chain) &&
+        (this->model == other.model) &&
+        (this->insertion_code == other.insertion_code) &&
+        (this->altloc == other.altloc) &&
         (this->coordinate.x == other.coordinate.x) &&
         (this->coordinate.y == other.coordinate.y) &&
         (this->coordinate.z == other.coordinate.z)
@@ -134,9 +391,26 @@ void printAtomCoordinateVector(std::vector<AtomCoordinate>& atoms, int option) {
 
 std::vector<AtomCoordinate> filterBackbone(const tcb::span<AtomCoordinate>& atoms) {
     std::vector<AtomCoordinate> output;
-    for (const AtomCoordinate& curr_atm : atoms) {
-        if (curr_atm.isBackbone()) {
-            output.emplace_back(curr_atm);
+    std::vector<std::pair<size_t, size_t>> residueRanges = splitResidueRanges(atoms);
+    output.reserve(residueRanges.size() * 3);
+    for (const auto& residueRange : residueRanges) {
+        const AtomCoordinate* n = nullptr;
+        const AtomCoordinate* ca = nullptr;
+        const AtomCoordinate* c = nullptr;
+        for (size_t i = residueRange.first; i < residueRange.second; i++) {
+            const auto& atom = atoms[i];
+            if (atom.atom == "N" && n == nullptr) {
+                n = &atom;
+            } else if (atom.atom == "CA" && ca == nullptr) {
+                ca = &atom;
+            } else if (atom.atom == "C" && c == nullptr) {
+                c = &atom;
+            }
+        }
+        if (n != nullptr && ca != nullptr && c != nullptr) {
+            output.emplace_back(*n);
+            output.emplace_back(*ca);
+            output.emplace_back(*c);
         }
     }
     return output;
@@ -162,168 +436,188 @@ std::vector<AtomCoordinate> weightedAverage(
     return output;
 }
 
-void reverse(char* s) {
-    for (int i = 0, j = strlen(s)-1; i < j; i++, j--) {
-        char c = s[i];
-        s[i] = s[j];
-        s[j] = c;
-    }
-}
-
-void itoa_pos_only(int n, char* s) {
-    int i = 0;
-    do {
-        // generate digits in reverse order
-        // get next digit
-        s[i++] = n % 10 + '0';
-    // shift to next
-    } while ((n /= 10) > 0);
-    s[i] = '\0';
-    reverse(s);
-}
-
-template <int32_t T, int32_t P>
-void fast_ftoa(float n, char* s) {
-    float rounded = n + ((n < 0) ? -(0.5f / T) : (0.5f / T));
-    int32_t integer = (int32_t)rounded;
-    int32_t decimal = (int32_t)((rounded - (float)integer) * (float)T);
-    char* data = s;
-    if (n < 0) {
-        integer = std::abs(integer);
-        decimal = std::abs(decimal);
-        *data = '-';
-        data++;
-    }
-    itoa_pos_only(integer, data);
-    data += strlen(data);
-    *data = '.';
-    data++;
-    char buffer[10];
-    itoa_pos_only(decimal, buffer);
-    int32_t len = strlen(buffer);
-    for (int32_t i = 0; i < (P - len); i++) {
-        *data = '0';
-        data++;
-    }
-    memcpy(data, buffer, len);
-    // add a null terminator
-    data += len;
-    *data = '\0';
-    // std::string check(s);
-    // std::ostringstream ss;
-    // ss << std::fixed << std::setprecision(P) << n;
-    // if (ss.str() != check) {
-    //     std::cout << "ERROR: " << ss.str() << " != " << check << " ORIG: " << std::fixed << std::setprecision(10) << n << std::endl;
-    // }
-}
-
 void writeAtomCoordinatesToPDB(
-    std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_stream
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output,
+    bool appendOutput, bool emitFinalTer
 ) {
-    // Write title
-    // Check if title is too long and if so, write the title in multiple lines
-    if (title != "") {
-        const char* headerData = title.c_str();
-        size_t headerLen = title.length();
-        int remainingHeader = headerLen;
-        char buffer[128];
-        int written = snprintf(buffer, sizeof(buffer), "TITLE     %.*s\n",  std::min(70, (int)remainingHeader), headerData);
-        if (written >= 0 && written < (int)sizeof(buffer)) {
-            pdb_stream << buffer;
-        }
-        remainingHeader -= 70;
-        int continuation = 2;
-        while (remainingHeader > 0) {
-            written = snprintf(buffer, sizeof(buffer), "TITLE  % 3d%.*s\n", continuation, std::min(70, (int)remainingHeader), headerData + (headerLen - remainingHeader));
-            if (written >= 0 && written < (int)sizeof(buffer)) {
-                pdb_stream << buffer;
-            }
-            remainingHeader -= 70;
-            continuation++;
-        }
+    if (!appendOutput) {
+        output.clear();
+    }
+    output.reserve(output.size() + title.size() + atoms.size() * 96);
+    if (!title.empty()) {
+        appendTitleLines(output, title);
     }
 
-    int total = atoms.size();
-    std::string residue;
+    int total = static_cast<int>(atoms.size());
     for (int i = 0; i < total; i++) {
-        pdb_stream << "ATOM  "; // 1-4 ATOM
-        pdb_stream << std::setw(5) << atoms[i].atom_index; // 7-11
-        pdb_stream << " "; // 12
-        if (atoms[i].atom.size() == 4) {
-            pdb_stream << std::setw(4) << std::left << atoms[i].atom; // 13-16
+        const AtomCoordinate& atom = atoms[i];
+        output.append("ATOM  ", 6);
+        appendRightAlignedInt(output, atom.atom_index, 5);
+        output.push_back(' ');
+        if (atom.atom.size() == 4) {
+            appendLeftAligned(output, atom.atom, 4);
         } else {
-            pdb_stream << " ";
-            pdb_stream << std::setw(3) << std::left << atoms[i].atom; // 13-16
+            output.push_back(' ');
+            appendLeftAligned(output, atom.atom, 3);
         }
-        pdb_stream << " "; // 17
-        pdb_stream << std::setw(3) << std::right << atoms[i].residue; // 18-20
-        pdb_stream << " "; // 21
-        pdb_stream << atoms[i].chain; // 22
-        pdb_stream << std::setw(4) << atoms[i].residue_index; // 23-26
-        pdb_stream << "    "; // 27-30
-        char buffer[16];
-        fast_ftoa<1000, 3>(atoms[i].coordinate.x, buffer);
-        pdb_stream << std::setw(8) << buffer; // 31-38
-        fast_ftoa<1000, 3>(atoms[i].coordinate.y, buffer);
-        pdb_stream << std::setw(8) << buffer; // 39-46
-        fast_ftoa<1000, 3>(atoms[i].coordinate.z, buffer);
-        pdb_stream << std::setw(8) << buffer; // 47-54
-        pdb_stream << "  1.00"; // 55-60
-        fast_ftoa<100, 2>(atoms[i].tempFactor, buffer);
-        pdb_stream << std::setw(6) << buffer; // 61-66
-        pdb_stream << "          "; // 67-76
-        // First one character from atom
-        pdb_stream << std::setw(2) << atoms[i].atom[0]; // 77-78
-        pdb_stream << "  \n"; // 79-80
-        if (i == (total-1)) {
-            // TER
-            // 1-6 Record name "TER   "
-            // 7-11 Atom serial number.
-            // 18-20 Residue name.
-            // 22 Chain identifier.
-            // 23-26 Residue sequence number.
-            pdb_stream << "TER   " << std::setw(5) << atoms[i].atom_index + 1 << "      ";
-            pdb_stream << std::setw(3) << std::right << atoms[i].residue;
-            pdb_stream << " " << atoms[i].chain;
-            pdb_stream << std::setw(4) << atoms[i].residue_index << std::endl;
+        output.push_back(atom.altloc == '\0' ? ' ' : atom.altloc);
+        appendRightAligned(output, atom.residue, 3);
+        output.push_back(' ');
+        char chainId = atom.chain.empty() ? ' ' : atom.chain[0];
+        output.push_back(chainId);
+        appendRightAlignedInt(output, atom.residue_index, 4);
+        output.push_back(atom.insertion_code == '\0' ? ' ' : atom.insertion_code);
+        output.append("   ", 3);
+        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.x);
+        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.y);
+        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.z);
+        appendRightAlignedFixed<6, 100, 2>(output, atom.occupancy > 0.0f ? atom.occupancy : 1.0f);
+        appendRightAlignedFixed<6, 100, 2>(output, atom.tempFactor);
+        output.append("          ", 10);
+        output.push_back(' ');
+        output.push_back(atom.atom.empty() ? ' ' : atom.atom[0]);
+        output.append("  \n", 3);
+        bool needsTer = false;
+        if (i == (total - 1)) {
+            needsTer = emitFinalTer;
+        } else {
+            const AtomCoordinate& nextAtom = atoms[i + 1];
+            needsTer = (nextAtom.model != atom.model) || (nextAtom.chain != atom.chain);
+        }
+        if (needsTer) {
+            output.append("TER   ", 6);
+            appendRightAlignedInt(output, atom.atom_index + 1, 5);
+            output.append("      ", 6);
+            appendRightAligned(output, atom.residue, 3);
+            output.push_back(' ');
+            output.push_back(chainId);
+            appendRightAlignedInt(output, atom.residue_index, 4);
+            output.push_back(atom.insertion_code == '\0' ? ' ' : atom.insertion_code);
+            output.push_back('\n');
         }
     }
 }
 
 int writeAtomCoordinatesToPDBFile(
-    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, const std::string& pdb_path
 ) {
-    std::ofstream pdb_file(pdb_path);
-    if (!pdb_file) {
+    std::string output;
+    writeAtomCoordinatesToPDB(atoms, title, output);
+    FILE* pdb_file = fopen(pdb_path.c_str(), "wb");
+    if (pdb_file == nullptr) {
         return 1;
     }
-    writeAtomCoordinatesToPDB(atoms, title, pdb_file);
-    return 0;
+    size_t written = fwrite(output.data(), 1, output.size(), pdb_file);
+    fclose(pdb_file);
+    return written == output.size() ? 0 : 1;
 }
+
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+bool writeAtomCoordinatesToMMCIF(
+    std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output
+) {
+    gemmi::Structure st;
+    st.name = sanitizeMMCIFDataName(title);
+    if (!title.empty()) {
+        st.info["_entry.id"] = st.name;
+        st.info["_struct.title"] = title;
+    }
+
+    std::vector<std::pair<size_t, size_t>> residueRanges = splitResidueRanges(tcb::span<AtomCoordinate>(atoms.data(), atoms.size()));
+    int currentModel = 0;
+    std::string currentChain;
+    int currentLabelSeq = 0;
+    gemmi::Model* model = nullptr;
+    gemmi::Chain* chain = nullptr;
+
+    for (const auto& residueRange : residueRanges) {
+        const AtomCoordinate& firstAtom = atoms[residueRange.first];
+        if (model == nullptr || firstAtom.model != currentModel) {
+            st.models.emplace_back(std::to_string(firstAtom.model));
+            model = &st.models.back();
+            chain = nullptr;
+            currentModel = firstAtom.model;
+            currentChain.clear();
+            currentLabelSeq = 0;
+        }
+        if (chain == nullptr || firstAtom.chain != currentChain) {
+            model->chains.emplace_back(firstAtom.chain);
+            chain = &model->chains.back();
+            currentChain = firstAtom.chain;
+            currentLabelSeq = 0;
+        }
+        currentLabelSeq++;
+
+        gemmi::Residue residue;
+        residue.name = firstAtom.residue;
+        residue.seqid = gemmi::SeqId(firstAtom.residue_index, firstAtom.insertion_code == '\0' ? ' ' : firstAtom.insertion_code);
+        residue.subchain = currentChain;
+        residue.entity_id = "1";
+        residue.label_seq = currentLabelSeq;
+        residue.entity_type = gemmi::EntityType::Polymer;
+        residue.het_flag = 'A';
+
+        for (size_t atomIndex = residueRange.first; atomIndex < residueRange.second; atomIndex++) {
+            const AtomCoordinate& atomCoordinate = atoms[atomIndex];
+            gemmi::Atom atom;
+            atom.name = atomCoordinate.atom;
+            atom.serial = atomCoordinate.atom_index;
+            atom.pos = gemmi::Position(atomCoordinate.coordinate.x, atomCoordinate.coordinate.y, atomCoordinate.coordinate.z);
+            atom.occ = atomCoordinate.occupancy > 0.0f ? atomCoordinate.occupancy : 1.0f;
+            atom.b_iso = atomCoordinate.tempFactor;
+            atom.element = inferGemmiElement(atomCoordinate.atom);
+            atom.altloc = (atomCoordinate.altloc == '\0' || atomCoordinate.altloc == ' ')
+                              ? '\0'
+                              : atomCoordinate.altloc;
+            residue.atoms.push_back(std::move(atom));
+        }
+        chain->residues.push_back(std::move(residue));
+    }
+
+    gemmi::MmcifOutputGroups groups(false);
+    groups.atoms = true;
+    groups.block_name = true;
+    groups.entry = true;
+    groups.title_keywords = !title.empty();
+    groups.struct_asym = true;
+    groups.group_pdb = true;
+
+    gemmi::cif::Document doc = gemmi::make_mmcif_document(st, groups);
+    std::ostringstream stream;
+    gemmi::cif::write_cif_to_stream(stream, doc, gemmi::cif::Style::Pdbx);
+    output = stream.str();
+    return true;
+}
+#endif
 
 std::vector< std::vector<AtomCoordinate> > splitAtomByResidue(
     const tcb::span<AtomCoordinate>& atomCoordinates
 ) {
     std::vector< std::vector<AtomCoordinate> > output;
-    std::vector<AtomCoordinate> currentResidue;
+    std::vector<std::pair<size_t, size_t>> ranges = splitResidueRanges(atomCoordinates);
+    output.reserve(ranges.size());
+    for (const auto& range : ranges) {
+        output.emplace_back(atomCoordinates.begin() + range.first, atomCoordinates.begin() + range.second);
+    }
+    return output;
+}
 
-    for (size_t i = 0; i < atomCoordinates.size(); i++) {
-        if (i == 0) {
-            currentResidue.push_back(atomCoordinates[i]);
-        } else if (i != (atomCoordinates.size() - 1)) {
-            if (atomCoordinates[i].residue_index == atomCoordinates[i-1].residue_index) {
-                currentResidue.push_back(atomCoordinates[i]);
-            } else {
-                output.push_back(currentResidue);
-                currentResidue.clear();
-                currentResidue.push_back(atomCoordinates[i]);
-            }
-        } else {
-            currentResidue.push_back(atomCoordinates[i]);
-            output.push_back(currentResidue);
+std::vector<std::pair<size_t, size_t>> splitResidueRanges(
+    const tcb::span<AtomCoordinate>& atomCoordinates
+) {
+    std::vector<std::pair<size_t, size_t>> output;
+    if (atomCoordinates.empty()) {
+        return output;
+    }
+    output.reserve(atomCoordinates.size() / 4 + 1);
+    size_t start = 0;
+    for (size_t i = 1; i < atomCoordinates.size(); i++) {
+        if (startsNewResidue(atomCoordinates[i], atomCoordinates[i - 1])) {
+            output.push_back({start, i});
+            start = i;
         }
     }
-
+    output.push_back({start, atomCoordinates.size()});
     return output;
 }
 
@@ -331,20 +625,19 @@ std::vector<std::string> getResidueNameVector(
     const tcb::span<AtomCoordinate>& atomCoordinates
 ) {
     std::vector<std::string> output;
-    // Unique residue names
-    for (size_t i = 0; i < atomCoordinates.size(); i++) {
-        if (i == 0) {
-            output.push_back(atomCoordinates[i].residue);
-        } else {
-            if (atomCoordinates[i].residue_index != atomCoordinates[i-1].residue_index) {
-                output.push_back(atomCoordinates[i].residue);
-            }
-        }
+    std::vector<std::pair<size_t, size_t>> residueRanges = splitResidueRanges(atomCoordinates);
+    output.reserve(residueRanges.size());
+    for (const auto& residueRange : residueRanges) {
+        output.push_back(atomCoordinates[residueRange.first].residue);
     }
     return output;
 }
 
 AtomCoordinate findFirstAtom(const std::vector<AtomCoordinate>& atoms, std::string atom_name) {
+    return findFirstAtom(tcb::span<const AtomCoordinate>(atoms.data(), atoms.size()), std::move(atom_name));
+}
+
+AtomCoordinate findFirstAtom(const tcb::span<const AtomCoordinate>& atoms, std::string atom_name) {
     for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.atom == atom_name) {
             return curr_atm;
@@ -360,13 +653,27 @@ void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start) {
 }
 
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms) {
-    // If there is an alternative position, remove it
-    for (size_t i = 1; i < atoms.size(); i++) {
-        if (atoms[i].atom == atoms[i-1].atom) {
-            atoms.erase(atoms.begin() + i);
-            i--;
-        }
+    if (atoms.empty()) {
+        return;
     }
+    size_t writeIndex = 1;
+    for (size_t readIndex = 1; readIndex < atoms.size(); readIndex++) {
+        const AtomCoordinate& current = atoms[readIndex];
+        const AtomCoordinate& previous = atoms[writeIndex - 1];
+        if (current.atom == previous.atom &&
+            current.residue == previous.residue &&
+            current.residue_index == previous.residue_index &&
+            current.chain == previous.chain &&
+            current.model == previous.model &&
+            current.insertion_code == previous.insertion_code) {
+            continue;
+        }
+        if (writeIndex != readIndex) {
+            atoms[writeIndex] = std::move(atoms[readIndex]);
+        }
+        writeIndex++;
+    }
+    atoms.resize(writeIndex);
 }
 
 std::vector<AtomCoordinate> getAtomsWithResidueIndex(
@@ -468,33 +775,20 @@ void _splitAtomVectorWithIndices(
  */
 std::vector< std::pair<size_t, size_t> > identifyChains(const std::vector<AtomCoordinate>& atoms) {
     std::vector< std::pair<size_t, size_t> > output;
+    if (atoms.empty()) {
+        return output;
+    }
     size_t start = 0;
-    // Split by chain
     for (size_t i = 1; i < atoms.size(); i++) {
-        if (atoms[i].chain != atoms[i - 1].chain) {
-            // Ensure that the new fragment starts with "N"
-            if (atoms[i].atom == "N") {
-                output.emplace_back(start, i);
-                start = i;
-            } else {
-                // Find the first "N" atom
-                for (size_t j = i; j < atoms.size(); j++) {
-                    if (atoms[j].atom == "N") {
-                        // Ignore fragment between i and j
-                        output.emplace_back(start, i);
-                        start = j;
-                        break;
-                    }
-                }
-                // Set i to j
-                i = start;
-            }
+        if (atoms[i].model != atoms[i - 1].model || atoms[i].chain != atoms[i - 1].chain) {
+            output.emplace_back(start, i);
+            start = i;
         }
     }
-    // Add the last fragment
-    output.emplace_back(start, atoms.size());
+    if (start < atoms.size()) {
+        output.emplace_back(start, atoms.size());
+    }
     return output;
-
 }
 
 /**
@@ -509,22 +803,224 @@ std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(
     size_t chain_end
 ) {
     std::vector<std::pair<size_t, size_t>> output;
-    // Extract N atoms only within chain
-    std::vector<std::pair<size_t, int>> N_indices;
-    for (size_t i = chain_start; i < chain_end; i++) {
-        if (atoms[i].atom == "N") {
-            N_indices.emplace_back(i, atoms[i].residue_index);
+    if (chain_start >= chain_end || chain_end > atoms.size()) {
+        return output;
+    }
+    tcb::span<const AtomCoordinate> chainSpan(atoms.data() + chain_start, chain_end - chain_start);
+    std::vector<ResidueSummary> summaries = buildResidueSummaries(chainSpan, chain_start);
+    if (summaries.empty()) {
+        return output;
+    }
+    size_t start = chain_start;
+    for (size_t i = 1; i < summaries.size(); i++) {
+        if (summaries[i].residueIndex != summaries[i - 1].residueIndex + 1 ||
+            hasAbnormalPeptideGap(summaries[i - 1], summaries[i])) {
+            output.emplace_back(start, summaries[i].start);
+            start = summaries[i].start;
         }
     }
-    // Identify discontinuous regions
-    size_t start = N_indices[0].first;
-    for (size_t i = 1; i < N_indices.size(); i++) {
-        if (N_indices[i].second - N_indices[i - 1].second > 1) {
-            output.emplace_back(start, N_indices[i].first);
-            start = N_indices[i].first;
-        }
-    }
-    // Add the last fragment
     output.emplace_back(start, chain_end);
     return output;
+}
+
+std::vector<std::pair<size_t, size_t>> identifyCompleteBackboneRegions(
+    const tcb::span<AtomCoordinate>& atoms
+) {
+    std::vector<std::pair<size_t, size_t>> output;
+    if (atoms.empty()) {
+        return output;
+    }
+
+    std::vector<ResidueSummary> residues = buildResidueSummaries(
+        tcb::span<const AtomCoordinate>(atoms.data(), atoms.size())
+    );
+
+    size_t i = 0;
+    while (i < residues.size()) {
+        if (!(residues[i].n != nullptr && residues[i].ca != nullptr && residues[i].c != nullptr &&
+              !residues[i].requiresRawEncoding)) {
+            i++;
+            continue;
+        }
+        size_t runStartIndex = i;
+        size_t start = residues[i].start;
+        size_t end = residues[i].end;
+        i++;
+        while (i < residues.size() &&
+               residues[i].n != nullptr && residues[i].ca != nullptr && residues[i].c != nullptr &&
+               !residues[i].requiresRawEncoding) {
+            end = residues[i].end;
+            i++;
+        }
+        if (i - runStartIndex >= 2) {
+            output.emplace_back(start, end);
+        }
+    }
+    return output;
+}
+
+std::vector<BackboneRegion> identifyBackboneRegions(const tcb::span<AtomCoordinate>& atoms) {
+    std::vector<BackboneRegion> output;
+    if (atoms.empty()) {
+        return output;
+    }
+
+    std::vector<ResidueSummary> residues = buildResidueSummaries(
+        tcb::span<const AtomCoordinate>(atoms.data(), atoms.size())
+    );
+
+    size_t i = 0;
+    while (i < residues.size()) {
+        bool completeBackbone = residues[i].n != nullptr && residues[i].ca != nullptr &&
+                                residues[i].c != nullptr && !residues[i].requiresRawEncoding;
+        if (!completeBackbone) {
+            size_t start = residues[i].start;
+            size_t end = residues[i].end;
+            i++;
+            while (i < residues.size()) {
+                bool nextCompleteBackbone = residues[i].n != nullptr && residues[i].ca != nullptr &&
+                                            residues[i].c != nullptr && !residues[i].requiresRawEncoding;
+                if (nextCompleteBackbone) {
+                    break;
+                }
+                end = residues[i].end;
+                i++;
+            }
+            output.push_back({start, end, false});
+            continue;
+        }
+
+        size_t runStartIndex = i;
+        size_t start = residues[i].start;
+        size_t end = residues[i].end;
+        i++;
+        while (i < residues.size() &&
+               residues[i].n != nullptr && residues[i].ca != nullptr && residues[i].c != nullptr &&
+               !residues[i].requiresRawEncoding) {
+            end = residues[i].end;
+            i++;
+        }
+        const size_t runLength = i - runStartIndex;
+        if (runLength >= 2) {
+            output.push_back({start, end, true});
+        } else {
+            output.push_back({start, end, false});
+        }
+    }
+
+    return output;
+}
+
+namespace {
+
+template <typename T>
+void appendBinaryValue(std::string& output, const T& value) {
+    size_t offset = output.size();
+    output.resize(offset + sizeof(T));
+    memcpy(&output[offset], &value, sizeof(T));
+}
+
+template <typename T>
+bool readBinaryValue(const char* data, size_t size, size_t& offset, T& out) {
+    if (offset + sizeof(T) > size) {
+        return false;
+    }
+    memcpy(&out, data + offset, sizeof(T));
+    offset += sizeof(T);
+    return true;
+}
+
+} // namespace
+
+bool serializeAtomCoordinates(
+    const tcb::span<const AtomCoordinate>& atoms,
+    std::string& output
+) {
+    output.clear();
+    output.reserve(sizeof(uint32_t) + atoms.size() * 40);
+    uint32_t atomCount = static_cast<uint32_t>(atoms.size());
+    appendBinaryValue(output, atomCount);
+    for (const auto& atom : atoms) {
+        if (atom.atom.size() > 255 || atom.residue.size() > 255) {
+            return false;
+        }
+        uint8_t atomNameLen = static_cast<uint8_t>(atom.atom.size());
+        uint8_t residueNameLen = static_cast<uint8_t>(atom.residue.size());
+        appendBinaryValue(output, atomNameLen);
+        appendBinaryValue(output, residueNameLen);
+        appendBinaryValue(output, atom.atom_index);
+        appendBinaryValue(output, atom.residue_index);
+        appendBinaryValue(output, atom.coordinate.x);
+        appendBinaryValue(output, atom.coordinate.y);
+        appendBinaryValue(output, atom.coordinate.z);
+        appendBinaryValue(output, atom.occupancy);
+        appendBinaryValue(output, atom.tempFactor);
+        appendBinaryValue(output, atom.insertion_code);
+        appendBinaryValue(output, atom.altloc);
+        output.append(atom.atom);
+        output.append(atom.residue);
+    }
+    return true;
+}
+
+bool serializeAtomCoordinates(
+    const std::vector<AtomCoordinate>& atoms,
+    std::string& output
+) {
+    return serializeAtomCoordinates(tcb::span<const AtomCoordinate>(atoms.data(), atoms.size()), output);
+}
+
+bool deserializeAtomCoordinates(
+    const char* data,
+    size_t size,
+    std::vector<AtomCoordinate>& atoms
+) {
+    auto parse = [&](bool hasIdentityFields) -> bool {
+        atoms.clear();
+        size_t offset = 0;
+        uint32_t atomCount = 0;
+        if (!readBinaryValue(data, size, offset, atomCount)) {
+            return false;
+        }
+        atoms.reserve(atomCount);
+        for (uint32_t i = 0; i < atomCount; i++) {
+            uint8_t atomNameLen = 0;
+            uint8_t residueNameLen = 0;
+            AtomCoordinate atom;
+            if (!readBinaryValue(data, size, offset, atomNameLen) ||
+                !readBinaryValue(data, size, offset, residueNameLen) ||
+                !readBinaryValue(data, size, offset, atom.atom_index) ||
+                !readBinaryValue(data, size, offset, atom.residue_index) ||
+                !readBinaryValue(data, size, offset, atom.coordinate.x) ||
+                !readBinaryValue(data, size, offset, atom.coordinate.y) ||
+                !readBinaryValue(data, size, offset, atom.coordinate.z) ||
+                !readBinaryValue(data, size, offset, atom.occupancy) ||
+                !readBinaryValue(data, size, offset, atom.tempFactor)) {
+                return false;
+            }
+            if (hasIdentityFields) {
+                if (!readBinaryValue(data, size, offset, atom.insertion_code) ||
+                    !readBinaryValue(data, size, offset, atom.altloc)) {
+                    return false;
+                }
+            } else {
+                atom.insertion_code = ' ';
+                atom.altloc = ' ';
+            }
+            size_t required = static_cast<size_t>(atomNameLen) + static_cast<size_t>(residueNameLen);
+            if (offset + required > size) {
+                return false;
+            }
+            atom.atom.assign(data + offset, data + offset + atomNameLen);
+            offset += atomNameLen;
+            atom.residue.assign(data + offset, data + offset + residueNameLen);
+            offset += residueNameLen;
+            atoms.push_back(std::move(atom));
+        }
+        return offset == size;
+    };
+    if (parse(true)) {
+        return true;
+    }
+    return parse(false);
 }

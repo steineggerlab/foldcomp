@@ -1,0 +1,48 @@
+========================================================================
+  Foldcomp Multi-Chain Python API - Test Report
+========================================================================
+
+  Total tests : 32
+  Passed      : 32
+  Failed      : 0
+  Pass rate   : 100.0%
+  Total time  : 0.067s
+
+------------------------------------------------------------------------
+  Test Details
+------------------------------------------------------------------------
+
+  [PASS] test_compress_multichain_pdb                      1.64ms
+  [PASS] test_decompress_multichain_pdb                    3.38ms
+  [PASS] test_decompress_multichain_mmcif                  5.62ms
+  [PASS] test_compress_single_chain_pdb                    1.37ms
+  [PASS] test_compress_af_pdb                              0.27ms
+  [PASS] test_compress_cif                                 1.96ms
+  [PASS] test_compress_multichain_cif_1dlp                12.53ms
+  [PASS] test_compress_multichain_cif_2ap2                 4.35ms
+  [PASS] test_compress_multichain_cif_7c2s                 1.96ms
+  [PASS] test_compress_multichain_cif_1hrn                 5.36ms
+  [PASS] test_get_data_multichain_pdb                      1.48ms
+  [PASS] test_get_data_multichain_fcz                      2.46ms
+  [PASS] test_get_data_single_chain_pdb                    0.54ms
+  [PASS] test_get_data_fcz_file                            0.65ms
+  [PASS] test_get_data_af_fcz                              0.31ms
+  [PASS] test_split_pdb_by_chain_multichain                0.80ms
+  [PASS] test_split_pdb_by_chain_single                    0.29ms
+  [PASS] test_split_pdb_by_chain_roundtrip                 3.44ms
+  [PASS] test_open_db_all                                  6.52ms
+  [PASS] test_open_db_ids                                  0.65ms
+  [PASS] test_open_db_str_path                             0.33ms
+  [PASS] test_open_db_pathlib_path                         0.03ms
+  [PASS] test_db_entry_atom_counts                         0.74ms
+  [PASS] test_fcz_file_roundtrip                           0.68ms
+  [PASS] test_fcz_cif_file_roundtrip                       0.66ms
+  [PASS] test_compression_ratios                           1.86ms
+  [PASS] test_compress_with_anchor_threshold               1.21ms
+  [PASS] test_compress_with_max_backbone_rmsd              1.26ms
+  [PASS] test_dir_input_multichain_pdb                     2.75ms
+  [PASS] test_dir_input_cif                                1.78ms
+  [PASS] test_decompress_invalid_format                    0.55ms
+  [PASS] test_compress_empty_input                         0.02ms
+
+========================================================================

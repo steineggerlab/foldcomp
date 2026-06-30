@@ -7,6 +7,7 @@
 #include "database_writer.h"
 #include "database_reader.h"
 
+#include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
@@ -62,7 +63,13 @@ void free_writer(void *writer) {
         std::stable_sort(w->entries, w->entries + w->size, [](const writer_index& a, const writer_index& b) { return a.id < b.id; });
     }
     for (uint64_t i = 0; i < w->size; ++i) {
-        fprintf(w->index, "%d\t%llu\t%d\n", w->entries[i].id, w->entries[i].offset, (uint32_t)w->entries[i].length);
+        fprintf(
+            w->index,
+            "%" PRIu32 "\t%" PRIu64 "\t%" PRIu32 "\n",
+            w->entries[i].id,
+            static_cast<uint64_t>(w->entries[i].offset),
+            static_cast<uint32_t>(w->entries[i].length)
+        );
         fprintf(w->lookup, "%d\t%s\t0\n", w->entries[i].id, w->names[w->entries[i].name_index].c_str());
     }
     fclose(w->index);

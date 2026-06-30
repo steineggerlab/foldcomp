@@ -1,4 +1,28 @@
+from pathlib import Path
+import shutil
+
 from skbuild import setup
+
+
+def _remove_stale_skbuild_cache() -> None:
+    """Remove cached scikit-build build trees before configuring CMake.
+
+    This repo is often built from a workspace that already contains generated
+    `_skbuild` artifacts. If the cached CMake build tree was created with a
+    different generator, CMake refuses to reconfigure it. Clearing the cached
+    build tree keeps `pip`/`uv` installs reproducible from a dirty checkout.
+    """
+
+    project_root = Path(__file__).resolve().parent
+    skbuild_root = project_root / "_skbuild"
+    if not skbuild_root.exists():
+        return
+
+    for build_dir in skbuild_root.glob("*/cmake-build"):
+        shutil.rmtree(build_dir, ignore_errors=True)
+
+
+_remove_stale_skbuild_cache()
 
 setup(
     name="foldcomp",

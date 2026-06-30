@@ -16,7 +16,6 @@
 #include "tcbspan.h"
 
 #include <cstdint>
-#include <fstream>
 #include <string>
 #include <vector>
 
@@ -24,14 +23,16 @@ class AtomCoordinate {
 public:
     AtomCoordinate() = default;
     AtomCoordinate(
-        std::string a, std::string r, std::string c,
+        const std::string& a, const std::string& r, const std::string& c,
         int ai, int ri, float x, float y, float z,
-        float occupancy = 0.0f, float tempFactor = 0.0f
+        float occupancy = 0.0f, float tempFactor = 0.0f,
+        int model = 1, char insertionCode = ' ', char altloc = ' '
     );
     AtomCoordinate(
-        std::string a, std::string r, std::string c,
+        const std::string& a, const std::string& r, const std::string& c,
         int ai, int ri, float3d coord,
-        float occupancy = 0.0f, float tempFactor = 0.0f
+        float occupancy = 0.0f, float tempFactor = 0.0f,
+        int model = 1, char insertionCode = ' ', char altloc = ' '
     );
     // data
     std::string atom;
@@ -42,6 +43,9 @@ public:
     float3d coordinate;
     float occupancy;
     float tempFactor;
+    int model = 1;
+    char insertion_code = ' ';
+    char altloc = ' ';
 
     // operators
     bool operator==(const AtomCoordinate& other) const;
@@ -80,13 +84,24 @@ std::vector<AtomCoordinate> weightedAverage(
 );
 
 void writeAtomCoordinatesToPDB(
-    std::vector<AtomCoordinate>& atoms, std::string title, std::ostream& pdb_path
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output,
+    bool appendOutput = false, bool emitFinalTer = true
 );
 int writeAtomCoordinatesToPDBFile(
-    std::vector<AtomCoordinate>& atoms, std::string title, std::string pdb_path
+    const std::vector<AtomCoordinate>& atoms, const std::string& title, const std::string& pdb_path
 );
 
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+bool writeAtomCoordinatesToMMCIF(
+    std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output
+);
+#endif
+
 std::vector<std::vector<AtomCoordinate>> splitAtomByResidue(
+    const tcb::span<AtomCoordinate>& atomCoordinates
+);
+
+std::vector<std::pair<size_t, size_t>> splitResidueRanges(
     const tcb::span<AtomCoordinate>& atomCoordinates
 );
 
@@ -95,8 +110,10 @@ std::vector<std::string> getResidueNameVector(
 );
 
 AtomCoordinate findFirstAtom(const std::vector<AtomCoordinate>& atoms, std::string atom_name);
+AtomCoordinate findFirstAtom(const tcb::span<const AtomCoordinate>& atoms, std::string atom_name);
 void setAtomIndexSequentially(std::vector<AtomCoordinate>& atoms, int start);
 void removeAlternativePosition(std::vector<AtomCoordinate>& atoms);
+bool startsNewResidue(const AtomCoordinate& current, const AtomCoordinate& previous);
 
 std::vector<AtomCoordinate> getAtomsWithResidueIndex(
     const tcb::span<AtomCoordinate>& atoms, int residue_index,
@@ -114,3 +131,28 @@ void ftoa(float n, char* s);
 
 std::vector<std::pair<size_t, size_t>> identifyChains(const std::vector<AtomCoordinate>& atoms);
 std::vector<std::pair<size_t, size_t>> identifyDiscontinousResInd(const std::vector<AtomCoordinate>& atoms, size_t chain_start, size_t chain_end);
+std::vector<std::pair<size_t, size_t>> identifyCompleteBackboneRegions(const tcb::span<AtomCoordinate>& atoms);
+
+struct BackboneRegion {
+    size_t start;
+    size_t end;
+    bool encodable;
+};
+
+std::vector<BackboneRegion> identifyBackboneRegions(const tcb::span<AtomCoordinate>& atoms);
+
+bool serializeAtomCoordinates(
+    const std::vector<AtomCoordinate>& atoms,
+    std::string& output
+);
+
+bool serializeAtomCoordinates(
+    const tcb::span<const AtomCoordinate>& atoms,
+    std::string& output
+);
+
+bool deserializeAtomCoordinates(
+    const char* data,
+    size_t size,
+    std::vector<AtomCoordinate>& atoms
+);

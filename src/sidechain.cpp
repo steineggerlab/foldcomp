@@ -137,7 +137,7 @@ std::map<std::string, float> calculateTorsionAngles(
     return output;
 }
 
-float3d findFirstAtomCoords(const std::vector<AtomCoordinate>& atoms, std::string atom_name) {
+float3d findFirstAtomCoords(const tcb::span<const AtomCoordinate>& atoms, std::string atom_name) {
     for (const AtomCoordinate& curr_atm : atoms) {
         if (curr_atm.atom == atom_name) {
             return curr_atm.coordinate;
@@ -146,8 +146,24 @@ float3d findFirstAtomCoords(const std::vector<AtomCoordinate>& atoms, std::strin
     return {0, 0, 0};
 }
 
+float3d findFirstAtomCoords(const std::vector<AtomCoordinate>& atoms, std::string atom_name) {
+    return findFirstAtomCoords(
+        tcb::span<const AtomCoordinate>(atoms.data(), atoms.size()),
+        std::move(atom_name)
+    );
+}
+
 std::vector<float> calculateTorsionAnglesInResidue(
     const std::vector<AtomCoordinate>& originalAtoms, const AminoAcid& AA
+) {
+    return calculateTorsionAnglesInResidue(
+        tcb::span<const AtomCoordinate>(originalAtoms.data(), originalAtoms.size()),
+        AA
+    );
+}
+
+std::vector<float> calculateTorsionAnglesInResidue(
+    const tcb::span<const AtomCoordinate>& originalAtoms, const AminoAcid& AA
 ) {
     std::vector<float> output;
     output.reserve(AA.sideChainAtoms.size());
@@ -170,11 +186,24 @@ std::vector<float> calculateTorsionAnglesInResidue(
 std::vector< std::vector<float> > calculateSideChainTorsionAnglesPerResidue(
     const tcb::span<AtomCoordinate>& originalAtoms, const std::map<std::string, AminoAcid>& AAmap
 ) {
-    std::vector<std::vector<AtomCoordinate>> atomByResidue = splitAtomByResidue(originalAtoms);
+    std::vector<std::pair<size_t, size_t>> residueRanges = splitResidueRanges(originalAtoms);
     std::vector<std::vector<float>> output;
-    output.reserve(atomByResidue.size());
-    for (const auto& residue : atomByResidue) {
-        output.emplace_back(calculateTorsionAnglesInResidue(residue, AAmap.at(residue[0].residue)));
+    output.reserve(residueRanges.size());
+    for (const auto& residueRange : residueRanges) {
+        if (residueRange.first == residueRange.second) {
+            output.emplace_back();
+            continue;
+        }
+        tcb::span<const AtomCoordinate> residue(
+            originalAtoms.data() + residueRange.first,
+            residueRange.second - residueRange.first
+        );
+        const auto it = AAmap.find(residue[0].residue);
+        if (it == AAmap.end()) {
+            output.emplace_back();
+            continue;
+        }
+        output.emplace_back(calculateTorsionAnglesInResidue(residue, it->second));
     }
     return output;
 }

@@ -33,7 +33,9 @@ public:
     bool readAllAtoms(std::vector<AtomCoordinate>& allAtoms);
 };
 
+#ifdef FOLDCOMP_WITH_ZLIB
 int uncompressBuffer(
     const char** uncompBuffer, size_t* uncompBufferSize,
     const char* origBuffer, size_t origBufferSize
 );
+#endif

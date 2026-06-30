@@ -10,6 +10,7 @@ option(BUILD_PYTHON "Build python support" OFF)
 option(BUILD_WERROR "Build with warnings as errors" OFF)
 option(BUILD_IWYU "Build with include-what-you-use" OFF)
 option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
+option(ENABLE_AUDIT "Build foldcomp_audit helper" OFF)
 
 include_directories(src)
 add_subdirectory(src)
@@ -31,6 +32,8 @@ if(BUILD_LIBRARY)
         ${foldcomp_header_files}
         ${foldcomp_source_files})
 elseif(BUILD_PYTHON)
+        include_directories(lib)
+        include_directories(lib/gemmi)
         if(MSVC)
             install(FILES lib/windows/dirent.h DESTINATION include)
         endif(MSVC)
@@ -40,7 +43,10 @@ elseif(BUILD_PYTHON)
         add_library(foldcomp MODULE
             ${foldcomp_header_files}
             ${foldcomp_source_files}
+            src/structure_reader.cpp
             foldcomp/foldcomp.cxx)
+        target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_MMCIF_OUTPUT)
+        target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_STRUCTURE_READER)
         python_extension_module(foldcomp)
         install(TARGETS foldcomp LIBRARY DESTINATION foldcomp)
 else()
@@ -53,6 +59,8 @@ else()
         ${foldcomp_exe_source_files})
 
     target_compile_definitions(foldcomp PUBLIC FOLDCOMP_EXECUTABLE)
+    target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_MMCIF_OUTPUT)
+    target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_STRUCTURE_READER)
     # For debugging
     # target_compile_definitions(foldcomp PUBLIC _GLIBCXX_DEBUG=1 _LIBCPP_DEBUG=1)
     
@@ -70,6 +78,7 @@ else()
         endif()
         find_package(ZLIB REQUIRED)
         target_link_libraries(foldcomp PUBLIC ZLIB::ZLIB)
+        target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_ZLIB)
     else()
         # For webassembly, not using openmp. zlib is added to compile flags
         set_target_properties(
@@ -85,6 +94,18 @@ else()
     add_subdirectory(lib/microtar)
     target_link_libraries(foldcomp PUBLIC microtar)
 
+    if(ENABLE_AUDIT)
+        add_executable(foldcomp_audit
+            ${foldcomp_header_files}
+            ${foldcomp_source_files}
+            src/structure_reader.cpp
+            src/foldcomp_audit.cpp)
+        target_link_libraries(foldcomp_audit PUBLIC ZLIB::ZLIB)
+        target_compile_definitions(foldcomp_audit PRIVATE FOLDCOMP_WITH_MMCIF_OUTPUT)
+        target_compile_definitions(foldcomp_audit PRIVATE FOLDCOMP_WITH_STRUCTURE_READER)
+        target_compile_definitions(foldcomp_audit PRIVATE FOLDCOMP_WITH_ZLIB)
+    endif()
+
     if(GCS_SUPPORT)
         find_package(google_cloud_cpp_storage REQUIRED)
         target_link_libraries(foldcomp PUBLIC google-cloud-cpp::storage)
@@ -94,18 +115,33 @@ endif()
 
 # always enable math defines like M_PI
 target_compile_definitions(foldcomp PUBLIC _USE_MATH_DEFINES=1)
+if(TARGET foldcomp_audit)
+    target_compile_definitions(foldcomp_audit PUBLIC _USE_MATH_DEFINES=1)
+endif()
 
 if(MSVC)
     target_compile_options(foldcomp PRIVATE /W4)
+    if(TARGET foldcomp_audit)
+        target_compile_options(foldcomp_audit PRIVATE /W4)
+    endif()
 else()
     target_compile_options(foldcomp PRIVATE -Wall -Wextra -Wpedantic)
+    if(TARGET foldcomp_audit)
+        target_compile_options(foldcomp_audit PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
 endif()
 
 if(BUILD_WERROR)
     if(MSVC)
         target_compile_options(foldcomp PRIVATE /WX)
+        if(TARGET foldcomp_audit)
+            target_compile_options(foldcomp_audit PRIVATE /WX)
+        endif()
     else()
         target_compile_options(foldcomp PRIVATE -Werror)
+        if(TARGET foldcomp_audit)
+            target_compile_options(foldcomp_audit PRIVATE -Werror)
+        endif()
     endif()
 endif()
 
@@ -115,4 +151,3 @@ if(BUILD_IWYU)
 endif()
 
 enable_testing()
-

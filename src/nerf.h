@@ -21,6 +21,7 @@
 // # TODO - A_TO_C angle differs by + / -5 degrees
 #pragma once
 #include "float3d.h"
+#include "tcbspan.h"
 
 #include <map>
 #include <string>
@@ -84,13 +85,18 @@ public:
     );
 
     std::vector<AtomCoordinate> reconstructWithReversed(
-        std::vector<AtomCoordinate> original_atoms,
-        std::vector<float> torsion_angles,
-        std::vector<float> atom_bond_angles
+        const std::vector<AtomCoordinate>& original_atoms,
+        const std::vector<float>& torsion_angles,
+        const std::vector<float>& atom_bond_angles
     );
 
     std::vector<AtomCoordinate> reconstructAminoAcid(
         const std::vector<AtomCoordinate>& original_atoms,
+        const std::vector<float>& torsion_angles,
+        const AminoAcid& aa
+    );
+    std::vector<AtomCoordinate> reconstructAminoAcid(
+        const tcb::span<const AtomCoordinate>& original_atoms,
         const std::vector<float>& torsion_angles,
         const AminoAcid& aa
     );
