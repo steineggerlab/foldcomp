@@ -14,9 +14,14 @@
 #include <functional>
 #include <vector>
 #include <string>
+#include <iterator>
+#include <atomic>
+#include <mutex>
+#include <cstdlib>
 
 #ifdef HAVE_GCS
 #include "google/cloud/storage/client.h"
+namespace gcs = ::google::cloud::storage;
 #endif
 
 // #ifdef HAVE_AWS_S3
@@ -302,46 +307,105 @@ private:
 #ifdef HAVE_GCS
 class GcsProcessor : public Processor {
 public:
-    namespace gcs = ::google::cloud::storage;
-    GcsProcessor(const std::string& input) {
-        auto options = google::cloud::Options{}
-            .set<gcs::ConnectionPoolSizeOption>(num_threads)
-            .set<google::cloud::storage_experimental::HttpVersionOption>("2.0");
-        client = gcs::Client(options);
-        bucket_name = input;
-    };
+    GcsProcessor(std::vector<std::string> object_uris) : object_uris(std::move(object_uris)) {};
+    GcsProcessor(const std::string& object_uri) : GcsProcessor(std::vector<std::string>{ object_uri }) {};
 
     void run(process_entry_func func, int num_threads) override {
-       #pragma omp parallel num_threads(num_threads)
-        {
-#pragma omp single
-            // Get object list from gcs bucket
-            for (auto&& object_metadata : client.ListObjects(bucket_name, gcs::Projection::NoAcl(), gcs::MaxResults(100000))) {
-                std::string obj_name = object_metadata->name();
-                // Set zero padding for ID with 4 digits
-#pragma omp task firstprivate(obj_name)
-                {
-                    // Filter for splitting input into 10 different processes
-                    // bool skipFilter = filter != '\0' && obj_name.length() >= 9 && obj_name[8] == filter;
-                    bool skipFilter = true;
-                    bool allowedSuffix = stringEndsWith(".cif", obj_name) || stringEndsWith(".pdb", obj_name);
-                    if (skipFilter && allowedSuffix) {
-                        auto reader = client.ReadObject(bucket_name, obj_name);
-                        if (!reader.status().ok()) {
-                            std::cerr << "Could not read object " << obj_name << std::endl;
-                        } else {
-                            std::string contents{ std::istreambuf_iterator<char>{reader}, {} };
-                            func(obj_name.c_str(), contents.c_str(), contents.length());
-                        }
+        const int worker_threads = num_threads > 0 ? num_threads : 1;
+        const char* adc_path = std::getenv("GOOGLE_APPLICATION_CREDENTIALS");
+
+        if (adc_path == NULL || adc_path[0] == '\0') {
+            log_message("GOOGLE_APPLICATION_CREDENTIALS is not set. "
+                        "If startup appears to hang, set ADC explicitly to your service-account JSON.");
+        }
+
+        log_message("Starting GCS processing for " + std::to_string(object_uris.size()) +
+                    " object(s) with " + std::to_string(worker_threads) + " thread(s)");
+
+        auto options = google::cloud::Options{}
+            .set<gcs::ConnectionPoolSizeOption>(worker_threads)
+            .set<google::cloud::storage_experimental::HttpVersionOption>("2.0");
+        gcs::Client client(options);
+        log_message("GCS client initialized");
+
+        std::atomic<size_t> processed_count(0);
+        std::atomic<size_t> success_count(0);
+        std::atomic<size_t> failed_count(0);
+
+#pragma omp parallel for schedule(dynamic) num_threads(worker_threads)
+        for (size_t i = 0; i < object_uris.size(); ++i) {
+            bool success = false;
+            std::string bucket_name;
+            std::string object_name;
+            if (!parse_uri(object_uris[i], bucket_name, object_name)) {
+                std::cerr << "[Error] Invalid GCS URI: " << object_uris[i] << std::endl;
+            } else {
+                log_message("Fetching " + std::to_string(i + 1) + "/" + std::to_string(object_uris.size()) +
+                            ": " + object_uris[i]);
+                auto reader = client.ReadObject(bucket_name, object_name);
+                if (!reader.status().ok()) {
+                    std::cerr << "[Error] Could not read GCS object " << object_uris[i]
+                              << ": " << reader.status() << std::endl;
+                } else {
+                    std::string contents((std::istreambuf_iterator<char>(reader)), std::istreambuf_iterator<char>());
+                    log_message("Downloaded " + std::to_string(contents.size()) + " bytes from " + object_uris[i]);
+                    success = func(object_name.c_str(), contents.c_str(), contents.size());
+                    if (!success) {
+                        std::cerr << "[Error] processing GCS object " << object_uris[i] << " failed." << std::endl;
                     }
                 }
             }
+
+            if (success) {
+                success_count.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                failed_count.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            size_t done = processed_count.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (done == 1 || done % 10 == 0 || done == object_uris.size()) {
+                log_message(
+                    "Progress " + std::to_string(done) + "/" + std::to_string(object_uris.size()) +
+                    " (ok=" + std::to_string(success_count.load(std::memory_order_relaxed)) +
+                    ", failed=" + std::to_string(failed_count.load(std::memory_order_relaxed)) + ")"
+                );
+            }
         }
+
+        log_message(
+            "Finished GCS processing: ok=" +
+            std::to_string(success_count.load(std::memory_order_relaxed)) +
+            ", failed=" +
+            std::to_string(failed_count.load(std::memory_order_relaxed))
+        );
     }
 
 private:
-    google::cloud::storage::Client::Client client;
-    std::string bucket_name;
+    static void log_message(const std::string& message) {
+        static std::mutex log_mutex;
+        std::lock_guard<std::mutex> lock(log_mutex);
+        std::cerr << "[GCS] " << message << std::endl;
+    }
+
+    static bool parse_uri(const std::string& uri, std::string& bucket_name, std::string& object_name) {
+        std::string path;
+        if (stringStartsWith("gcs://", uri)) {
+            path = uri.substr(std::string("gcs://").size());
+        } else if (stringStartsWith("gs://", uri)) {
+            path = uri.substr(std::string("gs://").size());
+        } else {
+            return false;
+        }
+        const size_t slash = path.find('/');
+        if (slash == std::string::npos || slash == 0 || slash + 1 == path.size()) {
+            return false;
+        }
+        bucket_name = path.substr(0, slash);
+        object_name = path.substr(slash + 1);
+        return true;
+    }
+
+    std::vector<std::string> object_uris;
 };
 #endif
 

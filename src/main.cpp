@@ -158,6 +158,12 @@ int main(int argc, char* const *argv) {
     std::vector<std::string> user_names;
     std::vector<uint32_t> user_ids;
 
+#ifdef HAVE_GCS
+    auto isGcsUri = [](const std::string& uri) {
+        return stringStartsWith("gcs://", uri) || stringStartsWith("gs://", uri);
+    };
+#endif
+
     // Mode - non-optional argument
     enum {
         COMPRESS,
@@ -260,12 +266,16 @@ int main(int argc, char* const *argv) {
     int inputExists = stat(argv[optind + 1], &inputStat);
     const char* outputSuffix = "";
     bool mayHaveOutput = false;
+    bool isGcsInput = false;
+#ifdef HAVE_GCS
+    isGcsInput = isGcsUri(argv[optind + 1]);
+#endif
     // get mode from command line
     if (strcmp(argv[optind], "compress") == 0) {
         mode = COMPRESS;
 #ifdef HAVE_GCS
-        if ((optind + 1) < argc && stringStartsWith("gcs://", argv[optind + 1])) {
-            fileExists = 1;
+        if (isGcsInput) {
+            inputExists = 0;
         }
 #endif
         mayHaveOutput = true;
@@ -305,6 +315,9 @@ int main(int argc, char* const *argv) {
     }
     std::vector<std::string> inputs;
     std::vector<std::string> single_file_inputs;
+#ifdef HAVE_GCS
+    std::vector<std::string> gcs_object_inputs;
+#endif
     if (file_input) {
         std::ifstream inputFile(input);
         if (!inputFile) {
@@ -313,6 +326,18 @@ int main(int argc, char* const *argv) {
         }
         std::string line;
         while (std::getline(inputFile, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty()) {
+                continue;
+            }
+#ifdef HAVE_GCS
+            if (isGcsUri(line)) {
+                gcs_object_inputs.push_back(line);
+                continue;
+            }
+#endif
             // If the file ends with .pdb, .pdb.gz, .cif, .cif.gz, .fcz, assume it is a single file input
             if (stringEndsWith(".pdb", line) || stringEndsWith(".pdb.gz", line) ||
                 stringEndsWith(".cif", line) || stringEndsWith(".cif.gz", line) ||
@@ -323,7 +348,15 @@ int main(int argc, char* const *argv) {
             }
         }
     } else {
+#ifdef HAVE_GCS
+        if (isGcsInput) {
+            gcs_object_inputs.push_back(input);
+        } else {
+            inputs.push_back(input);
+        }
+#else
         inputs.push_back(input);
+#endif
     }
 
     std::string output;
@@ -335,7 +368,7 @@ int main(int argc, char* const *argv) {
         }
     }
 
-    bool isSingleFileInput = !file_input && (S_ISREG(inputStat.st_mode) || S_ISLNK(inputStat.st_mode));
+    bool isSingleFileInput = !file_input && !isGcsInput && (S_ISREG(inputStat.st_mode) || S_ISLNK(inputStat.st_mode));
     if (!file_input) {
         struct stat st;
         if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
@@ -344,7 +377,7 @@ int main(int argc, char* const *argv) {
             isSingleFileInput = false;
         }
 #ifdef HAVE_GCS
-        else if (stringStartsWith("gcs://", input)) {
+        else if (isGcsInput) {
             isSingleFileInput = false;
         }
 #endif
@@ -404,11 +437,18 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
-        for (size_t i = 0; i < inputs.size() + 1; i++) {
-            const std::string& input = (i == inputs.size()) ? "" : inputs[i];
+        const size_t local_input_processor_count = single_file_inputs.empty() ? 0 : 1;
+    #ifdef HAVE_GCS
+        const size_t gcs_input_processor_count = gcs_object_inputs.empty() ? 0 : 1;
+    #else
+        const size_t gcs_input_processor_count = 0;
+    #endif
+        const size_t processor_count = inputs.size() + local_input_processor_count + gcs_input_processor_count;
+        for (size_t i = 0; i < processor_count; i++) {
+            const std::string input = i < inputs.size() ? inputs[i] : "";
             Processor* processor;
             struct stat st;
-            if (i != inputs.size()) {
+            if (i < inputs.size()) {
                 if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
                     processor = new TarProcessor(input);
                 }
@@ -421,19 +461,19 @@ int main(int argc, char* const *argv) {
                     }
                 }
 #ifdef HAVE_GCS
-                else if (stringStartsWith("gcs://", input)) {
-                    processor = new GcsProcessor(input);
+                else if (isGcsUri(input)) {
+                    processor = new GcsProcessor({ input });
                 }
 #endif
                 else {
                     processor = new DirectoryProcessor(input, recursive);
                 }
+            } else if (i < inputs.size() + local_input_processor_count) {
+                processor = new DirectoryProcessor(single_file_inputs);
             } else {
-                if (single_file_inputs.size() > 0) {
-                    processor = new DirectoryProcessor(single_file_inputs);
-                } else {
-                    continue;
-                }
+#ifdef HAVE_GCS
+                processor = new GcsProcessor(gcs_object_inputs);
+#endif
             }
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
                 TimerGuard guard(name, measure_time);
@@ -593,7 +633,7 @@ int main(int argc, char* const *argv) {
                     }
                 }
 #ifdef HAVE_GCS
-                else if (stringStartsWith("gcs://", input)) {
+                else if (isGcsUri(input)) {
                     processor = new GcsProcessor(input);
                 }
 #endif
@@ -759,7 +799,7 @@ int main(int argc, char* const *argv) {
                     }
                 }
 #ifdef HAVE_GCS
-                else if (stringStartsWith("gcs://", input)) {
+                else if (isGcsUri(input)) {
                     processor = new GcsProcessor(input);
                 }
 #endif
@@ -891,7 +931,7 @@ int main(int argc, char* const *argv) {
                     }
                 }
 #ifdef HAVE_GCS
-                else if (stringStartsWith("gcs://", input)) {
+                else if (isGcsUri(input)) {
                     processor = new GcsProcessor(input);
                 }
 #endif
