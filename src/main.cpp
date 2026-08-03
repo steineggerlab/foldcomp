@@ -472,7 +472,7 @@ int main(int argc, char* const *argv) {
                 processor = new DirectoryProcessor(single_file_inputs);
             } else {
 #ifdef HAVE_GCS
-                processor = new GcsProcessor(gcs_object_inputs);
+                processor = new GcsProcessor(std::move(gcs_object_inputs));
 #endif
             }
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {

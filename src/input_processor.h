@@ -319,7 +319,21 @@ public:
                         "If startup appears to hang, set ADC explicitly to your service-account JSON.");
         }
 
-        log_message("Starting GCS processing for " + std::to_string(object_uris.size()) +
+        // Log volume scales with the input instead of being pinned to a fixed cadence:
+        // `block` is the largest power of ten <= total/100 and ends a line with the
+        // running count, and 25 '=' fill that block, so one '=' is block/25 objects.
+        // A '=' never stands for fewer than 10 objects; when that floor binds (inputs
+        // under ~25k) the block follows it rather than the other way round.
+        const size_t total = object_uris.size();
+        size_t block = 1;
+        while (block * 10 <= total / 100) block *= 10;
+        size_t tick = block / 25;
+        if (tick < 10) {
+            tick = 10;
+            block = 25 * tick;
+        }
+
+        log_message("Starting GCS processing for " + std::to_string(total) +
                     " object(s) with " + std::to_string(worker_threads) + " thread(s)");
 
         auto options = google::cloud::Options{}
@@ -340,15 +354,12 @@ public:
             if (!parse_uri(object_uris[i], bucket_name, object_name)) {
                 std::cerr << "[Error] Invalid GCS URI: " << object_uris[i] << std::endl;
             } else {
-                log_message("Fetching " + std::to_string(i + 1) + "/" + std::to_string(object_uris.size()) +
-                            ": " + object_uris[i]);
                 auto reader = client.ReadObject(bucket_name, object_name);
                 if (!reader.status().ok()) {
                     std::cerr << "[Error] Could not read GCS object " << object_uris[i]
                               << ": " << reader.status() << std::endl;
                 } else {
                     std::string contents((std::istreambuf_iterator<char>(reader)), std::istreambuf_iterator<char>());
-                    log_message("Downloaded " + std::to_string(contents.size()) + " bytes from " + object_uris[i]);
                     success = func(object_name.c_str(), contents.c_str(), contents.size());
                     if (!success) {
                         std::cerr << "[Error] processing GCS object " << object_uris[i] << " failed." << std::endl;
@@ -362,16 +373,22 @@ public:
                 failed_count.fetch_add(1, std::memory_order_relaxed);
             }
 
+            // Same shape as mmseqs' Debug::Progress on a non-tty: a run of '=' capped by
+            // a tab and the running count. The boundary writes its own '=' before the
+            // label, so a full line carries exactly 25.
             size_t done = processed_count.fetch_add(1, std::memory_order_relaxed) + 1;
-            if (done == 1 || done % 10 == 0 || done == object_uris.size()) {
-                log_message(
-                    "Progress " + std::to_string(done) + "/" + std::to_string(object_uris.size()) +
-                    " (ok=" + std::to_string(success_count.load(std::memory_order_relaxed)) +
-                    ", failed=" + std::to_string(failed_count.load(std::memory_order_relaxed)) + ")"
-                );
+            if (done % block == 0) {
+                progress_write("=\t" + human_count(done) + " structures processed\n");
+            } else if (done % tick == 0) {
+                progress_write("=");
             }
         }
 
+        // Close whatever partial '=' run the last block left open, so the summary does
+        // not get appended to it.
+        if (total >= tick && total % block != 0) {
+            progress_write("\n");
+        }
         log_message(
             "Finished GCS processing: ok=" +
             std::to_string(success_count.load(std::memory_order_relaxed)) +
@@ -381,10 +398,30 @@ public:
     }
 
 private:
+    static std::mutex& log_mutex() {
+        static std::mutex m;
+        return m;
+    }
+
     static void log_message(const std::string& message) {
-        static std::mutex log_mutex;
-        std::lock_guard<std::mutex> lock(log_mutex);
+        std::lock_guard<std::mutex> lock(log_mutex());
         std::cerr << "[GCS] " << message << std::endl;
+    }
+
+    // Progress is written raw — no "[GCS] " prefix and no newline — because the bar is
+    // built up one '=' at a time across a line. Shares log_message's mutex so the two
+    // cannot interleave mid-line.
+    static void progress_write(const std::string& s) {
+        std::lock_guard<std::mutex> lock(log_mutex());
+        std::cerr << s;
+        std::cerr.flush();
+    }
+
+    // Counts land on a power of ten, so an exact suffix is always available.
+    static std::string human_count(size_t n) {
+        if (n >= 1000000 && n % 1000000 == 0) return std::to_string(n / 1000000) + " Mio.";
+        if (n >= 1000 && n % 1000 == 0) return std::to_string(n / 1000) + " K";
+        return std::to_string(n);
     }
 
     static bool parse_uri(const std::string& uri, std::string& bucket_name, std::string& object_name) {
