@@ -106,19 +106,21 @@ python -c "import foldcomp; foldcomp.setup('afdb_swissprot_v4');
 ```
 
 Currently we offer the following databases:
+> We skipped all structures with discontinuous residues or other issues.
 * [ESMAtlas](https://esmatlas.com/) full (v0 + v2023_02): `foldcomp.setup('esmatlas')`
 * ESMAtlas v2023_02: `foldcomp.setup('esmatlas_v2023_02')`
 * ESMAtlas high-quality: `foldcomp.setup('highquality_clust30')`
 
-  **Note:** We skipped all structures with discontinous residues or other issues.
-
-* [AlphaFoldDB Uniprot](https://alphafold.ebi.ac.uk/): `foldcomp.setup('afdb_uniprot_v4')`
+* [AlphaFoldDB Uniprot](https://alphafold.ebi.ac.uk/)
+  * v6: `foldcomp.setup('afdb_uniprot_v6')`
+  * v4: `foldcomp.setup('afdb_uniprot_v4')`
 * AlphaFoldDB Swiss-Prot: `foldcomp.setup('afdb_swissprot_v4')`
 * AlphaFoldDB Model Organisms: `foldcomp.setup('h_sapiens')`
   * `a_thaliana`, `c_albicans`, `c_elegans`, `d_discoideum`, `d_melanogaster`, `d_rerio`, `e_coli`, `g_max`,
     `h_sapiens`, `m_jannaschii`, `m_musculus`, `o_sativa`, `r_norvegicus`, `s_cerevisiae`, `s_pombe`, `z_mays`
 * [AlphaFoldDB Cluster Representatives](https://afdb-cluster.steineggerlab.workers.dev/): `foldcomp.setup('afdb_rep_v4')`
 * AlphaFoldDB Cluster Representatives (Dark Clusters): `foldcomp.setup('afdb_rep_dark_v4')`
+> Version 6 of AlphaFoldDB subset will be available soon.
 
 If you want other prebuilt datasets, please get in touch with us through our [GitHub issues](https://github.com/steineggerlab/foldcomp/issues).
 
