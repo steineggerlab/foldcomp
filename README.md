@@ -50,6 +50,23 @@ wget https://mmseqs.com/foldcomp/foldcomp-macos-universal.tar.gz
 wget https://mmseqs.com/foldcomp/foldcomp-windows-x64.zip
 ```
 
+CUDA support is optional and disabled by default. To build the executable with
+GPU decompression, configure CMake with `-DBUILD_CUDA=ON`. For a local Python
+build, pass the same option through scikit-build, for example:
+
+```bash
+CMAKE_ARGS="-DBUILD_CUDA=ON" pip install .
+```
+
+CUDA-enabled Python builds expose `foldcomp.cuda_available()` and
+`foldcomp.decompress_batch(...)`. Batch decompression accepts FCZ/FCMP and FCZC
+containers; `use_gpu=None` selects CUDA when a device is usable and otherwise
+falls back to CPU, while `use_gpu=True` requires a usable CUDA device.
+
+See [README_GPU.md](README_GPU.md) for the GPU architecture, supported
+platforms, build prerequisites, the Python API, and known accuracy
+differences from the CPU reference.
+
 ### Executable
 ```
 # Compression
@@ -182,4 +199,3 @@ Please note that the IDs in afdb_uniprot_v4 are in the format `AF-A0A5S3Y9Q7-F1-
 <a href="https://github.com/steineggerlab/foldcomp/graphs/contributors">
   <img src="https://contributors-img.firebaseapp.com/image?repo=steineggerlab/foldcomp" />
 </a>
-

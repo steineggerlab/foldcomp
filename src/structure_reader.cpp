@@ -13,6 +13,7 @@
  */
 #include "structure_reader.h"
 
+#include <iostream>
 #include <stdexcept>
 #ifdef FOLDCOMP_WITH_ZLIB
 #include <zlib.h>
@@ -96,6 +97,11 @@ void StructureReader::updateStructure(void* void_st, const std::string& filename
     for (size_t modelIndex = 0; modelIndex < st->models.size(); modelIndex++) {
         gemmi::Model& model = st->models[modelIndex];
         for (gemmi::Chain& ch : model.chains) {
+            if (ch.name.size() > CHAIN_ID_LENGTH) {
+                std::cerr << "[Warning] Chain ID '" << ch.name << "' exceeds " << CHAIN_ID_LENGTH
+                          << " characters and will be truncated to '"
+                          << ch.name.substr(0, CHAIN_ID_LENGTH) << "'" << std::endl;
+            }
             for (gemmi::Residue& res : ch.residues) {
                 if (!isProteinLikeResidue(res)) {
                     continue;

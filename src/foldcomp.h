@@ -14,7 +14,27 @@
  * Copyright © 2021 Hyunbin Kim, All rights reserved
  */
 #pragma once
+#include "bond_constants.h"
 #include "float3d.h"
+
+#ifdef FOLDCOMP_WITH_CUDA
+#include "gpu_buffer.h"
+#include "gpu_context.h"
+#include "gpu_discretizer.h"
+#include "gpu_stream.h"
+#endif
+
+// Scoped NVTX range for CPU-path decompression stages. Active only in CUDA
+// builds (i.e. when profiling with nsys); a no-op otherwise. The names mirror
+// the GPU pipeline ranges in Foldcomp::decompress_batch_async so the CPU and
+// GPU decompression stages line up when comparing traces. Any translation unit
+// using this macro must include <nvtx3/nvtx3.hpp>; `var` must be unique within
+// its enclosing scope.
+#ifdef FOLDCOMP_WITH_CUDA
+#define FOLDCOMP_CPU_NVTX(var, label) nvtx3::scoped_range var{label}
+#else
+#define FOLDCOMP_CPU_NVTX(var, label) ((void)0)
+#endif
 
 #include "atom_coordinate.h"
 #include "discretizer.h"
@@ -31,6 +51,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <array>
 
 // forward declaration
 class AminoAcid;
@@ -46,11 +67,6 @@ class AminoAcid;
 #define NUM_BITS_RESIDUE 5
 #define NUM_BITS_TEMP 8
 #define NUM_BITS_SIDECHAIN 4
-
-#define N_TO_CA_DIST 1.4581
-#define CA_TO_C_DIST 1.5281
-#define C_TO_N_DIST 1.3311
-#define PRO_N_TO_CA_DIST 1.353
 
 #define DEFAULT_ANCHOR_THRESHOLD 25
 
@@ -257,6 +273,7 @@ int decodeDiscretizedTempFactors(unsigned char* input, int size, std::vector<uns
 char* encodeSideChainTorsionVector(std::vector<unsigned int> vector);
 int decodeSideChainTorsionVector(char* input, int nTorsion, std::vector<unsigned int>& vector);
 int getSideChainTorsionNum(std::string residue);
+int getSideChainTorsionNumFromChar(char res_code);
 int fillSideChainDiscretizerMap(
     SideChainDiscretizers& scDiscretizers,
     std::map<std::string, std::vector<Discretizer> >& scDiscretizersMap
@@ -274,6 +291,8 @@ struct FloatArrayWithDisc {
     float cont_f;
     float* array;
 };
+
+#include "gpu_batched_decompression.h"
 
 class Foldcomp {
 private:
@@ -299,6 +318,11 @@ private:
     float computeBackboneRmsdForCompressedState() const;
 
 public:
+#ifdef FOLDCOMP_WITH_CUDA
+    // All per-instance GPU-only state; see FoldcompGPUState in gpu_batched_decompression.h.
+    FoldcompGPUState gpu;
+#endif
+    ~Foldcomp() = default;
     bool isPreprocessed = false;
     bool isCompressed = false;
     bool backwardReconstruction = true;
@@ -389,6 +413,80 @@ public:
     bool exceedsBackboneRmsdThreshold(float maxBackboneRmsd) const;
     int read(const char* data, size_t size);
     int writeString(std::string& output);
+#ifdef FOLDCOMP_WITH_CUDA
+    int decompress_batch(AtomCoordinate* atomCoordinates, size_t n_atoms);
+
+    /**
+     * Async variant: submits all GPU work for the current batchData, launches the
+     * large D→H on the output stream (stream B), and returns without blocking.
+     * The caller must cudaEventSynchronize(cpu_sync_event) before reading atomCoordinates,
+     * then call finish_pending_oxt() to append OXT atoms.
+     *
+     * out_atom_counts, if non-null, is resized to current_batch_count and filled with
+     * the *actual* number of atoms written per structure (GPU-reconstructed count +
+     * OXT slot, not the encoded FCZ header's nAtom). Callers slicing the flat
+     * atomCoordinates/coords/pdb_lines_out buffer per structure must use these counts,
+     * not the header's nAtom: a structure whose real reconstructed atom count doesn't
+     * match its encoded nAtom (e.g. a stale/foreign-encoder file) would otherwise
+     * misalign every following structure in the same batch (MR !1 note_67749573/note_67749575).
+     */
+    int decompress_batch_async(AtomCoordinate* atomCoordinates, size_t n_atoms,
+                               cudaEvent_t cpu_sync_event, bool device_emit = false,
+                               bool emit_pdb = false, char* pdb_lines_out = nullptr,
+                               std::vector<int>* out_atom_counts = nullptr);
+
+    /**
+     * GPU PDB writer variant of finish_pending_oxt: formats each pending OXT atom's
+     * PDB line (81 bytes) into its slot of `lines` (the D→H'd device-formatted
+     * buffer), using the state saved by the corresponding decompress_batch_async.
+     */
+    void finish_pending_oxt_lines(char* lines);
+
+    /**
+     * After a device_emit decompress_batch_async, returns the device pointer to the
+     * packed xyz buffer (float[n_atoms*3], final output order incl OXT). Valid until
+     * the next decompress_batch_async call on this instance overwrites it.
+     */
+    const float* packedCoordsDevicePtr() const {
+        return static_cast<const float*>(gpu.gpu_packed_coords.ptr);
+    }
+
+    /**
+     * Finish the pending async batch: append OXT atoms to the output using
+     * state saved by the corresponding decompress_batch_async call.
+     * Must be called after cpu_sync_event confirms D→H completion.
+     */
+    void finish_pending_oxt(AtomCoordinate* atomCoordinates);
+    int read(std::istream & file, BatchedDecompressionData& batchedData);
+#else
+    // CPU-only stubs preserving Foldcomp's public API across build types
+    // (MR !1 comment c0c03bb7). See throwGpuBatchUnsupported() in
+    // gpu_batched_decompression.h; none of these do anything without CUDA.
+    int decompress_batch(AtomCoordinate*, size_t) {
+        throwGpuBatchUnsupported("decompress_batch");
+    }
+    int decompress_batch_async(AtomCoordinate*, size_t, cudaEvent_t,
+                               bool device_emit = false, bool emit_pdb = false,
+                               char* pdb_lines_out = nullptr,
+                               std::vector<int>* out_atom_counts = nullptr) {
+        (void)device_emit; (void)emit_pdb; (void)pdb_lines_out; (void)out_atom_counts;
+        throwGpuBatchUnsupported("decompress_batch_async");
+    }
+    void finish_pending_oxt_lines(char*) {
+        throwGpuBatchUnsupported("finish_pending_oxt_lines");
+    }
+    const float* packedCoordsDevicePtr() const {
+        throwGpuBatchUnsupported("packedCoordsDevicePtr");
+    }
+    void finish_pending_oxt(AtomCoordinate*) {
+        throwGpuBatchUnsupported("finish_pending_oxt");
+    }
+    int read(std::istream&, BatchedDecompressionData&) {
+        throwGpuBatchUnsupported("read");
+    }
+#endif
+    int read(std::istream & filename);
+    int writeStream(std::ostream& os);
     int write(std::string filename);
     // Read & write for tar files
 #ifdef FOLDCOMP_EXECUTABLE

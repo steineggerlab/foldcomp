@@ -9,11 +9,16 @@
 #include "microtar.h"
 #include "utility.h"
 #include "database_reader.h"
+#include "tcbspan.h"
 
 #include <utility>
 #include <functional>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <numeric>
+#include <cstring>
+#include <cstdio>
 
 #ifdef HAVE_GCS
 #include "google/cloud/storage/client.h"
@@ -47,7 +52,7 @@ static int file_gzclose(mtar_t *tar) {
     return MTAR_ESUCCESS;
 }
 
-int mtar_gzopen(mtar_t *tar, const char *filename) {
+inline int mtar_gzopen(mtar_t *tar, const char *filename) {
     // Init tar struct and functions
     memset(tar, 0, sizeof(*tar));
     tar->read = file_gzread;
@@ -74,19 +79,110 @@ public:
     virtual void run(process_entry_func, int) {};
 };
 
-class DirectoryProcessor : public Processor {
+// Feeds pre-loaded in-memory buffers through the same run() interface as
+// DirectoryProcessor, enabling repeated iteration without re-reading from disk.
+class MemoryProcessor : public Processor {
 public:
-    DirectoryProcessor(const std::string& input, bool recursive) {
-        files = getFilesInDirectory(input, recursive);
-    };
-    DirectoryProcessor(std::vector<std::string> files) : files(std::move(files)) {};
+    using Entry = std::pair<std::string, std::vector<char>>;
+    MemoryProcessor(std::vector<Entry>& entries) : entries(entries) {}
 
     void run(process_entry_func func, int num_threads) override {
+#pragma omp parallel shared(entries) num_threads(num_threads)
+        {
+#pragma omp for schedule(dynamic, 1)
+            for (size_t i = 0; i < entries.size(); i++) {
+                if (!func(entries[i].first.c_str(), entries[i].second.data(), entries[i].second.size()))
+                    std::cerr << "[Error] processing entry " << entries[i].first << " failed.\n";
+            }
+            func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
+        }
+    }
+private:
+    std::vector<Entry>& entries;
+};
+
+// Same as MemoryProcessor, but the entries are non-owning views into storage
+// the caller already owns (e.g. a std::vector<std::string> of decoded Python
+// bytes objects) — avoids a second copy when that storage already outlives
+// the run(). The caller must keep the referenced storage alive for the
+// duration of run().
+class MemoryViewProcessor : public Processor {
+public:
+    using Entry = std::pair<std::string, tcb::span<const char>>;
+    MemoryViewProcessor(std::vector<Entry>& entries) : entries(entries) {}
+
+    void run(process_entry_func func, int num_threads) override {
+#pragma omp parallel shared(entries) num_threads(num_threads)
+        {
+#pragma omp for schedule(dynamic, 1)
+            for (size_t i = 0; i < entries.size(); i++) {
+                if (!func(entries[i].first.c_str(), entries[i].second.data(), entries[i].second.size()))
+                    std::cerr << "[Error] processing entry " << entries[i].first << " failed.\n";
+            }
+            func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
+        }
+    }
+private:
+    std::vector<Entry>& entries;
+};
+
+class DirectoryProcessor : public Processor {
+public:
+    DirectoryProcessor(const std::string& input, bool recursive,
+                       bool use_mmap = true, bool sort_by_length = false)
+        : use_mmap(use_mmap), sort_by_length(sort_by_length) {
+        files = getFilesInDirectory(input, recursive);
+    };
+    DirectoryProcessor(std::vector<std::string> files,
+                       bool use_mmap = true, bool sort_by_length = false)
+        : files(std::move(files)), use_mmap(use_mmap), sort_by_length(sort_by_length) {};
+
+    void run(process_entry_func func, int num_threads) override {
+        if (sort_by_length) sort_files_by_length(num_threads);
+        if (use_mmap) {
+            run_mmap(func, num_threads);
+        } else {
+            run_fread(func, num_threads);
+        }
+    }
+
+private:
+    std::vector<std::string> files;
+    bool use_mmap;
+    bool sort_by_length;
+
+    // Pre-read nResidue (uint16_t at byte 4) from each FCZ file in parallel,
+    // then sort files ascending so consecutive batches have similar-length proteins.
+    void sort_files_by_length(int num_threads) {
+        if (files.size() < 2) return;
+        std::vector<uint16_t> lengths(files.size(), UINT16_MAX);
+#pragma omp parallel for schedule(dynamic, 16) num_threads(num_threads)
+        for (size_t i = 0; i < files.size(); i++) {
+            FILE* fp = fopen(files[i].c_str(), "rb");
+            if (!fp) continue;
+            uint8_t hdr[6];
+            if (fread(hdr, 1, sizeof(hdr), fp) == sizeof(hdr) &&
+                hdr[0]=='F' && hdr[1]=='C' && hdr[2]=='M' && hdr[3]=='P') {
+                memcpy(&lengths[i], hdr + 4, sizeof(uint16_t));
+            }
+            fclose(fp);
+        }
+        std::vector<size_t> order(files.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::stable_sort(order.begin(), order.end(),
+            [&](size_t a, size_t b) { return lengths[a] < lengths[b]; });
+        std::vector<std::string> sorted(files.size());
+        for (size_t i = 0; i < files.size(); i++)
+            sorted[i] = std::move(files[order[i]]);
+        files = std::move(sorted);
+    }
+
+    void run_mmap(process_entry_func func, int num_threads) {
 #pragma omp parallel shared(files) num_threads(num_threads)
         {
             char* dataBuffer;
             ssize_t bufferSize;
-#pragma omp for
+#pragma omp for schedule(dynamic, 1)
             for (size_t i = 0; i < files.size(); i++) {
                 std::string name = files[i];
                 FILE* file = fopen(name.c_str(), "r");
@@ -99,11 +195,47 @@ public:
                 file_unmap(dataBuffer, bufferSize);
                 fclose(file);
             }
+            func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
         }
     }
 
-private:
-    std::vector<std::string> files;
+    void run_fread(process_entry_func func, int num_threads) {
+#pragma omp parallel shared(files) num_threads(num_threads)
+        {
+            std::vector<char> buf;
+#pragma omp for schedule(dynamic, 1)
+            for (size_t i = 0; i < files.size(); i++) {
+                const std::string& name = files[i];
+                FILE* fp = fopen(name.c_str(), "rb");
+                if (!fp) {
+                    std::cerr << "[Error] cannot open dir entry " << name << std::endl;
+                    continue;
+                }
+                if (fseek(fp, 0, SEEK_END) != 0) {
+                    std::cerr << "[Error] fseek failed for " << name << std::endl;
+                    fclose(fp);
+                    continue;
+                }
+                long fileSize = ftell(fp);
+                rewind(fp);
+                if (fileSize <= 0) {
+                    fclose(fp);
+                    continue;
+                }
+                if ((size_t)fileSize > buf.size()) buf.resize(fileSize);
+                if (fread(buf.data(), 1, fileSize, fp) != (size_t)fileSize) {
+                    std::cerr << "[Error] fread failed for " << name << std::endl;
+                    fclose(fp);
+                    continue;
+                }
+                fclose(fp);
+                if (!func(name.c_str(), buf.data(), fileSize)) {
+                    std::cerr << "[Error] processing dir entry " << name << " failed." << std::endl;
+                }
+            }
+            func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
+        }
+    }
 };
 
 class TarProcessor : public Processor {
@@ -189,6 +321,7 @@ done:
                     }
                 }
             }
+            func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
             free(dataBuffer);
         }
     }
@@ -235,9 +368,10 @@ public:
     void run(process_entry_func func, int num_threads) override {
         size_t db_size = reader_get_size(handle);
 #pragma omp parallel shared(handle) num_threads(num_threads)
+        {
         if (user_ids.size() == 0) { // process all entries in db
             {
-#pragma omp for
+#pragma omp for schedule(dynamic, 1)
                 for (size_t i = 0; i < db_size; i++) {
                     uint32_t key = reader_get_key(handle, i);
                     const char* name = reader_lookup_name_alloc(handle, key);
@@ -256,7 +390,7 @@ public:
                 }
             }
         } else { // process only entries in user_ids
-#pragma omp for
+#pragma omp for schedule(dynamic, 1)
             for (size_t i = 0; i < user_ids.size(); i++) {
                 uint32_t key;
 
@@ -276,6 +410,8 @@ public:
                     continue;
                 }
             }
+        }
+        func(nullptr, nullptr, 0); // per-thread flush: drain partial batch
         }
     }
 

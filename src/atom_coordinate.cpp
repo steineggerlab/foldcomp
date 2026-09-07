@@ -72,6 +72,13 @@ void appendRightAlignedInt(std::string& output, int value, size_t width) {
         magnitude /= 10;
     } while (magnitude != 0);
     size_t totalLen = static_cast<size_t>(len + (negative ? 1 : 0));
+    if (totalLen > width) {
+        // Value doesn't fit in the fixed-width field: emit `width` overflow
+        // markers instead of widening the record. Mirrors pf_int (pdb_format.h),
+        // which this function must stay byte-for-byte identical to.
+        output.append(width, '*');
+        return;
+    }
     if (totalLen < width) {
         appendSpaces(output, width - totalLen);
     }
@@ -103,6 +110,14 @@ void appendRightAlignedFixed(std::string& output, float value) {
     } while (integer != 0);
 
     size_t totalLen = static_cast<size_t>(intLen) + 1 + Precision + (negative ? 1 : 0);
+    if (totalLen > Width) {
+        // Value doesn't fit in the fixed-width field: emit `Width` overflow
+        // markers instead of widening the record. Mirrors pf_fixed
+        // (pdb_format.h), which this function must stay byte-for-byte
+        // identical to.
+        output.append(Width, '*');
+        return;
+    }
     if (totalLen < Width) {
         appendSpaces(output, Width - totalLen);
     }
@@ -261,7 +276,7 @@ gemmi::Element inferGemmiElement(const std::string& atomName) {
  * @param z A float for z coordinate
  */
 AtomCoordinate::AtomCoordinate(
-    const std::string& a, const std::string& r, const std::string& c,
+    AtomName a, ResidueName r, ChainId c,
     int ai, int ri, float x, float y, float z,
     float occupancy, float tempFactor, int model, char insertionCode, char altloc
 ): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), occupancy(occupancy), tempFactor(tempFactor), model(model), insertion_code(insertionCode), altloc(altloc) {
@@ -278,7 +293,7 @@ AtomCoordinate::AtomCoordinate(
  * @param coord A float vector for x,y,z coordinates.
  */
 AtomCoordinate::AtomCoordinate(
-    const std::string& a, const std::string& r, const std::string& c,
+    AtomName a, ResidueName r, ChainId c,
     int ai, int ri, float3d coord,
     float occupancy, float tempFactor, int model, char insertionCode, char altloc
 ): atom(a), residue(r), chain(c), atom_index(ai), residue_index(ri), coordinate(coord), occupancy(occupancy), tempFactor(tempFactor), model(model), insertion_code(insertionCode), altloc(altloc) {
@@ -438,7 +453,8 @@ std::vector<AtomCoordinate> weightedAverage(
 
 void writeAtomCoordinatesToPDB(
     const std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output,
-    bool appendOutput, bool emitFinalTer
+    bool appendOutput, bool emitFinalTer,
+    const char* precomputedLines, size_t* lineCursor
 ) {
     if (!appendOutput) {
         output.clear();
@@ -451,32 +467,39 @@ void writeAtomCoordinatesToPDB(
     int total = static_cast<int>(atoms.size());
     for (int i = 0; i < total; i++) {
         const AtomCoordinate& atom = atoms[i];
-        output.append("ATOM  ", 6);
-        appendRightAlignedInt(output, atom.atom_index, 5);
-        output.push_back(' ');
-        if (atom.atom.size() == 4) {
-            appendLeftAligned(output, atom.atom, 4);
-        } else {
-            output.push_back(' ');
-            appendLeftAligned(output, atom.atom, 3);
-        }
-        output.push_back(atom.altloc == '\0' ? ' ' : atom.altloc);
-        appendRightAligned(output, atom.residue, 3);
-        output.push_back(' ');
         char chainId = atom.chain.empty() ? ' ' : atom.chain[0];
-        output.push_back(chainId);
-        appendRightAlignedInt(output, atom.residue_index, 4);
-        output.push_back(atom.insertion_code == '\0' ? ' ' : atom.insertion_code);
-        output.append("   ", 3);
-        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.x);
-        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.y);
-        appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.z);
-        appendRightAlignedFixed<6, 100, 2>(output, atom.occupancy > 0.0f ? atom.occupancy : 1.0f);
-        appendRightAlignedFixed<6, 100, 2>(output, atom.tempFactor);
-        output.append("          ", 10);
-        output.push_back(' ');
-        output.push_back(atom.atom.empty() ? ' ' : atom.atom[0]);
-        output.append("  \n", 3);
+        if (precomputedLines != nullptr) {
+            // ATOM record was formatted on the GPU (byte-identical layout).
+            output.append(precomputedLines + (*lineCursor) * PDB_ATOM_LINE_LEN,
+                          PDB_ATOM_LINE_LEN);
+            (*lineCursor)++;
+        } else {
+            output.append("ATOM  ", 6);
+            appendRightAlignedInt(output, atom.atom_index, 5);
+            output.push_back(' ');
+            if (atom.atom.size() == 4) {
+                appendLeftAligned(output, atom.atom, 4);
+            } else {
+                output.push_back(' ');
+                appendLeftAligned(output, atom.atom, 3);
+            }
+            output.push_back(atom.altloc == '\0' ? ' ' : atom.altloc);
+            appendRightAligned(output, atom.residue, 3);
+            output.push_back(' ');
+            output.push_back(chainId);
+            appendRightAlignedInt(output, atom.residue_index, 4);
+            output.push_back(atom.insertion_code == '\0' ? ' ' : atom.insertion_code);
+            output.append("   ", 3);
+            appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.x);
+            appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.y);
+            appendRightAlignedFixed<8, 1000, 3>(output, atom.coordinate.z);
+            appendRightAlignedFixed<6, 100, 2>(output, atom.occupancy > 0.0f ? atom.occupancy : 1.0f);
+            appendRightAlignedFixed<6, 100, 2>(output, atom.tempFactor);
+            output.append("          ", 10);
+            output.push_back(' ');
+            output.push_back(atom.atom.empty() ? ' ' : atom.atom[0]);
+            output.append("  \n", 3);
+        }
         bool needsTer = false;
         if (i == (total - 1)) {
             needsTer = emitFinalTer;
@@ -1011,9 +1034,9 @@ bool deserializeAtomCoordinates(
             if (offset + required > size) {
                 return false;
             }
-            atom.atom.assign(data + offset, data + offset + atomNameLen);
+            atom.atom = std::string(data + offset, atomNameLen);
             offset += atomNameLen;
-            atom.residue.assign(data + offset, data + offset + residueNameLen);
+            atom.residue = std::string(data + offset, residueNameLen);
             offset += residueNameLen;
             atoms.push_back(std::move(atom));
         }

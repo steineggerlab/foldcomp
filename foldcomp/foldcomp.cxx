@@ -1,10 +1,13 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include <atomic>
 #include <cstdint>
 #include <cstddef>
+#include <exception>
 #include <limits>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <utility>
@@ -14,6 +17,13 @@
 #include "foldcomp.h"
 #include "database_reader.h"
 #include "structure_codec.h"
+#ifdef FOLDCOMP_WITH_CUDA
+#include <cuda_runtime.h>
+#include <nvtx3/nvtx3.hpp>  // FOLDCOMP_CPU_NVTX + explicit ranges for host tail
+#include "gpu_decompression_pipeline.h"
+#include "gpu_pdb_writer.h"
+#include "input_processor.h"
+#endif
 
 static PyObject *FoldcompError;
 
@@ -937,6 +947,324 @@ static PyObject* foldcomp_get_data(PyObject* /* self */, PyObject* args, PyObjec
     }
 }
 
+static PyObject* foldcomp_cuda_available(PyObject* /* self */, PyObject* /* args */) {
+#ifdef FOLDCOMP_WITH_CUDA
+    if (cudaRuntimeAvailable()) Py_RETURN_TRUE;
+#endif
+    Py_RETURN_FALSE;
+}
+
+namespace {
+
+struct PythonBatchResult {
+    std::string title;
+    std::string text;
+};
+
+PyObject* pythonBatchResults(const std::vector<PythonBatchResult>& results) {
+    PyObject* list = PyList_New(static_cast<Py_ssize_t>(results.size()));
+    if (!list) return nullptr;
+    for (size_t i = 0; i < results.size(); ++i) {
+        PyObject* text = PyUnicode_FromStringAndSize(
+            results[i].text.data(), static_cast<Py_ssize_t>(results[i].text.size()));
+        if (!text) {
+            Py_DECREF(list);
+            return nullptr;
+        }
+        PyObject* tuple = Py_BuildValue("(s,N)", results[i].title.c_str(), text);
+        if (!tuple) {
+            Py_DECREF(list);
+            return nullptr;
+        }
+        PyList_SET_ITEM(list, static_cast<Py_ssize_t>(i), tuple);
+    }
+    return list;
+}
+
+} // namespace
+
+#ifdef FOLDCOMP_WITH_CUDA
+static PyObject* foldcomp_gpu_pipeline_release(PyObject*, PyObject*) {
+    std::string error;
+    Py_BEGIN_ALLOW_THREADS
+    try {
+        releaseGPUPipelineCache();
+    } catch (const std::exception& exception) {
+        error = exception.what();
+    } catch (...) {
+        error = "GPU pipeline cache release failed";
+    }
+    Py_END_ALLOW_THREADS
+    if (!error.empty()) {
+        PyErr_SetString(FoldcompError, error.c_str());
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+#endif // FOLDCOMP_WITH_CUDA
+
+static PyObject* foldcomp_decompress_batch(
+    PyObject* /* self */, PyObject* args, PyObject* kwargs
+) {
+    PyObject* inputs;
+    PyObject* use_gpu_object = Py_None;
+    const char* format = "pdb";
+    int max_batch_size = 100;
+    int max_residues = 3000;
+    int gpu_format = 0;
+    int pool_size = 2;
+    static const char* kwlist[] = {
+        "inputs", "use_gpu", "format", "max_batch_size", "max_residues",
+        "gpu_format", "pool_size", nullptr
+    };
+    if (!PyArg_ParseTupleAndKeywords(
+            args, kwargs, "O|$Osiipi", const_cast<char**>(kwlist),
+            &inputs, &use_gpu_object, &format, &max_batch_size, &max_residues,
+            &gpu_format, &pool_size)) {
+        return nullptr;
+    }
+    if (!PyList_Check(inputs)) {
+        PyErr_SetString(PyExc_TypeError, "inputs must be a list of bytes objects");
+        return nullptr;
+    }
+    const std::string output_format(format);
+    if (output_format != "pdb" && output_format != "mmcif" && output_format != "cif") {
+        PyErr_SetString(PyExc_ValueError, "format must be 'pdb' or 'mmcif'");
+        return nullptr;
+    }
+#ifdef FOLDCOMP_WITH_CUDA
+    // Not validated here: max_batch_size/max_residues/pool_size only constrain the
+    // GPU pipeline, so validating them before use_gpu is resolved below would reject
+    // a use_gpu=False call over limits the CPU path (a plain serial loop) never uses.
+    // Validated further down, once use_gpu is known to be true.
+    GPUDecompressionConfig config;
+    config.reader_threads = 1;
+    config.max_batch_size = max_batch_size;
+    config.max_residues = max_residues;
+    config.pool_size = pool_size;
+#else
+    if (max_batch_size < 1 || max_residues < 1) {
+        PyErr_SetString(PyExc_ValueError, "max_batch_size and max_residues must be positive");
+        return nullptr;
+    }
+#endif
+
+    const Py_ssize_t count = PyList_GET_SIZE(inputs);
+    std::vector<std::string> buffers;
+    buffers.reserve(static_cast<size_t>(count));
+    for (Py_ssize_t i = 0; i < count; ++i) {
+        PyObject* item = PyList_GET_ITEM(inputs, i);
+        if (!PyBytes_Check(item)) {
+            PyErr_Format(PyExc_TypeError, "inputs[%zd] must be bytes", i);
+            return nullptr;
+        }
+        buffers.emplace_back(
+            PyBytes_AS_STRING(item), static_cast<size_t>(PyBytes_GET_SIZE(item)));
+    }
+
+    bool runtime_available = false;
+#ifdef FOLDCOMP_WITH_CUDA
+    runtime_available = cudaRuntimeAvailable();
+#endif
+    bool use_gpu = runtime_available;
+    if (use_gpu_object != Py_None) {
+        if (!PyBool_Check(use_gpu_object)) {
+            PyErr_SetString(PyExc_TypeError, "use_gpu must be bool or None");
+            return nullptr;
+        }
+        int truth = PyObject_IsTrue(use_gpu_object);
+        if (truth < 0) return nullptr;
+        use_gpu = truth != 0;
+    }
+    if (use_gpu && !runtime_available) {
+        PyErr_SetString(FoldcompError, "CUDA GPU support is not available at runtime");
+        return nullptr;
+    }
+#ifdef FOLDCOMP_WITH_CUDA
+    if (use_gpu) {
+        std::string config_error;
+        if (!config.validate(config_error)) {
+            PyErr_SetString(PyExc_ValueError, config_error.c_str());
+            return nullptr;
+        }
+    }
+#endif
+
+    std::vector<PythonBatchResult> results(static_cast<size_t>(count));
+    std::string error;
+    Py_ssize_t failed_index = -1;
+
+    if (!use_gpu) {
+        Py_BEGIN_ALLOW_THREADS
+        try {
+            for (Py_ssize_t i = 0; i < count; ++i) {
+                if (decompress(buffers[i].data(), buffers[i].size(), false, output_format,
+                               results[i].text, results[i].title) != 0) {
+                    failed_index = i;
+                    break;
+                }
+            }
+        } catch (const std::exception& exception) {
+            error = exception.what();
+        } catch (...) {
+            error = "CPU batch decompression failed";
+        }
+        Py_END_ALLOW_THREADS
+    }
+#ifdef FOLDCOMP_WITH_CUDA
+    else {
+        std::vector<MemoryViewProcessor::Entry> entries;
+        entries.reserve(static_cast<size_t>(count));
+        for (Py_ssize_t i = 0; i < count; ++i) {
+            entries.emplace_back(
+                std::to_string(i),
+                tcb::span<const char>(buffers[i].data(), buffers[i].size()));
+        }
+        MemoryViewProcessor processor(entries);
+        // config (reader_threads/max_batch_size/max_residues) was already built and
+        // validated above, once use_gpu was known to be true (this branch).
+        // GPU PDB writer: format ATOM lines on the device in-pipeline (PDB only).
+        const bool use_gpu_pdb = gpu_format && output_format == "pdb";
+        config.emit_device_pdb = use_gpu_pdb;
+        std::vector<bool> completed(static_cast<size_t>(count), false);
+        // For the GPU PDB path the per-atom text assembly is the wall-clock
+        // bottleneck (the GPU is otherwise ~80% idle), so defer it out of the
+        // single drain thread and stitch all inputs in parallel after the run.
+        std::vector<GPUDecompressionResult> pdb_staging(
+            use_gpu_pdb ? static_cast<size_t>(count) : 0);
+        auto collect = [&](GPUDecompressionResult&& result) -> bool {
+            size_t index = 0;
+            try {
+                index = static_cast<size_t>(std::stoul(result.name));
+            } catch (...) {
+                return false;
+            }
+            if (index >= results.size()) return false;
+            results[index].title = result.title;
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+            if (output_format == "mmcif" || output_format == "cif") {
+                writeSegmentsToMMCIF(result.segments, result.title, results[index].text);
+            } else
+#endif
+            if (use_gpu_pdb) {
+                // Defer: just capture the GPU-formatted lines + metadata (cheap
+                // move); the stitch runs in parallel after the run.
+                pdb_staging[index] = std::move(result);
+            } else {
+                writeSegmentsToPDB(result.segments, result.title, results[index].text);
+            }
+            completed[index] = true;
+            return true;
+        };
+        bool success = false;
+        Py_BEGIN_ALLOW_THREADS
+        try {
+            GPUPipelineLease lease; // scoped to the try block: returns to the pool as
+                                     // soon as the run + PDB stitch below are done.
+            {
+                nvtx3::scoped_range r{"GPU pipeline (run)"};
+                success = runGPUDecompressionPipeline(processor, config, collect, error, &lease);
+            }
+            if (success && use_gpu_pdb) {
+                // Parallel PDB assembly: each input is an independent string read
+                // straight from the GPU line-capture buffer of this run's pipeline
+                // instance (no serial drain copy). Byte-identical to the serial
+                // version; GIL released here. The parallel stitch is a large,
+                // size-independent win over serial (measured ~3ms flat vs serial's
+                // linear growth to ~28ms at N=256), so it always runs across the
+                // team. The idle workers' post-region GOMP keep-alive spin overlaps
+                // the subsequent single-threaded pythonBatchResults build and does
+                // not add wall-clock.
+                nvtx3::scoped_range r{"GPU PDB stitch (host)"};
+                // `lease` keeps this run's pipeline instance checked out of the
+                // pool for as long as it's alive, so no other thread can reuse/evict
+                // it (and free its capture buffer) while this stitch reads from it.
+                const char* base = lease.pdbCaptureBase();
+                const Py_ssize_t n = count;
+                // An exception escaping an OpenMP structured block is undefined
+                // behavior (std::terminate), so a bad_alloc or other failure inside
+                // the loop body must be caught per-iteration and re-thrown only
+                // after the region ends, from single-threaded code where the
+                // enclosing try/catch below can turn it into `error`.
+                std::atomic<bool> stitch_failed{false};
+                std::mutex stitch_error_mutex;
+                std::string stitch_error;
+#pragma omp parallel for schedule(dynamic)
+                for (Py_ssize_t i = 0; i < n; ++i) {
+                    if (stitch_failed.load(std::memory_order_relaxed)) {
+                        continue;
+                    }
+                    try {
+                        const GPUDecompressionResult& r = pdb_staging[static_cast<size_t>(i)];
+                        std::string& out = results[static_cast<size_t>(i)].text;
+                        if (r.pdb_frags.size() == 1) {
+                            // Single-fragment input: lines are contiguous in the buffer.
+                            writeLineSegmentsToPDB(
+                                r.line_segments, r.title,
+                                base + r.pdb_frags[0].offset * PDB_ATOM_LINE_LEN, out);
+                        } else {
+                            // Multi-fragment container: gather the (non-contiguous)
+                            // fragments into a temporary, then stitch.
+                            size_t tot = 0;
+                            for (const GPUCoordFragment& f : r.pdb_frags)
+                                tot += static_cast<size_t>(f.n_atoms);
+                            std::string tmp(tot * PDB_ATOM_LINE_LEN, '\0');
+                            size_t o = 0;
+                            for (const GPUCoordFragment& f : r.pdb_frags) {
+                                std::memcpy(&tmp[o * PDB_ATOM_LINE_LEN],
+                                    base + f.offset * PDB_ATOM_LINE_LEN,
+                                    static_cast<size_t>(f.n_atoms) * PDB_ATOM_LINE_LEN);
+                                o += static_cast<size_t>(f.n_atoms);
+                            }
+                            writeLineSegmentsToPDB(r.line_segments, r.title, tmp.data(), out);
+                        }
+                    } catch (const std::exception& exception) {
+                        if (!stitch_failed.exchange(true)) {
+                            std::lock_guard<std::mutex> lock(stitch_error_mutex);
+                            stitch_error = exception.what();
+                        }
+                    } catch (...) {
+                        if (!stitch_failed.exchange(true)) {
+                            std::lock_guard<std::mutex> lock(stitch_error_mutex);
+                            stitch_error = "GPU PDB stitch failed";
+                        }
+                    }
+                }
+                if (stitch_failed.load()) {
+                    throw std::runtime_error(stitch_error);
+                }
+            }
+        } catch (const std::exception& exception) {
+            error = exception.what();
+        } catch (...) {
+            error = "GPU batch decompression failed";
+        }
+        Py_END_ALLOW_THREADS
+        if (success) {
+            for (size_t i = 0; i < completed.size(); ++i) {
+                if (!completed[i]) {
+                    success = false;
+                    error = "GPU pipeline did not emit input " + std::to_string(i);
+                    break;
+                }
+            }
+        }
+        if (!success && error.empty()) error = "GPU batch decompression failed";
+    }
+#endif
+
+    if (failed_index >= 0) {
+        PyErr_Format(FoldcompError, "Error decompressing input %zd", failed_index);
+        return nullptr;
+    }
+    if (!error.empty()) {
+        PyErr_SetString(FoldcompError, error.c_str());
+        return nullptr;
+    }
+    FOLDCOMP_CPU_NVTX(nvtx_build, "pythonBatchResults (PyUnicode)");
+    return pythonBatchResults(results);
+}
+
 // Method definitions
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
@@ -948,6 +1276,15 @@ static PyMethodDef foldcomp_methods[] = {
     {"compress", (PyCFunction)foldcomp_compress, METH_VARARGS | METH_KEYWORDS, "Compress PDB content to FCZ."},
     {"open", (PyCFunction)foldcomp_open, METH_VARARGS | METH_KEYWORDS, "Open a Foldcomp database."},
     {"get_data", (PyCFunction)foldcomp_get_data, METH_VARARGS | METH_KEYWORDS, "Get data from FCZ or PDB content."},
+    {"cuda_available", foldcomp_cuda_available, METH_NOARGS, "Return whether a usable CUDA device is available."},
+    {"decompress_batch", (PyCFunction)foldcomp_decompress_batch,
+     METH_VARARGS | METH_KEYWORDS, "Batch-decompress FCMP/FCZC byte strings."},
+#ifdef FOLDCOMP_WITH_CUDA
+    {"gpu_pipeline_release", foldcomp_gpu_pipeline_release, METH_NOARGS,
+     "Release the cached GPU decompression pipeline (persistent slots + pinned "
+     "buffers reused across decompress_batch(use_gpu=True) calls). The next "
+     "call rebuilds it on demand."},
+#endif
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 #pragma GCC diagnostic pop
@@ -974,7 +1311,9 @@ PyMODINIT_FUNC PyInit_foldcomp(void) {
         return NULL;
     }
 
-    FoldcompError = PyErr_NewException("foldcomp.error", NULL, NULL);
+    // Keep the module-specific exception while making it compatible with the
+    // standard exception type promised by the batch API.
+    FoldcompError = PyErr_NewException("foldcomp.error", PyExc_RuntimeError, NULL);
     Py_XINCREF(FoldcompError);
     if (PyModule_AddObject(m, "error", FoldcompError) < 0) {
         goto clean_err;
