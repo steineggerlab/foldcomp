@@ -25,3 +25,12 @@ def test_open_db_ids(pytestconfig):
 def test_open_db_str(pytestconfig):
     with foldcomp.open(str(pytestconfig.rootpath.joinpath("test/example_db"))) as db:
         pass
+
+
+def test_decompress_batch_cpu_handles_raw_container_fragments(pytestconfig):
+    pdb = pytestconfig.rootpath.joinpath("test/test.pdb").read_bytes()
+    raw_container = foldcomp.compress("raw", pdb, max_backbone_rmsd=0.0)
+    assert raw_container.startswith(b"FCZC")
+    [(name, text)] = foldcomp.decompress_batch([raw_container], use_gpu=False)
+    assert name == "raw"
+    assert any(line.startswith("ATOM") for line in text.splitlines())

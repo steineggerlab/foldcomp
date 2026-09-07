@@ -14,6 +14,8 @@
  */
 #include "foldcomp.h"
 
+#include <stdexcept>
+
 #include "amino_acid.h"
 #include "sidechain.h"
 #include "torsion_angle.h"
@@ -25,6 +27,15 @@
 #include <bitset>
 #include <cstdio>
 #include <utility>
+
+// OpenMP for parallelization
+#ifdef OPENMP
+#include <omp.h>
+#endif
+
+#ifdef FOLDCOMP_WITH_CUDA
+#include <nvtx3/nvtx3.hpp>
+#endif
 
 namespace {
 
@@ -209,6 +220,19 @@ std::string getChainName(const CompressedFileHeader& header) {
 }
 
 void setChainName(CompressedFileHeader& header, const std::string& chain) {
+    // The legacy single-structure header only has 3 one-byte fields
+    // (chain/chain2/chain3, byte-tight in a 72-byte struct — see the
+    // static_assert above), so it can only losslessly hold up to 3
+    // characters. A chain ID with a 4th character (the mmCIF auth_asym_id
+    // limit is 4) cannot be represented here; callers with a longer chain
+    // ID must use the FCZC container format instead, which stores chain
+    // names as arbitrary-length strings.
+    if (chain.size() > 3) {
+        throw std::runtime_error(
+            "setChainName: chain ID '" + chain + "' is longer than the legacy "
+            "FCZ header's 3-character capacity; use the container (FCZC) format "
+            "for multi-character chain IDs longer than 3 characters");
+    }
     header.chain = chain.empty() ? '\0' : chain[0];
     header.chain2 = chain.size() > 1 ? chain[1] : '\0';
     header.chain3 = chain.size() > 2 ? chain[2] : '\0';
@@ -1032,8 +1056,18 @@ int Foldcomp::decompressBackbone(std::vector<AtomCoordinate>& atom) {
 }
 
 int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
+    // NVTX ranges mirror the GPU pipeline stages in decompress_batch_async so
+    // the CPU and GPU decompression paths line up in nsys traces. The CPU path
+    // continuizes backbone angles inside decompressBackbone (unlike the GPU
+    // path, which continuizes everything up front), so the "CPU Backbone
+    // Reconstruction" range covers backbone continuize + NeRF here.
+    FOLDCOMP_CPU_NVTX(nvtx_all, "CPU Decompress (structure)");
     // 2022-11-15 11:47:49 - Removed defining new vectors for TAs & BAs
-    int success = this->decompressBackbone(atom);
+    int success = 0;
+    {
+        FOLDCOMP_CPU_NVTX(nvtx_bb, "CPU Backbone Reconstruction");
+        success = this->decompressBackbone(atom);
+    }
     if (success != 0) {
         return success;
     }
@@ -1042,39 +1076,46 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
     std::vector<std::pair<size_t, size_t>> residueRanges = splitResidueRanges(atom);
     std::string currResidue = getThreeLetterCode(this->header.firstResidue);
 
-    success = this->_continuizeSideChainTorsionAngles(
-        this->sideChainAnglesDiscretized, this->sideChainAnglesPerResidue
-    );
+    std::vector<float> tempFactors;
+    {
+        FOLDCOMP_CPU_NVTX(nvtx_cont, "CPU Continuize all angles");
+        success = this->_continuizeSideChainTorsionAngles(
+            this->sideChainAnglesDiscretized, this->sideChainAnglesPerResidue
+        );
 
-    // Prepare tempFactor
-    std::vector<float> tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
-    this->tempFactors = tempFactors;
+        // Prepare tempFactor
+        tempFactors = this->tempFactorsDisc.continuize(this->tempFactorsDiscretized);
+        this->tempFactors = tempFactors;
+    }
 
     std::vector<AtomCoordinate> rebuiltAtoms;
     rebuiltAtoms.reserve(static_cast<size_t>(this->header.nAtom) + (this->hasOXT ? 1u : 0u));
-    for (size_t i = 0; i < residueRanges.size(); i++) {
-        const auto& residueRange = residueRanges[i];
-        tcb::span<const AtomCoordinate> backboneResidue(
-            atom.data() + residueRange.first, residueRange.second - residueRange.first
-        );
-        if (i != 0) {
-            currResidue = backboneResidue[0].residue;
-        }
-        const auto aaIt = AAS.find(currResidue);
-        std::vector<AtomCoordinate> fullResidue;
-        if (aaIt == AAS.end()) {
-            fullResidue.assign(backboneResidue.begin(), backboneResidue.end());
-        } else {
-            fullResidue = nerf.reconstructAminoAcid(
-                backboneResidue, this->sideChainAnglesPerResidue[i], aaIt->second
+    {
+        FOLDCOMP_CPU_NVTX(nvtx_sc, "CPU Sidechain Reconstruction");
+        for (size_t i = 0; i < residueRanges.size(); i++) {
+            const auto& residueRange = residueRanges[i];
+            tcb::span<const AtomCoordinate> backboneResidue(
+                atom.data() + residueRange.first, residueRange.second - residueRange.first
             );
-            if (this->useAltAtomOrder) {
-                _reorderAtoms(fullResidue, aaIt->second);
+            if (i != 0) {
+                currResidue = backboneResidue[0].residue;
             }
-        }
-        for (AtomCoordinate& residueAtom : fullResidue) {
-            residueAtom.tempFactor = tempFactors[i];
-            rebuiltAtoms.push_back(std::move(residueAtom));
+            const auto aaIt = AAS.find(currResidue);
+            std::vector<AtomCoordinate> fullResidue;
+            if (aaIt == AAS.end()) {
+                fullResidue.assign(backboneResidue.begin(), backboneResidue.end());
+            } else {
+                fullResidue = nerf.reconstructAminoAcid(
+                    backboneResidue, this->sideChainAnglesPerResidue[i], aaIt->second
+                );
+                if (this->useAltAtomOrder) {
+                    _reorderAtoms(fullResidue, aaIt->second);
+                }
+            }
+            for (AtomCoordinate& residueAtom : fullResidue) {
+                residueAtom.tempFactor = tempFactors[i];
+                rebuiltAtoms.push_back(std::move(residueAtom));
+            }
         }
     }
     atom = std::move(rebuiltAtoms);
@@ -1090,20 +1131,37 @@ int Foldcomp::decompress(std::vector<AtomCoordinate>& atom) {
 }
 
 float Foldcomp::computeBackboneRmsdForCompressedState() const {
-    Foldcomp decoded = *this;
-    decoded.anchorCoordinates.clear();
-    if (decoded.anchorAtoms.size() < 2) {
+    Foldcomp decoded;
+    decoded.header = this->header;
+    decoded.nAllAnchor = this->nAllAnchor;
+    decoded.hasOXT = this->hasOXT;
+    decoded.prevAtoms = this->prevAtoms;
+    decoded.anchorIndices = this->anchorIndices;
+    decoded.compressedBackBone = this->compressedBackBone;
+    decoded.phiDisc = this->phiDisc;
+    decoded.psiDisc = this->psiDisc;
+    decoded.omegaDisc = this->omegaDisc;
+    decoded.n_ca_c_angleDisc = this->n_ca_c_angleDisc;
+    decoded.ca_c_n_angleDisc = this->ca_c_n_angleDisc;
+    decoded.c_n_ca_angleDisc = this->c_n_ca_angleDisc;
+    decoded.phiDiscretized = this->phiDiscretized;
+    decoded.psiDiscretized = this->psiDiscretized;
+    decoded.omegaDiscretized = this->omegaDiscretized;
+    decoded.n_ca_c_angleDiscretized = this->n_ca_c_angleDiscretized;
+    decoded.ca_c_n_angleDiscretized = this->ca_c_n_angleDiscretized;
+    decoded.c_n_ca_angleDiscretized = this->c_n_ca_angleDiscretized;
+    if (this->anchorAtoms.size() < 2) {
         return std::numeric_limits<float>::infinity();
     }
-    decoded.anchorCoordinates.reserve(decoded.anchorAtoms.size() - 1);
-    for (size_t i = 1; i < decoded.anchorAtoms.size(); ++i) {
-        const auto& anchorAtoms = decoded.anchorAtoms[i];
-        if (anchorAtoms.size() != 3) {
+    decoded.anchorCoordinates.reserve(this->anchorAtoms.size() - 1);
+    for (size_t i = 1; i < this->anchorAtoms.size(); ++i) {
+        const auto& anchorGroup = this->anchorAtoms[i];
+        if (anchorGroup.size() != 3) {
             return std::numeric_limits<float>::infinity();
         }
         std::vector<std::vector<float>> coords;
         coords.reserve(3);
-        for (const auto& atom : anchorAtoms) {
+        for (const auto& atom : anchorGroup) {
             coords.push_back({
                 atom.coordinate.x,
                 atom.coordinate.y,
@@ -1983,6 +2041,32 @@ float* getContFFromSideChainDiscretizers(
         return scDiscretizers.val_cont_fs;
     } else {
         return NULL;
+    }
+}
+
+int getSideChainTorsionNumFromChar(char res_code) {
+    switch (res_code) {
+        case 'A': return 2;
+        case 'R': return 8;
+        case 'N': return 5;
+        case 'D': return 5;
+        case 'C': return 3;
+        case 'Q': return 6;
+        case 'E': return 6;
+        case 'G': return 1;
+        case 'H': return 7;
+        case 'I': return 5;
+        case 'L': return 5;
+        case 'K': return 6;
+        case 'M': return 5;
+        case 'F': return 8;
+        case 'P': return 4;
+        case 'S': return 3;
+        case 'T': return 4;
+        case 'W': return 11;
+        case 'Y': return 9;
+        case 'V': return 4;
+        default:  return 0;
     }
 }
 

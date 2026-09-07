@@ -1,6 +1,11 @@
 #include "structure_codec.h"
 
 #include "foldcomp.h"
+#include "pdb_format.h"
+
+#ifdef FOLDCOMP_WITH_CUDA
+#include <nvtx3/nvtx3.hpp>  // FOLDCOMP_CPU_NVTX for CPU-path profiling ranges
+#endif
 
 #ifdef FOLDCOMP_WITH_STRUCTURE_READER
 #include "structure_reader.h"
@@ -428,9 +433,13 @@ bool readContainer(
 void writeSegmentsToPDB(
     const std::vector<DecompressedSegment>& segments,
     const std::string& title,
-    std::string& output
+    std::string& output,
+    const char* precomputedLines
 ) {
+    // Mirrors the GPU "GPU PDB writer" range so CPU/GPU text formatting line up.
+    FOLDCOMP_CPU_NVTX(nvtx_pdb, "CPU PDB writer");
     output.clear();
+    size_t lineCursor = 0;
     if (segments.empty()) {
         return;
     }
@@ -470,7 +479,89 @@ void writeSegmentsToPDB(
                 }
             }
         }
-        writeAtomCoordinatesToPDB(segment.atoms, "", output, true, emitFinalTer);
+        writeAtomCoordinatesToPDB(segment.atoms, "", output, true, emitFinalTer,
+                                  precomputedLines, precomputedLines ? &lineCursor : nullptr);
+    }
+    if (writeModels && currModel != -1) {
+        output.append("ENDMDL\n");
+    }
+}
+
+void writeLineSegmentsToPDB(
+    const std::vector<PdbLineSegment>& segments,
+    const std::string& title,
+    const char* lines,
+    std::string& output
+) {
+    output.clear();
+    if (segments.empty()) {
+        return;
+    }
+    appendTitleLines(title, output);
+    std::set<int> modelSet;
+    for (const auto& segment : segments) {
+        modelSet.insert(segment.model);
+    }
+    bool writeModels = modelSet.size() > 1;
+    int currModel = -1;
+    size_t cursor = 0; // atom index into `lines`
+    for (size_t i = 0; i < segments.size(); i++) {
+        const PdbLineSegment& segment = segments[i];
+        if (writeModels && segment.model != currModel) {
+            if (currModel != -1) {
+                output.append("ENDMDL\n");
+            }
+            char modelLine[32];
+            int written = snprintf(modelLine, sizeof(modelLine), "MODEL     %4d\n", segment.model);
+            output.append(modelLine, written);
+            currModel = segment.model;
+        }
+        if (segment.n_atoms == 0) {
+            continue;
+        }
+        // A TER after this segment unless the next non-empty segment is the same
+        // model and chain (segment model/chain are uniform across their atoms).
+        bool emitFinalTer = true;
+        size_t nextIndex = i + 1;
+        while (nextIndex < segments.size() && segments[nextIndex].n_atoms == 0) {
+            nextIndex++;
+        }
+        if (nextIndex < segments.size()) {
+            const PdbLineSegment& nextSegment = segments[nextIndex];
+            if (nextSegment.n_atoms != 0 && nextSegment.model == segment.model &&
+                segment.chain == nextSegment.chain) {
+                emitFinalTer = false;
+            }
+        }
+        for (int k = 0; k < segment.n_atoms; k++) {
+            const char* L = lines + cursor * PDB_ATOM_LINE_LEN;
+            output.append(L, PDB_ATOM_LINE_LEN);
+            // Chain/model are uniform within a segment, so a TER only follows the
+            // segment's last atom (matching writeAtomCoordinatesToPDB).
+            if (k == segment.n_atoms - 1 && emitFinalTer) {
+                int atomIndex = 0;
+                bool neg = false;
+                int p = 6;
+                while (p < 11 && L[p] == ' ') p++;
+                if (p < 11 && L[p] == '-') { neg = true; p++; }
+                for (; p < 11 && L[p] >= '0' && L[p] <= '9'; p++) {
+                    atomIndex = atomIndex * 10 + (L[p] - '0');
+                }
+                if (neg) atomIndex = -atomIndex;
+                output.append("TER   ", 6);
+                char buf[16];
+                char* e = pf_int(buf, atomIndex + 1, 5);
+                output.append(buf, static_cast<size_t>(e - buf));
+                output.append("      ", 6);
+                output.append(L + 17, 3);   // residue name
+                output.push_back(' ');
+                output.push_back(L[21]);    // chain
+                output.append(L + 22, 4);   // residue sequence number
+                output.push_back(L[26]);    // insertion code
+                output.push_back('\n');
+            }
+            cursor++;
+        }
     }
     if (writeModels && currModel != -1) {
         output.append("ENDMDL\n");

@@ -1,5 +1,5 @@
 # Author: Milot Mirdita (milot@mirdita.de), Hyunbin Kim (khb7840@gmail.com)
-cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,9 +11,23 @@ option(BUILD_WERROR "Build with warnings as errors" OFF)
 option(BUILD_IWYU "Build with include-what-you-use" OFF)
 option(GCS_SUPPORT "Enable Google Cloud Storage support" OFF)
 option(ENABLE_AUDIT "Build foldcomp_audit helper" OFF)
+option(BUILD_CUDA "Build CUDA GPU decompression support" OFF)
+if(BUILD_CUDA)
+    message(STATUS "GPU processing: ON")
+else()
+    message(STATUS "GPU processing: OFF")
+endif()
 
 include_directories(src)
+include_directories(src/gpu)
 add_subdirectory(src)
+
+# All CUDA build configuration lives in cmake/CudaBuild.cmake. It must be included
+# here: after add_subdirectory(src) (it appends to the foldcomp_* source lists) and
+# before the foldcomp target is created (it enables the CUDA language).
+if(BUILD_CUDA)
+    include(CudaBuild)
+endif()
 
 # For windows, include lib/windows
 if(WIN32)
@@ -37,17 +51,14 @@ elseif(BUILD_PYTHON)
         if(MSVC)
             install(FILES lib/windows/dirent.h DESTINATION include)
         endif(MSVC)
-        find_package(PythonInterp)
-    	find_package(PythonLibs) # Trying to fix cibuildwheel ubuntu error
-        find_package(PythonExtensions REQUIRED)
-        add_library(foldcomp MODULE
+        find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+        Python3_add_library(foldcomp MODULE WITH_SOABI
             ${foldcomp_header_files}
             ${foldcomp_source_files}
             src/structure_reader.cpp
             foldcomp/foldcomp.cxx)
         target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_MMCIF_OUTPUT)
         target_compile_definitions(foldcomp PRIVATE FOLDCOMP_WITH_STRUCTURE_READER)
-        python_extension_module(foldcomp)
         install(TARGETS foldcomp LIBRARY DESTINATION foldcomp)
 else()
     include_directories(lib)
@@ -111,6 +122,12 @@ else()
         target_link_libraries(foldcomp PUBLIC google-cloud-cpp::storage)
         target_compile_definitions(foldcomp PUBLIC HAVE_GCS)
     endif()
+
+endif()
+
+if(BUILD_CUDA)
+    foldcomp_configure_cuda_target(foldcomp)
+    foldcomp_add_cuda_bench()
 endif()
 
 # always enable math defines like M_PI
@@ -120,27 +137,39 @@ if(TARGET foldcomp_audit)
 endif()
 
 if(MSVC)
-    target_compile_options(foldcomp PRIVATE /W4)
+    target_compile_options(foldcomp PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:/W4>)
     if(TARGET foldcomp_audit)
-        target_compile_options(foldcomp_audit PRIVATE /W4)
+        target_compile_options(foldcomp_audit PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/W4>)
     endif()
 else()
-    target_compile_options(foldcomp PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(foldcomp PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>)
     if(TARGET foldcomp_audit)
-        target_compile_options(foldcomp_audit PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(foldcomp_audit PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+            $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+            $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>)
     endif()
 endif()
 
 if(BUILD_WERROR)
     if(MSVC)
-        target_compile_options(foldcomp PRIVATE /WX)
+        target_compile_options(foldcomp PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/WX>)
         if(TARGET foldcomp_audit)
-            target_compile_options(foldcomp_audit PRIVATE /WX)
+            target_compile_options(foldcomp_audit PRIVATE
+                $<$<COMPILE_LANGUAGE:CXX>:/WX>)
         endif()
     else()
-        target_compile_options(foldcomp PRIVATE -Werror)
+        target_compile_options(foldcomp PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
         if(TARGET foldcomp_audit)
-            target_compile_options(foldcomp_audit PRIVATE -Werror)
+            target_compile_options(foldcomp_audit PRIVATE
+                $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
         endif()
     endif()
 endif()

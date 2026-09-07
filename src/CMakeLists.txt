@@ -32,6 +32,31 @@ set(foldcomp_source_files
     PARENT_SCOPE
     )
 
+set(foldcomp_cuda_header_files
+    src/gpu/gpu_batched_decompression.h
+    src/gpu/gpu_buffer.h
+    src/gpu/gpu_context.h
+    src/gpu/gpu_discretizer.h
+    src/gpu/gpu_decompression_pipeline.h
+    src/gpu/gpu_nerf.h
+    src/gpu/gpu_pdb_writer.h
+    src/gpu/gpu_sidechain.h
+    src/gpu/gpu_stream.h
+    src/pdb_format.h
+    PARENT_SCOPE
+    )
+
+set(foldcomp_cuda_source_files
+    src/gpu/gpu_discretizer.cu
+    src/gpu/gpu_decompression_pipeline.cpp
+    src/gpu/gpu_foldcomp_batch.cpp
+    src/gpu/gpu_nerf.cu
+    src/gpu/gpu_pdb_writer.cu
+    src/gpu/gpu_sidechain.cu
+    src/gpu/gpu_stream.cu
+    PARENT_SCOPE
+    )
+
 set(foldcomp_exe_header_files
     src/structure_reader.h
     PARENT_SCOPE

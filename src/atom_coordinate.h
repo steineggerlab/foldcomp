@@ -16,28 +16,81 @@
 #include "tcbspan.h"
 
 #include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <ostream>
 #include <string>
 #include <vector>
+
+/**
+ * Fixed-length string stored as char array — zero heap allocation, minimal copy cost.
+ * N is the maximum number of characters (excluding null terminator).
+ * Supports implicit conversion to std::string and comparison with const char* / std::string.
+ */
+template<int N>
+struct FixedStr {
+    char data[N + 1];
+    FixedStr() { data[0] = '\0'; }
+    FixedStr(const char* s) { strncpy(data, s, N); data[N] = '\0'; }
+    FixedStr(const std::string& s) { strncpy(data, s.c_str(), N); data[N] = '\0'; }
+    FixedStr& operator=(const char* s)         { strncpy(data, s, N); data[N] = '\0'; return *this; }
+    FixedStr& operator=(const std::string& s)  { strncpy(data, s.c_str(), N); data[N] = '\0'; return *this; }
+    bool operator==(const char* s)             const { return strcmp(data, s) == 0; }
+    bool operator==(const std::string& s)      const { return strcmp(data, s.c_str()) == 0; }
+    bool operator==(const FixedStr& o)         const { return strcmp(data, o.data) == 0; }
+    bool operator!=(const char* s)             const { return strcmp(data, s) != 0; }
+    bool operator!=(const std::string& s)      const { return strcmp(data, s.c_str()) != 0; }
+    bool operator!=(const FixedStr& o)         const { return strcmp(data, o.data) != 0; }
+    bool operator< (const FixedStr& o)         const { return strcmp(data, o.data) <  0; }
+    char& operator[](size_t i)       { return data[i]; }
+    char  operator[](size_t i) const { return data[i]; }
+    size_t size()      const { return strlen(data); }
+    bool empty()       const { return data[0] == '\0'; }
+    const char* c_str() const { return data; }
+    operator std::string() const { return std::string(data); }
+    template<int M> friend std::ostream& operator<<(std::ostream& os, const FixedStr<M>& s);
+};
+template<int N>
+inline std::ostream& operator<<(std::ostream& os, const FixedStr<N>& s) { return os << s.data; }
+// String concatenation: FixedStr + char* / string and vice versa
+template<int N> inline std::string operator+(const FixedStr<N>& a, const char* b)         { return std::string(a.data) + b; }
+template<int N> inline std::string operator+(const char* b, const FixedStr<N>& a)         { return b + std::string(a.data); }
+template<int N> inline std::string operator+(const FixedStr<N>& a, const std::string& b)  { return std::string(a.data) + b; }
+template<int N> inline std::string operator+(const std::string& b, const FixedStr<N>& a)  { return b + std::string(a.data); }
+template<int N, int M> inline std::string operator+(const FixedStr<N>& a, const FixedStr<M>& b) { return std::string(a.data) + b.data; }
+// Reverse comparison operators
+template<int N> inline bool operator==(const char* s, const FixedStr<N>& a)        { return a == s; }
+template<int N> inline bool operator!=(const char* s, const FixedStr<N>& a)        { return a != s; }
+template<int N> inline bool operator==(const std::string& s, const FixedStr<N>& a) { return a == s; }
+template<int N> inline bool operator!=(const std::string& s, const FixedStr<N>& a) { return a != s; }
+
+using AtomName    = FixedStr<4>;  // e.g. "N", "CA", "OXT"  — max 4 chars
+using ResidueName = FixedStr<3>;  // e.g. "ALA", "GLY"      — max 3 chars
+
+// mmCIF auth_asym_id limit; also the width GPU-side chain buffers (chain_per_struct,
+// PendingOXTState::chain) are packed to, so this must stay in sync with ChainId below.
+constexpr int CHAIN_ID_LENGTH = 4;
+using ChainId = FixedStr<CHAIN_ID_LENGTH>;  // e.g. "A", "AB"
 
 class AtomCoordinate {
 public:
     AtomCoordinate() = default;
     AtomCoordinate(
-        const std::string& a, const std::string& r, const std::string& c,
+        AtomName a, ResidueName r, ChainId c,
         int ai, int ri, float x, float y, float z,
         float occupancy = 0.0f, float tempFactor = 0.0f,
         int model = 1, char insertionCode = ' ', char altloc = ' '
     );
     AtomCoordinate(
-        const std::string& a, const std::string& r, const std::string& c,
+        AtomName a, ResidueName r, ChainId c,
         int ai, int ri, float3d coord,
         float occupancy = 0.0f, float tempFactor = 0.0f,
         int model = 1, char insertionCode = ' ', char altloc = ' '
     );
     // data
-    std::string atom;
-    std::string residue;
-    std::string chain;
+    AtomName    atom;
+    ResidueName residue;
+    ChainId     chain;
     int atom_index;
     int residue_index;
     float3d coordinate;
@@ -83,9 +136,18 @@ std::vector<AtomCoordinate> weightedAverage(
     const std::vector<AtomCoordinate>& origAtoms, const std::vector<AtomCoordinate>& revAtoms
 );
 
+// Length of one formatted PDB ATOM record (fixed columns + trailing '\n').
+static constexpr int PDB_ATOM_LINE_LEN = 81;
+
+// When `precomputedLines` is non-null it must point at an array of
+// PDB_ATOM_LINE_LEN-byte ATOM lines (one per atom, in `atoms` order); the ATOM
+// record for each atom is copied from there instead of being formatted here, and
+// `*lineCursor` is advanced. Used by the GPU PDB writer. Default (nullptr)
+// formats on the host exactly as before.
 void writeAtomCoordinatesToPDB(
     const std::vector<AtomCoordinate>& atoms, const std::string& title, std::string& output,
-    bool appendOutput = false, bool emitFinalTer = true
+    bool appendOutput = false, bool emitFinalTer = true,
+    const char* precomputedLines = nullptr, size_t* lineCursor = nullptr
 );
 int writeAtomCoordinatesToPDBFile(
     const std::vector<AtomCoordinate>& atoms, const std::string& title, const std::string& pdb_path

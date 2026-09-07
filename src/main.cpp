@@ -13,7 +13,7 @@
  *    foldcomp compress input.pdb output.fcz
  *    foldcomp decompress input.fcz output.pdb
  * ---
- * Last Modified: 2026-02-10 20:09:37
+ * Last Modified: 2025-07-30 15:44:47
  * Modified By: Hyunbin Kim (khb7840@gmail.com)
  * ---
  * Copyright © 2021 Hyunbin Kim, All rights reserved
@@ -22,6 +22,11 @@
 #include "amino_acid.h"
 #include "atom_coordinate.h"
 #include "foldcomp.h"
+#ifdef FOLDCOMP_WITH_CUDA
+#include "gpu_buffer.h"
+#include "gpu_decompression_pipeline.h"
+#include "gpu_sidechain.h"
+#endif
 #include "structure_reader.h"
 #include "utility.h"
 #include "database_writer.h"
@@ -37,6 +42,7 @@
 #include <fstream> // IWYU pragma: keep
 #include <iomanip>
 #include <limits>
+#include <memory>
 #ifdef _WIN32
 #include <direct.h>
 #include "windows/getopt.h"
@@ -59,6 +65,30 @@
 #include <omp.h>
 #endif
 
+#include <chrono>
+#include <numeric>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
+#include <queue>
+
+#ifdef FOLDCOMP_WITH_CUDA
+// Zero-copy istream wrapper: wraps a const char* buffer as an istream without
+// copying the data (unlike std::istringstream which copies into a std::string).
+struct MemBuf : std::streambuf {
+    MemBuf(const char* base, size_t size) {
+        char* p = const_cast<char*>(base);
+        setg(p, p, p + size);
+    }
+};
+struct MemStream : MemBuf, std::istream {
+    MemStream(const char* base, size_t size)
+        : MemBuf(base, size), std::istream(static_cast<std::streambuf*>(this)) {}
+};
+#endif
+
 static int use_alt_order = 0;
 static int anchor_residue_threshold = DEFAULT_ANCHOR_THRESHOLD;
 static int save_as_tar = 0;
@@ -75,6 +105,22 @@ static bool isMMCIFOutputPath(const std::string& path) {
            stringEndsWith(".cif.tar", path) ||
            stringEndsWith(".mmcif.tar", path);
 }
+static int use_fused_disc = 1;          // default: use fused continuize kernels
+static int write_to_disk = 1;          // kept for CLI back-compat with --write-to-disk (now the default)
+static int memory_only = 0;            // --memory-only: skip disk/tar/db writes (GPU decompress path only)
+// Default: 4 threads.  The optimal is bounded by L3 cache capacity, not core count:
+// each reader thread's working set is ~max_batch_size * max_residues * ~50 bytes ≈ 7 MB.
+// Profiling shows 4 threads (~28 MB) fits comfortably in L3 and outperforms 10 threads
+// (~70 MB, thrashes L3, parse_entry 2.3x slower, mmap latency doubles).
+// Tune with --reader-threads for your machine.
+static int reader_threads = 4;
+static int use_cpu = 0;                // backend selector: 0 = GPU (default for CUDA builds, falls back to
+                                        // CPU with a warning if no CUDA runtime is available), 1 = CPU.
+                                        // --cpu and --gpu both just set this same variable.
+static int max_batch_size  = 100;       // --max-batch-size N: structures per GPU batch
+static int max_residues    = 3000;      // --max-residues N: upper bound on residues per structure (pre-allocate)
+static int use_mmap        = 1;         // --no-mmap: use fread instead of mmap for directory input
+static int sort_by_length  = 0;         // --sort-by-length: pre-sort files by nResidue for uniform GPU batches
 
 // version
 #define FOLDCOMP_VERSION "1.0.0"
@@ -315,6 +361,72 @@ static std::string makeFragmentSuffix(const ContainerFragment& fragment, size_t 
     return suffix;
 }
 
+static bool extractRawAtomData(
+    const std::vector<AtomCoordinate>& atoms,
+    int type,
+    int digits,
+    std::string& data,
+    int& residueCount
+) {
+    data.clear();
+    residueCount = 0;
+    if (atoms.empty()) return true;
+
+    std::vector<const AtomCoordinate*> residues;
+    residues.push_back(&atoms.front());
+    for (size_t i = 1; i < atoms.size(); ++i) {
+        if (startsNewResidue(atoms[i], atoms[i - 1])) residues.push_back(&atoms[i]);
+    }
+    residueCount = static_cast<int>(residues.size());
+
+    if (type == 1) {
+        data.reserve(residues.size());
+        for (const AtomCoordinate* residue : residues) {
+            auto aa = Foldcomp::AAS.find(residue->residue);
+            data.push_back(aa == Foldcomp::AAS.end() ? 'X' : aa->second.abb1);
+        }
+        return true;
+    }
+
+    digits = std::clamp(digits, 1, 4);
+    std::vector<float> factors;
+    factors.reserve(residues.size());
+    for (size_t r = 0; r < residues.size(); ++r) {
+        const AtomCoordinate* begin = residues[r];
+        const AtomCoordinate* end = r + 1 < residues.size() ? residues[r + 1] : atoms.data() + atoms.size();
+        const AtomCoordinate* selected = begin;
+        for (const AtomCoordinate* atom = begin; atom != end; ++atom) {
+            if (atom->atom == "CA") {
+                selected = atom;
+                break;
+            }
+        }
+        factors.push_back(selected->tempFactor);
+    }
+    float maxFactor = *std::max_element(factors.begin(), factors.end());
+    bool zeroToOne = maxFactor <= 1.0f && digits <= 2;
+    for (size_t i = 0; i < factors.size(); ++i) {
+        float value = zeroToOne
+            ? std::clamp(factors[i], 0.0f, 1.0f)
+            : std::clamp(factors[i], 0.0f, 100.0f);
+        int first = zeroToOne ? static_cast<int>(value * 10.0f) % 10
+                              : std::min(static_cast<int>(value / 10.0f), 9);
+        int second = zeroToOne ? static_cast<int>(value * 100.0f) % 10
+                               : static_cast<int>(value) % 10;
+        data.push_back(static_cast<char>('0' + first));
+        if (digits > 1) data.push_back(static_cast<char>('0' + second));
+        if (digits >= 3) {
+            data.push_back('.');
+            data.push_back(static_cast<char>('0' + static_cast<int>(value * 10.0f) % 10));
+        }
+        if (digits == 4) {
+            data.push_back(static_cast<char>('0' + static_cast<int>(value * 100.0f) % 10));
+        }
+        if (digits > 1 && i + 1 < factors.size()) data.push_back(',');
+    }
+    return true;
+}
+
 int print_usage(void) {
     std::cout << "Usage: foldcomp compress <pdb|cif> [<fcz>]" << std::endl;
     std::cout << "       foldcomp compress [-t number] <dir|tar(.gz)> [<dir|tar|db>]" << std::endl;
@@ -348,11 +460,26 @@ int print_usage(void) {
     std::cout << " --use-title              use TITLE as the output file name (only for extraction mode)" << std::endl;
     std::cout << " --time                   measure time for compression/decompression" << std::endl;
     std::cout << " --use-cache              use cached index for database input [default=false]" << std::endl;
+    std::cout << " --write-to-disk          write decompressed files to disk (default; kept for back-compat)" << std::endl;
+    std::cout << " --memory-only            decompress to memory only, skip disk/tar/db writes (GPU decompress path only)" << std::endl;
+    std::cout << " --cpu                    use original single-threaded CPU decompression path (no GPU)" << std::endl;
+    std::cout << " --gpu                    use GPU decompression path [default for CUDA-enabled builds;" << std::endl;
+    std::cout << "                          falls back to --cpu with a warning if no CUDA runtime is available]" << std::endl;
+    std::cout << " --max-batch-size N       max structures per GPU batch [default=100]" << std::endl;
+    std::cout << " --max-residues N         upper bound on residues per structure for pinned buffer pre-allocate [default=3000]" << std::endl;
+    std::cout << " --reader-threads N       parallel FCZ parser threads for GPU batch decompression [default=" << reader_threads << "]" << std::endl;
+    std::cout << " --no-fused-disc          disable fused continuize kernels for discretizer (GPU only) [default=false]" << std::endl;
+    std::cout << " --no-mmap                use fread instead of mmap for directory input (may improve performance on some filesystems)" << std::endl;
+    std::cout << " --sort-by-length         pre-sort input files by protein length (nResidue) for uniform GPU batches" << std::endl;
     return 0;
 }
 
 inline int print_version(void) {
-    std::cout << "foldcomp " << FOLDCOMP_VERSION << std::endl;
+#ifdef FOLDCOMP_WITH_CUDA
+    std::cout << "foldcomp " << FOLDCOMP_VERSION << " (cuda)" << std::endl;
+#else
+    std::cout << "foldcomp " << FOLDCOMP_VERSION << " (cpu-only)" << std::endl;
+#endif
     return 0;
 }
 
@@ -454,6 +581,16 @@ int main(int argc, char* const *argv) {
             {"id-mode",      required_argument,                           0, 'm'},
             {"plddt-digits", required_argument,                           0, 'p'},
             {"use-cache",      no_argument,                          &use_cache,  1 },
+            {"no-fused-disc",    no_argument,       &use_fused_disc,     0 },
+            {"write-to-disk",    no_argument,       &write_to_disk,      1 }, // no-op: writing to disk is now the default
+            {"memory-only",      no_argument,       &memory_only,        1 },
+            {"cpu",              no_argument,       &use_cpu,            1 },
+            {"gpu",              no_argument,       &use_cpu,            0 },
+            {"max-batch-size",  required_argument,              0,  1005},
+            {"max-residues",    required_argument,              0,  1006},
+            {"reader-threads", required_argument,               0,  1002},
+            {"no-mmap",          no_argument,         &use_mmap,           0 },
+            {"sort-by-length",   no_argument,    &sort_by_length,         1 },
             {0,                              0,                           0,  0 }
     };
 
@@ -505,6 +642,37 @@ int main(int argc, char* const *argv) {
                 break;
             case 'v':
                 return print_version();
+            case 1005:
+#ifndef FOLDCOMP_WITH_CUDA
+                std::cerr << "[Error] --max-batch-size requires a CUDA-enabled build." << std::endl;
+                return 1;
+#endif
+                max_batch_size = atoi(optarg);
+                if (max_batch_size < 1) max_batch_size = 1;
+#ifdef FOLDCOMP_WITH_CUDA
+                if (max_batch_size > FoldcompGPUState::MAX_STRUCTS_PER_BATCH) {
+                    std::cerr << "[Error] --max-batch-size exceeds MAX_STRUCTS_PER_BATCH ("
+                              << FoldcompGPUState::MAX_STRUCTS_PER_BATCH << ")." << std::endl;
+                    return 1;
+                }
+#endif
+                break;
+            case 1006:
+#ifndef FOLDCOMP_WITH_CUDA
+                std::cerr << "[Error] --max-residues requires a CUDA-enabled build." << std::endl;
+                return 1;
+#endif
+                max_residues = atoi(optarg);
+                if (max_residues < 1) max_residues = 1;
+                break;
+            case 1002:
+#ifndef FOLDCOMP_WITH_CUDA
+                std::cerr << "[Error] --reader-threads requires a CUDA-enabled build." << std::endl;
+                return 1;
+#endif
+                reader_threads = atoi(optarg);
+                if (reader_threads < 1) reader_threads = 1;
+                break;
             case '?':
                 return print_usage();
             default:
@@ -512,6 +680,27 @@ int main(int argc, char* const *argv) {
         }
         flag = getopt_long(argc, argv, "hadzrfyt:b:l:p:", long_options, &option_index);
     }
+
+#ifndef FOLDCOMP_WITH_CUDA
+    if (!use_fused_disc || memory_only) {
+        std::cerr << "[Error] CUDA decompression options require a CUDA-enabled build." << std::endl;
+        return 1;
+    }
+#endif
+
+#ifdef FOLDCOMP_WITH_CUDA
+    // GPU is the default backend for CUDA-enabled builds. If no CUDA runtime is
+    // available (neither forced nor requested by default), fall back to CPU
+    // rather than failing outright, but warn so the user knows why.
+    if (!use_cpu) {
+        std::string reason;
+        if (!cudaRuntimeAvailable(&reason)) {
+            std::cerr << "[Warning] CUDA runtime is unavailable (" << reason
+                       << "); falling back to CPU decompression." << std::endl;
+            use_cpu = 1;
+        }
+    }
+#endif
 
     // Parse non-option arguments
     // argv[optind]: MODE
@@ -682,36 +871,38 @@ int main(int argc, char* const *argv) {
         unsigned int key = 0;
         for (size_t i = 0; i < inputs.size() + 1; i++) {
             const std::string& input = (i == inputs.size()) ? "" : inputs[i];
-            Processor* processor;
+            std::unique_ptr<Processor> processor;
             struct stat st;
             if (i != inputs.size()) {
                 if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                    processor = new TarProcessor(input);
+                    processor = std::make_unique<TarProcessor>(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_file.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
+                        processor = std::make_unique<DatabaseProcessor>(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = std::make_unique<DatabaseProcessor>(input);
                     }
                 }
 #ifdef HAVE_GCS
                 else if (stringStartsWith("gcs://", input)) {
-                    processor = new GcsProcessor(input);
+                    processor = std::make_unique<GcsProcessor>(input);
                 }
 #endif
                 else {
-                    processor = new DirectoryProcessor(input, recursive);
+                    processor = std::make_unique<DirectoryProcessor>(input, recursive, use_mmap);
                 }
             } else {
                 if (single_file_inputs.size() > 0) {
-                    processor = new DirectoryProcessor(single_file_inputs);
+                    processor = std::make_unique<DirectoryProcessor>(single_file_inputs, use_mmap);
                 } else {
                     continue;
                 }
             }
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+                if (name == NULL && dataBuffer == NULL && size == 0)
+                    return true;
                 TimerGuard guard(name, measure_time);
                 std::vector<AtomCoordinate> atomCoordinates;
                 std::vector<BackboneChain> compData;
@@ -907,7 +1098,6 @@ int main(int argc, char* const *argv) {
                 return true;
             };
             processor->run(func, num_threads);
-            delete processor;
         }
         if (db_output) {
             free_writer(handle);
@@ -916,7 +1106,7 @@ int main(int argc, char* const *argv) {
             mtar_close(&tar_out);
         }
     } else if (mode == DECOMPRESS) {
-        void* handle;
+        void* handle = nullptr;
         mtar_t tar_out;
         if (save_as_tar) {
             mtar_open(&tar_out, output.c_str(), "w");
@@ -948,40 +1138,43 @@ int main(int argc, char* const *argv) {
         }
 
         unsigned int key = 0;
+        bool decompression_failed = false;
         for (size_t i = 0; i < inputs.size() + 1; i++) {
             const std::string& input = (i == inputs.size()) ? "" : inputs[i];
-            Processor* processor;
+            std::unique_ptr<Processor> processor;
             struct stat st;
             if (i != inputs.size()) {
                 if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                    processor = new TarProcessor(input);
+                    processor = std::make_unique<TarProcessor>(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_file.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
+                        processor = std::make_unique<DatabaseProcessor>(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = std::make_unique<DatabaseProcessor>(input);
                     }
                 }
 #ifdef HAVE_GCS
                 else if (stringStartsWith("gcs://", input)) {
-                    processor = new GcsProcessor(input);
+                    processor = std::make_unique<GcsProcessor>(input);
                 }
 #endif
                 else {
-                    processor = new DirectoryProcessor(input, recursive);
+                    processor = std::make_unique<DirectoryProcessor>(input, recursive, use_mmap, sort_by_length);
                 }
             } else {
                 if (single_file_inputs.size() > 0) {
-                    processor = new DirectoryProcessor(single_file_inputs);
+                    processor = std::make_unique<DirectoryProcessor>(single_file_inputs, use_mmap, sort_by_length);
                 }
                 else {
                     continue;
                 }
             }
-
-            process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+            // cpu_func: used by the normal CPU decompress path below.
+            process_entry_func cpu_func =
+                [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+                if (name == NULL) return true;
                 TimerGuard guard(name, measure_time);
                 std::vector<DecompressedSegment> segments;
                 std::string structureTitle;
@@ -1127,8 +1320,82 @@ int main(int argc, char* const *argv) {
                 }
                 return true;
             };
-            processor->run(func, num_threads);
-            delete processor;
+
+#ifdef FOLDCOMP_WITH_CUDA
+            if (use_cpu) {
+                processor->run(cpu_func, num_threads);
+            } else {
+            GPUDecompressionConfig gpu_config;
+            gpu_config.gpu_slots = MAX_IN_FLIGHT;
+            gpu_config.reader_threads = reader_threads;
+            gpu_config.max_batch_size = max_batch_size;
+            gpu_config.max_residues = max_residues;
+            gpu_config.use_alt_order = use_alt_order != 0;
+            gpu_config.use_fused_discretizer = use_fused_disc != 0;
+            gpu_config.pool_size = 1; // single-threaded CLI: no concurrent runs to pool for
+
+            auto gpu_output = [&](GPUDecompressionResult&& result) -> bool {
+                if (memory_only) return true;
+                std::string structureText;
+#ifdef FOLDCOMP_WITH_MMCIF_OUTPUT
+                if (useMMCIFOutput) {
+                    writeSegmentsToMMCIF(result.segments, result.title, structureText);
+                } else
+#endif
+                {
+                    writeSegmentsToPDB(result.segments, result.title, structureText);
+                }
+                std::string base = baseName(result.name);
+                auto outputParts = getFileParts(base);
+                std::string outputFile;
+                if (save_as_tar) outputFile = outputParts.first + "." + outputSuffix;
+                else if (db_output) outputFile = outputParts.first;
+                else if (isSingleFileInput) outputFile = output;
+                else outputFile = output + "/" + outputParts.first + "." + outputSuffix;
+
+                if (db_output) {
+                    structureText.push_back('\0');
+#pragma omp critical
+                    { writer_append(handle, structureText.c_str(), structureText.size(), key, outputFile.c_str()); key++; }
+                    return true;
+                }
+                if (save_as_tar) {
+#pragma omp critical
+                    {
+                        mtar_write_file_header(&tar_out, outputFile.c_str(), structureText.size());
+                        mtar_write_data(&tar_out, structureText.c_str(), structureText.size());
+                    }
+                    return true;
+                }
+                if (stat(outputFile.c_str(), &st) == 0 && !overwrite) {
+                    std::cerr << "[Error] Output file already exists: " << baseName(outputFile) << std::endl;
+                    return false;
+                }
+                FILE* out = fopen(outputFile.c_str(), "wb");
+                if (!out) return false;
+                size_t written = fwrite(structureText.data(), 1, structureText.size(), out);
+                fclose(out);
+                return written == structureText.size();
+            };
+
+            std::string gpu_error;
+            bool gpu_ok = false;
+            try {
+                gpu_ok = runGPUDecompressionPipeline(*processor, gpu_config, gpu_output, gpu_error);
+            } catch (const std::exception& exception) {
+                gpu_error = exception.what();
+            } catch (...) {
+                gpu_error = "unknown GPU pipeline failure";
+            }
+            if (!gpu_ok) {
+                std::cerr << "[Error] GPU decompression: " << gpu_error << std::endl;
+                decompression_failed = true;
+            }
+            } // end GPU path (else branch of use_cpu)
+#else
+            processor->run(cpu_func, num_threads);
+#endif
+            if (decompression_failed) break;
         }
         if (db_output) {
             free_writer(handle);
@@ -1136,6 +1403,7 @@ int main(int argc, char* const *argv) {
             mtar_write_finalize(&tar_out);
             mtar_close(&tar_out);
         }
+        if (decompression_failed) return EXIT_FAILURE;
     } else if (mode == EXTRACT) {
         void* handle;
         mtar_t tar_out;
@@ -1184,31 +1452,31 @@ int main(int argc, char* const *argv) {
         unsigned int key = 0;
         for (size_t i = 0; i < inputs.size() + 1; i++) {
             const std::string& input = (i == inputs.size()) ? "" : inputs[i];
-            Processor* processor;
+            std::unique_ptr<Processor> processor;
             struct stat st;
             if (i != inputs.size()) {
                 if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                    processor = new TarProcessor(input);
+                    processor = std::make_unique<TarProcessor>(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_file.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
+                        processor = std::make_unique<DatabaseProcessor>(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = std::make_unique<DatabaseProcessor>(input);
                     }
                 }
 #ifdef HAVE_GCS
                 else if (stringStartsWith("gcs://", input)) {
-                    processor = new GcsProcessor(input);
+                    processor = std::make_unique<GcsProcessor>(input);
                 }
 #endif
                 else {
-                    processor = new DirectoryProcessor(input, recursive);
+                    processor = std::make_unique<DirectoryProcessor>(input, recursive, use_mmap);
                 }
             } else {
                 if (single_file_inputs.size() > 0) {
-                    processor = new DirectoryProcessor(single_file_inputs);
+                    processor = std::make_unique<DirectoryProcessor>(single_file_inputs, use_mmap);
                 }
                 else {
                     continue;
@@ -1216,6 +1484,7 @@ int main(int argc, char* const *argv) {
             }
 
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+                if (name == nullptr) return true;
                 std::string strName(name);
                 std::vector<ContainerFragment> containerFragments;
                 std::string containerTitle;
@@ -1260,17 +1529,6 @@ int main(int argc, char* const *argv) {
                     std::string baseTitle = ext_use_title ? containerTitle : strName;
 
                     for (size_t fragmentIndex = 0; fragmentIndex < containerFragments.size(); fragmentIndex++) {
-                        Foldcomp compRes;
-                        int flag = compRes.read(containerFragments[fragmentIndex].payload.data(),
-                                                containerFragments[fragmentIndex].payload.size());
-                        if (flag != 0) {
-                            std::cerr << "[Error] Failed to read a container fragment during extraction." << std::endl;
-                            return false;
-                        }
-                        if (baseTitle.empty() && ext_use_title && !compRes.strTitle.empty()) {
-                            baseTitle = compRes.strTitle;
-                        }
-
                         size_t groupIdx = groups.size();
                         for (size_t i = 0; i < groups.size(); i++) {
                             if (groups[i].model == containerFragments[fragmentIndex].model &&
@@ -1287,12 +1545,39 @@ int main(int argc, char* const *argv) {
                         }
 
                         std::string fragmentData;
-                        compRes.extract(fragmentData, ext_mode, ext_plddt_digits);
+                        int fragmentResidues = 0;
+                        const ContainerFragment& fragment = containerFragments[fragmentIndex];
+                        if (fragment.kind == CONTAINER_FRAGMENT_KIND_RAW_ATOMS) {
+                            std::vector<AtomCoordinate> rawAtoms;
+                            if (!deserializeAtomCoordinates(
+                                    fragment.payload.data(), fragment.payload.size(), rawAtoms) ||
+                                !extractRawAtomData(rawAtoms, ext_mode, ext_plddt_digits,
+                                                    fragmentData, fragmentResidues)) {
+                                std::cerr << "[Error] Failed to extract a raw container fragment." << std::endl;
+                                return false;
+                            }
+                        } else if (fragment.kind == CONTAINER_FRAGMENT_KIND_FCZ) {
+                            Foldcomp compRes;
+                            int flag = compRes.read(fragment.payload.data(), fragment.payload.size());
+                            if (flag != 0) {
+                                std::cerr << "[Error] Failed to read a container fragment during extraction." << std::endl;
+                                return false;
+                            }
+                            if (baseTitle.empty() && ext_use_title && !compRes.strTitle.empty()) {
+                                baseTitle = compRes.strTitle;
+                            }
+                            compRes.extract(fragmentData, ext_mode, ext_plddt_digits);
+                            fragmentResidues = compRes.nResidue;
+                        } else {
+                            std::cerr << "[Error] Unsupported container fragment kind during extraction: "
+                                      << static_cast<int>(fragment.kind) << std::endl;
+                            return false;
+                        }
                         if (ext_mode == 0 && ext_plddt_digits > 1 && !groups[groupIdx].data.empty()) {
                             groups[groupIdx].data.push_back(',');
                         }
                         groups[groupIdx].data += fragmentData;
-                        groups[groupIdx].totalResidue += compRes.nResidue;
+                        groups[groupIdx].totalResidue += fragmentResidues;
                     }
 
                     if (baseTitle.empty()) {
@@ -1364,7 +1649,6 @@ int main(int argc, char* const *argv) {
                 return true;
             };
             processor->run(func, num_threads);
-            delete processor;
         }
         if (db_output) {
             free_writer(handle);
@@ -1384,31 +1668,31 @@ int main(int argc, char* const *argv) {
 
         for (size_t i = 0; i < inputs.size() + 1; i++) {
             const std::string& input = (i == inputs.size()) ? "" : inputs[i];
-            Processor* processor;
+            std::unique_ptr<Processor> processor;
             struct stat st;
             if (i != inputs.size()) {
                 if (stringEndsWith(".tar", input) || stringEndsWith(".tar.gz", input) || stringEndsWith(".tgz", input)) {
-                    processor = new TarProcessor(input);
+                    processor = std::make_unique<TarProcessor>(input);
                 }
                 else if (stat((input + ".dbtype").c_str(), &st) == 0) {
                     if (user_id_file.size() > 0) {
-                        processor = new DatabaseProcessor(input, user_id_file, id_mode, use_cache);
+                        processor = std::make_unique<DatabaseProcessor>(input, user_id_file, id_mode, use_cache);
                     }
                     else {
-                        processor = new DatabaseProcessor(input);
+                        processor = std::make_unique<DatabaseProcessor>(input);
                     }
                 }
 #ifdef HAVE_GCS
                 else if (stringStartsWith("gcs://", input)) {
-                    processor = new GcsProcessor(input);
+                    processor = std::make_unique<GcsProcessor>(input);
                 }
 #endif
                 else {
-                    processor = new DirectoryProcessor(input, recursive);
+                    processor = std::make_unique<DirectoryProcessor>(input, recursive, use_mmap);
                 }
             } else {
                 if (single_file_inputs.size() > 0) {
-                    processor = new DirectoryProcessor(single_file_inputs);
+                    processor = std::make_unique<DirectoryProcessor>(single_file_inputs, use_mmap);
                 }
                 else {
                     continue;
@@ -1416,6 +1700,7 @@ int main(int argc, char* const *argv) {
             }
 
             process_entry_func func = [&](const char* name, const char* dataBuffer, size_t size) -> bool {
+                if (name == nullptr) return true;
                 std::vector<ContainerFragment> containerFragments;
                 std::string containerTitle;
                 bool isContainer = readContainer(dataBuffer, size, containerTitle, containerFragments);
@@ -1462,7 +1747,6 @@ int main(int argc, char* const *argv) {
                 }
             };
             processor->run(func, num_threads);
-            delete processor;
         }
     }
     return EXIT_SUCCESS;
